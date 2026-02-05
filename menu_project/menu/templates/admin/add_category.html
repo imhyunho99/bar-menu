@@ -1,0 +1,44 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카테고리 추가 - BidBar</title>
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-form">
+            <h2>카테고리 추가</h2>
+            
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="admin-form-group">
+                    <label for="name">카테고리명 (필수)</label>
+                    <input type="text" id="name" name="name" placeholder="예: 커피, 디저트" required>
+                </div>
+                
+                <div class="admin-form-group">
+                    <label for="parent">상위 카테고리</label>
+                    <select id="parent" name="parent">
+                        <option value="">최상위 카테고리 (없음)</option>
+                        {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <p style="margin-top: 8px; font-size: 0.85em; color: var(--admin-text-secondary);">
+                        * 선택 시 해당 카테고리의 하위 메뉴로 생성됩니다.
+                    </p>
+                </div>
+                
+                <div class="admin-actions">
+                    <a href="{% url 'menu:admin_dashboard' request.restaurant.slug %}" class="admin-btn admin-btn-secondary">취소</a>
+                    <button type="submit" class="admin-btn admin-btn-primary">카테고리 추가</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

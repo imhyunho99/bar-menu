@@ -1,0 +1,111 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bar Menu Service</title>
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: var(--admin-bg-color);
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            background-color: var(--admin-card-bg);
+            padding: 40px;
+            border-radius: var(--admin-radius);
+            box-shadow: var(--admin-shadow);
+            border: 1px solid var(--admin-border-color);
+        }
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--admin-text-primary);
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: var(--admin-text-secondary);
+            margin-bottom: 40px;
+        }
+        .restaurant-list {
+            text-align: left;
+        }
+        .restaurant-list h3 {
+            color: var(--admin-text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--admin-border-color);
+            padding-bottom: 10px;
+        }
+        .restaurant-list ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .restaurant-list li {
+            margin-bottom: 10px;
+        }
+        .restaurant-link {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background-color: rgba(255, 255, 255, 0.03);
+            color: var(--admin-text-primary);
+            text-decoration: none;
+            border-radius: var(--admin-radius);
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+        .restaurant-link:hover {
+            background-color: var(--admin-primary);
+            border-color: var(--admin-primary);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .arrow {
+            opacity: 0.5;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">BidBar Menu</div>
+        <div class="subtitle">모바일 스마트 메뉴판 서비스</div>
+        
+        <div class="restaurant-list">
+            <h3>등록된 매장 목록</h3>
+            <ul>
+                {% for restaurant in restaurants %}
+                <li>
+                    <a href="/{{ restaurant.slug }}/" class="restaurant-link">
+                        <span>{{ restaurant.name }}</span>
+                        <span class="arrow">→</span>
+                    </a>
+                </li>
+                {% empty %}
+                <li style="color: var(--admin-text-secondary); text-align: center; padding: 20px;">등록된 매장이 없습니다.</li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        <div style="margin-top: 40px; font-size: 0.8em; color: var(--admin-text-secondary);">
+            &copy; 2026 Bar Menu Service
+        </div>
+    </div>
+</body>
+</html>

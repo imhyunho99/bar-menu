@@ -1,0 +1,76 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if menu %}메뉴 수정{% else %}메뉴 추가{% endif %} - BidBar</title>
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-form">
+            <h2>{% if menu %}메뉴 수정{% else %}메뉴 추가{% endif %}</h2>
+            
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="admin-form-group">
+                    <label for="name">메뉴명 (필수)</label>
+                    <input type="text" id="name" name="name" value="{{ menu.name|default:'' }}" placeholder="예: 아이스 아메리카노" required>
+                </div>
+
+                <div class="admin-form-group">
+                    <label for="name_en">메뉴명 (영문)</label>
+                    <input type="text" id="name_en" name="name_en" value="{{ menu.name_en|default:'' }}" placeholder="예: Iced Americano">
+                </div>
+                
+                <div class="admin-form-group">
+                    <label for="price">가격</label>
+                    <input type="text" id="price" name="price" value="{{ menu.price|default:'' }}" placeholder="예: 4,500" required>
+                </div>
+                
+                <div class="admin-form-group">
+                    <label for="description">메뉴 설명</label>
+                    <textarea id="description" name="description" placeholder="메뉴에 대한 설명을 입력하세요" required>{{ menu.description|default:'' }}</textarea>
+                </div>
+                
+                <div class="admin-form-group">
+                    <label for="category">카테고리</label>
+                    <select id="category" name="category">
+                        <option value="">카테고리 선택 (미분류)</option>
+                        {% for category in categories %}
+                            <option value="{{ category.id }}" {% if menu.category.id == category.id %}selected{% endif %}>
+                                {{ category.name }} {% if category.parent %}({{ category.parent.name }} > {{ category.name }}){% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="admin-form-group">
+                    <label for="notes">기타 사항</label>
+                    <textarea id="notes" name="notes" placeholder="알레르기 정보나 추가 노트">{{ menu.notes|default:'' }}</textarea>
+                </div>
+                
+                <div class="admin-form-group">
+                    <label for="image">메뉴 이미지</label>
+                    <div style="margin-bottom: 10px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: var(--admin-radius); border: 1px solid var(--admin-border-color);">
+                        <input type="file" id="image" name="image" accept="image/*" style="border: none; padding: 0;">
+                        {% if menu.menu_image %}
+                            <div class="admin-current-image" style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                                <img src="{{ menu.menu_image.url }}" alt="Current" style="height: 60px; border-radius: 4px;">
+                                <span style="color: var(--admin-text-secondary); font-size: 0.9em;">현재 등록된 이미지</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="admin-actions">
+                    <a href="{% url 'menu:admin_dashboard' request.restaurant.slug %}" class="admin-btn admin-btn-secondary">취소</a>
+                    <button type="submit" class="admin-btn admin-btn-primary">{% if menu %}수정 저장{% else %}메뉴 추가{% endif %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

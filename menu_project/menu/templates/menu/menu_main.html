@@ -1,0 +1,121 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>{{ request.restaurant.name|default:"BidBar" }}</title>
+    {% if site_settings and site_settings.logo_image %}
+    <link rel="icon" type="image/png" href="{{ site_settings.logo_image.url }}">
+    <link rel="shortcut icon" type="image/png" href="{{ site_settings.logo_image.url }}">
+    {% else %}
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    {% endif %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% if site_settings %}
+    <style>
+        {% if site_settings.category_name_font %}
+        @font-face {
+            font-family: 'CategoryNameFont';
+            src: url('{{ site_settings.category_name_font.url }}');
+        }
+        {% endif %}
+        {% if site_settings.category_name_en_font %}
+        @font-face {
+            font-family: 'CategoryNameEnFont';
+            src: url('{{ site_settings.category_name_en_font.url }}');
+        }
+        {% endif %}
+        
+        {% if site_settings.category_name_font or site_settings.category_name_color or site_settings.category_name_size or site_settings.category_name_bold or site_settings.category_name_italic %}
+        .category-name-ko {
+            {% if site_settings.category_name_font %}font-family: 'CategoryNameFont', sans-serif !important;{% endif %}
+            {% if site_settings.category_name_color %}color: {{ site_settings.category_name_color }} !important;{% endif %}
+            {% if site_settings.category_name_size %}font-size: {{ site_settings.category_name_size }}px !important;{% endif %}
+            {% if site_settings.category_name_bold %}font-weight: bold !important;{% endif %}
+            {% if site_settings.category_name_italic %}font-style: italic !important;{% endif %}
+        }
+        {% endif %}
+        
+        {% if site_settings.category_name_en_font or site_settings.category_name_en_color or site_settings.category_name_en_size or site_settings.category_name_en_bold or site_settings.category_name_en_italic %}
+        .category-name-en {
+            {% if site_settings.category_name_en_font %}font-family: 'CategoryNameEnFont', sans-serif !important;{% endif %}
+            {% if site_settings.category_name_en_color %}color: {{ site_settings.category_name_en_color }} !important;{% endif %}
+            {% if site_settings.category_name_en_size %}font-size: {{ site_settings.category_name_en_size }}px !important;{% endif %}
+            {% if site_settings.category_name_en_bold %}font-weight: bold !important;{% endif %}
+            {% if site_settings.category_name_en_italic %}font-style: italic !important;{% endif %}
+        }
+        {% endif %}
+    </style>
+    {% endif %}
+</head>
+<body style="background-color: {{ site_settings.background_color|default:'#000000' }} !important;">
+    <div class="top-bar">
+        <div class="top-bar-buttons" id="topBarButtons">
+            <button class="search-toggle" id="searchToggle"><img src="{% static 'search.png' %}" alt="Search"></button>
+            <button class="menu-toggle" id="menuToggle"><img src="{% static 'menu.png' %}" alt="Menu"></button>
+        </div>
+        <form class="search-container" id="searchContainer" style="display: none;" action="{% url 'menu:search_redirect' request.restaurant.slug %}" method="get">
+            <div class="search-input-wrapper">
+                <input type="text" id="searchInput" name="q" placeholder="메뉴 검색..." required />
+                <button type="button" class="search-close" id="searchClose">×</button>
+            </div>
+            <div class="search-results" id="searchResults"></div>
+        </form>
+    </div>
+    
+    <!-- 사이드 메뉴 -->
+    {% include "menu/_side_menu.html" %}
+
+    <!-- 사이드 메뉴 오버레이 -->
+    <div class="menu-overlay" id="menuOverlay"></div>
+    
+    <!-- 로딩 스크린 -->
+    {% if site_settings and site_settings.intro_video %}
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-logo">
+            <video id="loadingVideo" autoplay muted playsinline webkit-playsinline preload="metadata">
+                <source src="{{ site_settings.intro_video.url }}" type="video/mp4">
+                <img src="{% static 'logo.png' %}" alt="Logo" style="width: 80vw; max-width: 400px; height: auto;" loading="lazy">
+            </video>
+        </div>
+    </div>
+    {% endif %}
+
+    <main class="main" style="padding: 0 !important;">
+        <div class="container" style="padding: 0 !important; margin: 0 !important; max-width: none !important;">
+            {% if site_settings and site_settings.intro_image %}
+            <div class="intro-section" style="margin: 0 !important; padding: 0 !important;">
+                <img src="{{ site_settings.intro_image.url }}" alt="Menu Introduction" class="intro-image" style="margin: 0 !important; padding: 0 !important; display: block;" loading="lazy" decoding="async">
+            </div>
+            {% endif %}
+
+            <div class="category-section">
+                <div class="category-grid">
+                    {% for category in categories %}
+                    <a href="{% url 'menu:menu_list' request.restaurant.slug category.id %}" class="category-card">
+                        {% if category.name_en %}
+                        <p class="category-name-en">{{ category.name_en }}</p>
+                        {% endif %}
+                        <h3 class="category-name-ko">{{ category.name }}</h3>
+                    </a>
+                    {% empty %}
+                    <div class="no-categories">
+                        등록된 카테고리가 없습니다.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        window.searchApiUrl = "{% url 'menu:search_api' request.restaurant.slug %}";
+    </script>
+    <script src="{% static 'js/menu-common.js' %}"></script>
+</body>
+</html>

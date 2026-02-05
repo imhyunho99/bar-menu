@@ -1,0 +1,150 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 페이지 - {{ request.restaurant.name|default:"BidBar" }}</title>
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1 class="admin-title">{{ request.restaurant.name|default:"BidBar" }} 관리자 대시보드</h1>
+            <div class="admin-header-actions">
+                <a href="{% url 'menu:menu_main' request.restaurant.slug %}" target="_blank" class="admin-btn admin-btn-secondary">사이트 보기</a>
+            </div>
+        </div>
+
+        <div class="admin-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>카테고리 <span style="font-size: 0.9em; color: var(--admin-text-secondary); font-weight: normal;">({{ categories|length }})</span></h2>
+                <a href="{% url 'menu:add_category' request.restaurant.slug %}" class="admin-btn admin-btn-primary">카테고리 추가</a>
+            </div>
+            
+            <div class="admin-table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">ID</th>
+                            <th>카테고리명</th>
+                            <th>영문명</th>
+                            <th>상위 카테고리</th>
+                            <th>우선순위</th>
+                            <th>메뉴 수</th>
+                            <th style="text-align: right;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in categories %}
+                        <tr>
+                            <td>{{ category.id }}</td>
+                            <td style="font-weight: 500; color: white;">{{ category.name|default:"-" }}</td>
+                            <td>{{ category.name_en|default:"-" }}</td>
+                            <td>
+                                {% if category.parent %}
+                                    <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.85em;">{{ category.parent.name }}</span>
+                                {% else %}
+                                    <span style="color: var(--admin-text-secondary);">최상위</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ category.priority }}</td>
+                            <td>{{ category.menu_items.count }}</td>
+                            <td style="text-align: right;">
+                                <a href="{% url 'menu:delete_category' request.restaurant.slug category.id %}" 
+                                   class="admin-btn admin-btn-danger"
+                                   onclick="return confirm('정말 삭제하시겠습니까? 하위 카테고리와 메뉴도 영향을 받을 수 있습니다.')">삭제</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px; color: var(--admin-text-secondary);">
+                                등록된 카테고리가 없습니다.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="admin-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>메뉴 아이템 <span style="font-size: 0.9em; color: var(--admin-text-secondary); font-weight: normal;">({{ menu_items|length }})</span></h2>
+                <a href="{% url 'menu:add_menu' request.restaurant.slug %}" class="admin-btn admin-btn-primary">메뉴 추가</a>
+            </div>
+            
+            <div class="admin-table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">ID</th>
+                            <th>이미지</th>
+                            <th>메뉴명</th>
+                            <th>가격</th>
+                            <th>카테고리</th>
+                            <th>우선순위</th>
+                            <th>상태</th>
+                            <th style="text-align: right;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for menu in menu_items %}
+                        <tr>
+                            <td>{{ menu.id }}</td>
+                            <td>
+                                {% if menu.menu_image %}
+                                    <div style="width: 40px; height: 40px; border-radius: 4px; overflow: hidden; background: #333;">
+                                        <img src="{{ menu.menu_image.url }}" alt="" style="width: 100%; height: 100%; object-fit: cover;">
+                                    </div>
+                                {% else %}
+                                    <div style="width: 40px; height: 40px; border-radius: 4px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: #555;">
+                                        <span style="font-size: 10px;">No Img</span>
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div style="font-weight: 500; color: white;">{{ menu.name }}</div>
+                                {% if menu.name_en %}
+                                    <div style="font-size: 0.85em; color: var(--admin-text-secondary);">{{ menu.name_en }}</div>
+                                {% endif %}
+                            </td>
+                            <td>{{ menu.price }}</td>
+                            <td>
+                                {% if menu.category %}
+                                    <span style="background: rgba(59, 130, 246, 0.1); color: #60a5fa; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">
+                                        {{ menu.category.name }}
+                                    </span>
+                                {% else %}
+                                    <span style="color: var(--admin-text-secondary);">미분류</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ menu.priority }}</td>
+                            <td>
+                                {% if menu.is_available %}
+                                    <span style="color: var(--admin-success);">● 판매중</span>
+                                {% else %}
+                                    <span style="color: var(--admin-danger);">● 품절</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: right;">
+                                <a href="{% url 'menu:edit_menu' request.restaurant.slug menu.id %}" class="admin-btn admin-btn-secondary" style="margin-right: 5px;">수정</a>
+                                <a href="{% url 'menu:delete_menu' request.restaurant.slug menu.id %}" 
+                                   class="admin-btn admin-btn-danger"
+                                   onclick="return confirm('정말 삭제하시겠습니까?')">삭제</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 40px; color: var(--admin-text-secondary);">
+                                등록된 메뉴가 없습니다.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

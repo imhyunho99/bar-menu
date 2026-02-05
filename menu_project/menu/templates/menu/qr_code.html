@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bid</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'GT Walsheim Pro', -webkit-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #000;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+
+        .qr-container {
+            border-left: 1px solid rgba(0, 0, 0, 1);
+            overflow-y: auto;
+        }
+
+        body {
+            font-family: 'GT Walsheim Pro', -webkit-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #000;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .qr-container {
+            background-color: #1a1a1a;
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            border: 1px solid #333;
+            max-width: 400px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        .qr-container:hover {
+            background-color: #222;
+            border-color: #555;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            color: #aaa;
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+        
+        .qr-code {
+            background: #fff;
+            padding: 1.5rem;
+            border-radius: 12px;
+            display: inline-block;
+            margin: 1.5rem 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .qr-code img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .instructions {
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-top: 1.5rem;
+            line-height: 1.5;
+        }
+        
+        .url-info {
+            background-color: #222;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            word-break: break-all;
+        }
+        
+        .url-info p {
+            margin-bottom: 0.5rem;
+        }
+        
+        .url-info a {
+            color: #007bff;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .url-info a:hover {
+            color: #0056b3;
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+            
+            .qr-container {
+                padding: 1.5rem;
+                margin: 0;
+                border-radius: 12px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .subtitle {
+                font-size: 0.9rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            .qr-code {
+                padding: 1rem;
+                margin: 1rem 0;
+            }
+            
+            .instructions {
+                font-size: 0.85rem;
+                line-height: 1.6;
+            }
+            
+            .url-info {
+                font-size: 0.8rem;
+                padding: 0.8rem;
+            }
+        }
+        
+        @media (max-width: 360px) {
+            body {
+                padding: 10px;
+            }
+            
+            .qr-container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 1.6rem;
+            }
+            
+            .subtitle {
+                font-size: 0.85rem;
+            }
+            
+            .qr-code {
+                padding: 0.8rem;
+            }
+            
+            .instructions {
+                font-size: 0.8rem;
+            }
+            
+            .url-info {
+                font-size: 0.75rem;
+                padding: 0.6rem;
+            }
+        }
+        
+        /* 터치 디바이스 최적화 */
+        @media (hover: none) and (pointer: coarse) {
+            .qr-container:hover {
+                transform: none;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            }
+            
+            .url-info a {
+                padding: 0.5rem 0;
+                display: inline-block;
+                min-height: 44px;
+                line-height: 1.2;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="qr-container">
+        
+        <div class="qr-code">
+            <img src="data:image/png;base64,{{ qr_image }}" alt="QR Code">
+        </div>
+        
+        
+        <div class="url-info">
+            
+            <p><strong>URL   :   </strong><a href="{{ menu_url }}" target="_blank">{{ menu_url }}</a></p>
+        </div>
+    </div>
+
+</body>
+</html>

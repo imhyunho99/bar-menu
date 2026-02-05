@@ -1,0 +1,140 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>{{ category.name }} - {{ request.restaurant.name|default:"BidBar" }}</title>
+    {% if site_settings and site_settings.logo_image %}
+    <link rel="icon" type="image/png" href="{{ site_settings.logo_image.url }}">
+    <link rel="shortcut icon" type="image/png" href="{{ site_settings.logo_image.url }}">
+    {% else %}
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    {% endif %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% if site_settings %}
+    <style>
+        {% if site_settings.side_image %}
+        .background-with-gradient {
+            background: url('{{ site_settings.side_image.url }}');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: {% if category.hide_side_image %}0{% else %}10{% endif %};
+            pointer-events: none;
+        }
+        
+        @media (max-width: 768px) {
+            .background-with-gradient {
+                background-attachment: scroll;
+            }
+        }
+        {% endif %}
+        
+        {% if site_settings.category_name_font %}
+        @font-face {
+            font-family: 'CategoryNameFont';
+            src: url('{{ site_settings.category_name_font.url }}');
+        }
+        {% endif %}
+        {% if site_settings.category_name_en_font %}
+        @font-face {
+            font-family: 'CategoryNameEnFont';
+            src: url('{{ site_settings.category_name_en_font.url }}');
+        }
+        {% endif %}
+        
+        {% if site_settings.category_name_font or site_settings.category_name_color or site_settings.category_name_size or site_settings.category_name_bold or site_settings.category_name_italic %}
+        .category-name-ko {
+            {% if site_settings.category_name_font %}font-family: 'CategoryNameFont', sans-serif !important;{% endif %}
+            {% if site_settings.category_name_color %}color: {{ site_settings.category_name_color }} !important;{% endif %}
+            {% if site_settings.category_name_size %}font-size: {{ site_settings.category_name_size }}px !important;{% endif %}
+            {% if site_settings.category_name_bold %}font-weight: bold !important;{% endif %}
+            {% if site_settings.category_name_italic %}font-style: italic !important;{% endif %}
+        }
+        {% endif %}
+        
+        {% if site_settings.category_name_en_font or site_settings.category_name_en_color or site_settings.category_name_en_size or site_settings.category_name_en_bold or site_settings.category_name_en_italic %}
+        .category-name-en {
+            {% if site_settings.category_name_en_font %}font-family: 'CategoryNameEnFont', sans-serif !important;{% endif %}
+            {% if site_settings.category_name_en_color %}color: {{ site_settings.category_name_en_color }} !important;{% endif %}
+            {% if site_settings.category_name_en_size %}font-size: {{ site_settings.category_name_en_size }}px !important;{% endif %}
+            {% if site_settings.category_name_en_bold %}font-weight: bold !important;{% endif %}
+            {% if site_settings.category_name_en_italic %}font-style: italic !important;{% endif %}
+        }
+        {% endif %}
+    </style>
+    {% endif %}
+</head>
+<body style="margin: 0 !important; padding: 0 !important; background-color: {{ site_settings.background_color|default:'#000000' }};">
+    <!-- 배경 레이어 -->
+    {% if site_settings and site_settings.side_image %}
+    <div class="background-with-gradient"></div>
+    {% endif %}
+    
+    <div class="top-bar">
+        <div class="top-bar-buttons" id="topBarButtons">
+            <button class="search-toggle" id="searchToggle"><img src="{% static 'search.png' %}" alt="Search"></button>
+            <button class="menu-toggle" id="menuToggle"><img src="{% static 'menu.png' %}" alt="Menu"></button>
+        </div>
+        <div class="search-container" id="searchContainer" style="display: none;">
+            <div class="search-input-wrapper">
+                <input type="text" id="searchInput" placeholder="메뉴 및 카테고리 검색..." />
+                <button class="search-close" id="searchClose">×</button>
+            </div>
+            <div class="search-results" id="searchResults"></div>
+        </div>
+    </div>
+    
+    <!-- 사이드 메뉴 -->
+    {% include "menu/_side_menu.html" %}
+
+    <!-- 사이드 메뉴 오버레이 -->
+    <div class="menu-overlay" id="menuOverlay"></div>
+    
+    <!-- 콘텐츠 레이어 -->
+    <div class="menu-container">
+        <main class="main" style="padding: 0 !important; margin: 0 !important;">
+            <div class="container" style="padding: 0 !important; margin: 0 !important; max-width: none !important;">
+                <div class="category-section" style="margin: 0 !important; padding: 0 !important;">
+                    <div class="category-grid">
+                        {% for sub_category in categories %}
+                        <div class="category-item">
+                            {% if sub_category.category_image %}
+                                <!-- 이미지가 있는 경우: 이미지만 표시 -->
+                                <img src="{{ sub_category.category_image.url }}" alt="{{ sub_category.name }}" class="category-only-image">
+                            {% else %}
+                                <!-- 이미지가 없는 경우: 텍스트 표시 (클릭 가능) -->
+                                <a href="{% url 'menu:menu_list' request.restaurant.slug sub_category.id %}" class="category-content">
+                                    {% if sub_category.name_en %}<h4 class="category-name-en">{{ sub_category.name_en }}</h4>{% endif %}
+                                    <h3 class="category-name-ko">{{ sub_category.name }}</h3>
+                                </a>
+                            {% endif %}
+                        </div>
+                        {% empty %}
+                        <div class="no-categories">
+                            등록된 하위 카테고리가 없습니다.
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        window.searchApiUrl = "{% url 'menu:search_api' request.restaurant.slug %}";
+    </script>
+    <script src="{% static 'js/menu-common.js' %}"></script>
+</body>
+</html>
