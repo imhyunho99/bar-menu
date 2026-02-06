@@ -9,9 +9,9 @@ Bidbar(https://naver.me/5ISHAhLZ)의 의뢰를 받아 제작되었습니다.
 Django 기반의 백엔드와 반응형 웹 프론트엔드로 구성되며, Oracle Cloud에서 배포 중입니다.
 
 
-## 데모
+## 서비스
 
-http://bid-menu.duckdns.org/
+https://bar-menu.ddnsfree.com
 
 ## 기술 스택
 
