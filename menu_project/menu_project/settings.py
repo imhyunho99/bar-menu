@@ -28,20 +28,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-07elwz6_#&2wmqr^_nx=4md07rwsva)n)t5(g$+t4n(+&_7bjx')
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    raise ValueError("DJANGO_SECRET_KEY must be set in environment variables")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
-# 모바일 접근을 위한 추가 설정
+# CSRF trusted origins from environment variable
 CSRF_TRUSTED_ORIGINS = [
-    'https://bar-menu.duckdns.org',
-    'http://bar-menu.duckdns.org',
-    'http://140.245.71.233',
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
+    origin.strip() 
+    for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') 
+    if origin.strip()
 ]
 
 # X-Frame-Options 설정
