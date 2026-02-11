@@ -21,10 +21,12 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           cd ~/bar_menu
-          git pull origin main
+          git fetch origin main
+          git reset --hard origin/main
           source venv/bin/activate
-          pip install -r requirements.txt
-          python manage.py migrate
+          pip install -q -r requirements.txt
+          cd menu_project
+          python manage.py migrate --noinput
           python manage.py collectstatic --noinput
           sudo systemctl restart uwsgi
           echo "✓ Deployment completed successfully!"
