@@ -72,6 +72,20 @@ class SiteSettings(models.Model):
         verbose_name="배경색", 
         help_text="사이트 배경색 (예: #000000)"
     )
+
+    category_card_color = models.CharField(
+        max_length=20,
+        default='#000000',
+        verbose_name="카테고리 카드 배경색",
+        help_text="카테고리 목록 카드의 배경색 (예: #000000)"
+    )
+
+    menu_card_color = models.CharField(
+        max_length=20,
+        default='#000000',
+        verbose_name="메뉴 카드 배경색",
+        help_text="메뉴 상세 항목의 배경색 (예: #000000)"
+    )
     
     # 메뉴명(한글) 설정
     menu_name_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="메뉴명(한글) 폰트 파일")

@@ -119,6 +119,13 @@
             {% if site_settings.menu_notes_italic %}font-style: italic !important;{% endif %}
         }
         {% endif %}
+
+        {% if site_settings.menu_card_color %}
+        .menu-item {
+            background-color: {{ site_settings.menu_card_color }} !important;
+            border-color: {{ site_settings.menu_card_color }} !important;
+        }
+        {% endif %}
     </style>
     {% endif %}
 </head>

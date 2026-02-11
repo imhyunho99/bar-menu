@@ -78,6 +78,43 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
     list_display = ('restaurant', 'created_at')
+    fieldsets = (
+        ('기본 설정', {
+            'fields': ('restaurant', 'logo_image', 'intro_image', 'intro_video', 'side_image')
+        }),
+        ('색상 설정', {
+            'fields': ('background_color', 'category_card_color', 'menu_card_color'),
+            'classes': ('collapse',),
+        }),
+        ('메뉴명(한글) 스타일', {
+            'fields': ('menu_name_font', 'menu_name_color', 'menu_name_size', 'menu_name_bold', 'menu_name_italic'),
+            'classes': ('collapse',),
+        }),
+        ('메뉴명(영문) 스타일', {
+            'fields': ('menu_name_en_font', 'menu_name_en_color', 'menu_name_en_size', 'menu_name_en_bold', 'menu_name_en_italic'),
+            'classes': ('collapse',),
+        }),
+        ('가격 스타일', {
+            'fields': ('menu_price_font', 'menu_price_color', 'menu_price_size', 'menu_price_bold', 'menu_price_italic'),
+            'classes': ('collapse',),
+        }),
+        ('메뉴 설명 스타일', {
+            'fields': ('menu_description_font', 'menu_description_color', 'menu_description_size', 'menu_description_bold', 'menu_description_italic'),
+            'classes': ('collapse',),
+        }),
+        ('기타 사항 스타일', {
+            'fields': ('menu_notes_font', 'menu_notes_color', 'menu_notes_size', 'menu_notes_bold', 'menu_notes_italic'),
+            'classes': ('collapse',),
+        }),
+        ('카테고리명(한글) 스타일', {
+            'fields': ('category_name_font', 'category_name_color', 'category_name_size', 'category_name_bold', 'category_name_italic'),
+            'classes': ('collapse',),
+        }),
+        ('카테고리명(영문) 스타일', {
+            'fields': ('category_name_en_font', 'category_name_en_color', 'category_name_en_size', 'category_name_en_bold', 'category_name_en_italic'),
+            'classes': ('collapse',),
+        }),
+    )
     
     def has_add_permission(self, request):
         # 이미 설정이 있다면 추가 불가능하게 (1:1 관계처럼 유지)

@@ -50,6 +50,13 @@
             {% if site_settings.category_name_en_italic %}font-style: italic !important;{% endif %}
         }
         {% endif %}
+
+        {% if site_settings.category_card_color %}
+        .category-card {
+            background-color: {{ site_settings.category_card_color }} !important;
+            border-color: {{ site_settings.category_card_color }} !important;
+        }
+        {% endif %}
     </style>
     {% endif %}
 </head>
