@@ -16,118 +16,107 @@
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
     {% endif %}
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
     {% if site_settings %}
-    <style>
-        {% if site_settings.side_image %}
-        .background-with-gradient {
-            background: url('{{ site_settings.side_image.url }}');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            background-repeat: no-repeat;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: {% if category.hide_side_image %}-10{% else %}10{% endif %};
-            pointer-events: none;
-            transform-origin: center center;
-            transition: transform 0.1s ease-out;
-        }
-        
-        @media (max-width: 768px) {
-            .background-with-gradient {
-                background-attachment: scroll;
-            }
-        }
-        {% endif %}
-        
-        {% if site_settings.menu_name_font %}
-        @font-face {
-            font-family: 'MenuNameFont';
-            src: url('{{ site_settings.menu_name_font.url }}');
-        }
-        {% endif %}
-        {% if site_settings.menu_name_en_font %}
-        @font-face {
-            font-family: 'MenuNameEnFont';
-            src: url('{{ site_settings.menu_name_en_font.url }}');
-        }
-        {% endif %}
-        {% if site_settings.menu_price_font %}
-        @font-face {
-            font-family: 'MenuPriceFont';
-            src: url('{{ site_settings.menu_price_font.url }}');
-        }
-        {% endif %}
-        {% if site_settings.menu_description_font %}
-        @font-face {
-            font-family: 'MenuDescriptionFont';
-            src: url('{{ site_settings.menu_description_font.url }}');
-        }
-        {% endif %}
-        {% if site_settings.menu_notes_font %}
-        @font-face {
-            font-family: 'MenuNotesFont';
-            src: url('{{ site_settings.menu_notes_font.url }}');
-        }
-        {% endif %}
-        
-        {% if site_settings.menu_name_font or site_settings.menu_name_color or site_settings.menu_name_size or site_settings.menu_name_bold or site_settings.menu_name_italic %}
-        .menu-title {
-            {% if site_settings.menu_name_font %}font-family: 'MenuNameFont', sans-serif !important;{% endif %}
-            {% if site_settings.menu_name_color %}color: {{ site_settings.menu_name_color }} !important;{% endif %}
-            {% if site_settings.menu_name_size %}font-size: {{ site_settings.menu_name_size }}px !important;{% endif %}
-            {% if site_settings.menu_name_bold %}font-weight: bold !important;{% endif %}
-            {% if site_settings.menu_name_italic %}font-style: italic !important;{% endif %}
-        }
-        {% endif %}
-        {% if site_settings.menu_name_en_font or site_settings.menu_name_en_color or site_settings.menu_name_en_size or site_settings.menu_name_en_bold or site_settings.menu_name_en_italic %}
-        .menu-title .menu-title-en {
-            {% if site_settings.menu_name_en_font %}font-family: 'MenuNameEnFont', sans-serif !important;{% endif %}
-            {% if site_settings.menu_name_en_color %}color: {{ site_settings.menu_name_en_color }} !important;{% endif %}
-            {% if site_settings.menu_name_en_size %}font-size: {{ site_settings.menu_name_en_size }}px !important;{% endif %}
-            {% if site_settings.menu_name_en_bold %}font-weight: bold !important;{% endif %}
-            {% if site_settings.menu_name_en_italic %}font-style: italic !important;{% endif %}
-        }
-        {% endif %}
-        {% if site_settings.menu_price_font or site_settings.menu_price_color or site_settings.menu_price_size or site_settings.menu_price_bold or site_settings.menu_price_italic %}
-        .menu-price {
-            {% if site_settings.menu_price_font %}font-family: 'MenuPriceFont', sans-serif !important;{% endif %}
-            {% if site_settings.menu_price_color %}color: {{ site_settings.menu_price_color }} !important;{% endif %}
-            {% if site_settings.menu_price_size %}font-size: {{ site_settings.menu_price_size }}px !important;{% endif %}
-            {% if site_settings.menu_price_bold %}font-weight: bold !important;{% endif %}
-            {% if site_settings.menu_price_italic %}font-style: italic !important;{% endif %}
-        }
-        {% endif %}
-        {% if site_settings.menu_description_font or site_settings.menu_description_color or site_settings.menu_description_size or site_settings.menu_description_bold or site_settings.menu_description_italic %}
-        .menu-description {
-            {% if site_settings.menu_description_font %}font-family: 'MenuDescriptionFont', sans-serif !important;{% endif %}
-            {% if site_settings.menu_description_color %}color: {{ site_settings.menu_description_color }} !important;{% endif %}
-            {% if site_settings.menu_description_size %}font-size: {{ site_settings.menu_description_size }}px !important;{% endif %}
-            {% if site_settings.menu_description_bold %}font-weight: bold !important;{% endif %}
-            {% if site_settings.menu_description_italic %}font-style: italic !important;{% endif %}
-        }
-        {% endif %}
-        {% if site_settings.menu_notes_font or site_settings.menu_notes_color or site_settings.menu_notes_size or site_settings.menu_notes_bold or site_settings.menu_notes_italic %}
-        .menu-notes {
-            {% if site_settings.menu_notes_font %}font-family: 'MenuNotesFont', sans-serif !important;{% endif %}
-            {% if site_settings.menu_notes_color %}color: {{ site_settings.menu_notes_color }} !important;{% endif %}
-            {% if site_settings.menu_notes_size %}font-size: {{ site_settings.menu_notes_size }}px !important;{% endif %}
-            {% if site_settings.menu_notes_bold %}font-weight: bold !important;{% endif %}
-            {% if site_settings.menu_notes_italic %}font-style: italic !important;{% endif %}
-        }
-        {% endif %}
-
-        {% if site_settings.menu_card_color %}
-        .menu-item {
-            background-color: {{ site_settings.menu_card_color }} !important;
-            border-color: {{ site_settings.menu_card_color }} !important;
-        }
-        {% endif %}
-    </style>
+    {% if site_settings.side_image and site_settings.side_image.name %}
+    <style>body { background: url('{{ site_settings.side_image.url }}'); background-size: cover; background-position: center; background-attachment: fixed; }</style>
     {% endif %}
+
+    {% if site_settings.menu_name_font and site_settings.menu_name_font.name %}
+    <style>@font-face { font-family: 'MenuNameFont'; src: url('{{ site_settings.menu_name_font.url }}'); }
+    .menu-name-ko { font-family: 'MenuNameFont', sans-serif !important; }</style>
+    {% endif %}
+
+    {% if site_settings.menu_name_en_font and site_settings.menu_name_en_font.name %}
+    <style>@font-face { font-family: 'MenuNameEnFont'; src: url('{{ site_settings.menu_name_en_font.url }}'); }
+    .menu-name-en { font-family: 'MenuNameEnFont', sans-serif !important; }</style>
+    {% endif %}
+
+    {% if site_settings.menu_price_font and site_settings.menu_price_font.name %}
+    <style>@font-face { font-family: 'MenuPriceFont'; src: url('{{ site_settings.menu_price_font.url }}'); }
+    .menu-price { font-family: 'MenuPriceFont', sans-serif !important; }</style>
+    {% endif %}
+
+    {% if site_settings.menu_description_font and site_settings.menu_description_font.name %}
+    <style>@font-face { font-family: 'MenuDescFont'; src: url('{{ site_settings.menu_description_font.url }}'); }
+    .menu-description { font-family: 'MenuDescFont', sans-serif !important; }</style>
+    {% endif %}
+
+    {% if site_settings.menu_notes_font and site_settings.menu_notes_font.name %}
+    <style>@font-face { font-family: 'MenuNotesFont'; src: url('{{ site_settings.menu_notes_font.url }}'); }
+    .menu-notes { font-family: 'MenuNotesFont', sans-serif !important; }</style>
+    {% endif %}
+
+    {% if site_settings.menu_name_color %}
+    <style>.menu-name-ko { color: {{ site_settings.menu_name_color }} !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_name_size %}
+    <style>.menu-name-ko { font-size: {{ site_settings.menu_name_size }}px !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_name_bold %}
+    <style>.menu-name-ko { font-weight: bold !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_name_italic %}
+    <style>.menu-name-ko { font-style: italic !important; }</style>
+    {% endif %}
+
+    {% if site_settings.menu_name_en_color %}
+    <style>.menu-name-en { color: {{ site_settings.menu_name_en_color }} !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_name_en_size %}
+    <style>.menu-name-en { font-size: {{ site_settings.menu_name_en_size }}px !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_name_en_bold %}
+    <style>.menu-name-en { font-weight: bold !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_name_en_italic %}
+    <style>.menu-name-en { font-style: italic !important; }</style>
+    {% endif %}
+
+    {% if site_settings.menu_price_color %}
+    <style>.menu-price { color: {{ site_settings.menu_price_color }} !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_price_size %}
+    <style>.menu-price { font-size: {{ site_settings.menu_price_size }}px !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_price_bold %}
+    <style>.menu-price { font-weight: bold !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_price_italic %}
+    <style>.menu-price { font-style: italic !important; }</style>
+    {% endif %}
+
+    {% if site_settings.menu_description_color %}
+    <style>.menu-description { color: {{ site_settings.menu_description_color }} !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_description_size %}
+    <style>.menu-description { font-size: {{ site_settings.menu_description_size }}px !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_description_bold %}
+    <style>.menu-description { font-weight: bold !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_description_italic %}
+    <style>.menu-description { font-style: italic !important; }</style>
+    {% endif %}
+
+    {% if site_settings.menu_notes_color %}
+    <style>.menu-notes { color: {{ site_settings.menu_notes_color }} !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_notes_size %}
+    <style>.menu-notes { font-size: {{ site_settings.menu_notes_size }}px !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_notes_bold %}
+    <style>.menu-notes { font-weight: bold !important; }</style>
+    {% endif %}
+    {% if site_settings.menu_notes_italic %}
+    <style>.menu-notes { font-style: italic !important; }</style>
+    {% endif %}
+
+    {% if site_settings.menu_card_color %}
+    <style>.menu-item { background-color: {{ site_settings.menu_card_color }} !important; border-color: {{ site_settings.menu_card_color }} !important; }</style>
+    {% endif %}
+    {% endif %}
+
 </head>
 <body style="margin: 0 !important; padding: 0 !important; background-color: {{ site_settings.background_color|default:'#000000' }};">
     <!-- 배경 레이어 -->

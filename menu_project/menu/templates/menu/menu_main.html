@@ -16,49 +16,49 @@
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
     {% endif %}
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
     {% if site_settings %}
-    <style>
-        {% if site_settings.category_name_font %}
-        @font-face {
-            font-family: 'CategoryNameFont';
-            src: url('{{ site_settings.category_name_font.url }}');
-        }
-        {% endif %}
-        {% if site_settings.category_name_en_font %}
-        @font-face {
-            font-family: 'CategoryNameEnFont';
-            src: url('{{ site_settings.category_name_en_font.url }}');
-        }
-        {% endif %}
-        
-        {% if site_settings.category_name_font or site_settings.category_name_color or site_settings.category_name_size or site_settings.category_name_bold or site_settings.category_name_italic %}
-        .category-name-ko {
-            {% if site_settings.category_name_font %}font-family: 'CategoryNameFont', sans-serif !important;{% endif %}
-            {% if site_settings.category_name_color %}color: {{ site_settings.category_name_color }} !important;{% endif %}
-            {% if site_settings.category_name_size %}font-size: {{ site_settings.category_name_size }}px !important;{% endif %}
-            {% if site_settings.category_name_bold %}font-weight: bold !important;{% endif %}
-            {% if site_settings.category_name_italic %}font-style: italic !important;{% endif %}
-        }
-        {% endif %}
-        
-        {% if site_settings.category_name_en_font or site_settings.category_name_en_color or site_settings.category_name_en_size or site_settings.category_name_en_bold or site_settings.category_name_en_italic %}
-        .category-name-en {
-            {% if site_settings.category_name_en_font %}font-family: 'CategoryNameEnFont', sans-serif !important;{% endif %}
-            {% if site_settings.category_name_en_color %}color: {{ site_settings.category_name_en_color }} !important;{% endif %}
-            {% if site_settings.category_name_en_size %}font-size: {{ site_settings.category_name_en_size }}px !important;{% endif %}
-            {% if site_settings.category_name_en_bold %}font-weight: bold !important;{% endif %}
-            {% if site_settings.category_name_en_italic %}font-style: italic !important;{% endif %}
-        }
-        {% endif %}
-
-        {% if site_settings.category_card_color %}
-        .category-card {
-            background-color: {{ site_settings.category_card_color }} !important;
-            border-color: {{ site_settings.category_card_color }} !important;
-        }
-        {% endif %}
-    </style>
+    {% if site_settings.category_name_font and site_settings.category_name_font.name %}
+    <style>@font-face { font-family: 'CategoryNameFont'; src: url('{{ site_settings.category_name_font.url }}'); }
+    .category-name-ko, .manual-card h3 { font-family: 'CategoryNameFont', sans-serif !important; }</style>
     {% endif %}
+
+    {% if site_settings.category_name_en_font and site_settings.category_name_en_font.name %}
+    <style>@font-face { font-family: 'CategoryNameEnFont'; src: url('{{ site_settings.category_name_en_font.url }}'); }
+    .category-name-en { font-family: 'CategoryNameEnFont', sans-serif !important; }</style>
+    {% endif %}
+
+    {% if site_settings.category_name_color %}
+    <style>.category-name-ko, .manual-card h3 { color: {{ site_settings.category_name_color }} !important; }</style>
+    {% endif %}
+    {% if site_settings.category_name_size %}
+    <style>.category-name-ko, .manual-card h3 { font-size: {{ site_settings.category_name_size }}px !important; }</style>
+    {% endif %}
+    {% if site_settings.category_name_bold %}
+    <style>.category-name-ko, .manual-card h3 { font-weight: bold !important; }</style>
+    {% endif %}
+    {% if site_settings.category_name_italic %}
+    <style>.category-name-ko, .manual-card h3 { font-style: italic !important; }</style>
+    {% endif %}
+
+    {% if site_settings.category_name_en_color %}
+    <style>.category-name-en { color: {{ site_settings.category_name_en_color }} !important; }</style>
+    {% endif %}
+    {% if site_settings.category_name_en_size %}
+    <style>.category-name-en { font-size: {{ site_settings.category_name_en_size }}px !important; }</style>
+    {% endif %}
+    {% if site_settings.category_name_en_bold %}
+    <style>.category-name-en { font-weight: bold !important; }</style>
+    {% endif %}
+    {% if site_settings.category_name_en_italic %}
+    <style>.category-name-en { font-style: italic !important; }</style>
+    {% endif %}
+
+    {% if site_settings.category_card_color %}
+    <style>.category-card, .manual-card { background-color: {{ site_settings.category_card_color }} !important; border-color: {{ site_settings.category_card_color }} !important; }</style>
+    {% endif %}
+    {% endif %}
+
 </head>
 <body style="background-color: {{ site_settings.background_color|default:'#000000' }} !important;">
     <div class="top-bar">
@@ -85,19 +85,35 @@
     {% if site_settings and site_settings.intro_video %}
     <div id="loading-screen" class="loading-screen">
         <div class="loading-logo">
-            <video id="loadingVideo" autoplay muted playsinline webkit-playsinline preload="metadata">
+                        <video id="loadingVideo" autoplay muted playsinline webkit-playsinline preload="metadata">
                 <source src="{{ site_settings.intro_video.url }}" type="video/mp4">
                 <img src="{% static 'logo.png' %}" alt="Logo" style="width: 80vw; max-width: 400px; height: auto;" loading="lazy">
             </video>
+            {% if site_settings.loading_video_2 %}
+            <video id="loadingVideo2" muted playsinline webkit-playsinline preload="metadata" style="display: none; width: 100%; height: 100%; object-fit: cover;">
+                <source src="{{ site_settings.loading_video_2.url }}" type="video/mp4">
+            </video>
+            {% endif %}
         </div>
     </div>
     {% endif %}
 
     <main class="main" style="padding: 0 !important;">
         <div class="container" style="padding: 0 !important; margin: 0 !important; max-width: none !important;">
-            {% if site_settings and site_settings.intro_image %}
+                        {% if site_settings and site_settings.intro_image %}
             <div class="intro-section" style="margin: 0 !important; padding: 0 !important;">
                 <img src="{{ site_settings.intro_image.url }}" alt="Menu Introduction" class="intro-image" style="margin: 0 !important; padding: 0 !important; display: block;" loading="lazy" decoding="async">
+            </div>
+            {% endif %}
+
+            {% if site_settings.show_manual_card and site_settings.loading_video_2 %}
+            <div class="manual-card-container" style="padding: 20px;">
+                <div class="category-card manual-card" style="display: block; text-align: center; cursor: default;">
+                    <h3 class="category-name-ko" style="margin-bottom: 15px;">메뉴판 설명서</h3>
+                    <video autoplay loop muted playsinline webkit-playsinline style="width: 100%; max-width: 100%; border-radius: 8px; display: block;">
+                        <source src="{{ site_settings.loading_video_2.url }}" type="video/mp4">
+                    </video>
+                </div>
             </div>
             {% endif %}
 

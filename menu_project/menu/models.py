@@ -56,8 +56,20 @@ class SiteSettings(models.Model):
         upload_to='site_videos/',
         blank=True,
         null=True,
-        verbose_name="인트로 비디오",
-        help_text="로딩 화면에 표시될 인트로 비디오 (MP4 파일)"
+        verbose_name="로딩 비디오",
+        help_text="첫 번째로 표시될 로딩 비디오 (MP4 파일)"
+    )
+    loading_video_2 = models.FileField(
+        upload_to='site_videos/',
+        blank=True,
+        null=True,
+        verbose_name="로딩 비디오2",
+        help_text="첫 번째 로딩 비디오 이후 재생될 두 번째 로딩 비디오 (화면 터치 시 스킵 가능)"
+    )
+    show_manual_card = models.BooleanField(
+        default=False,
+        verbose_name="메뉴 설명서 카드 표시",
+        help_text="체크 시 메인 화면(인트로 이미지 밑)에 두 번째 로딩 비디오와 동일한 영상을 보여주는 카드가 표시됩니다."
     )
     side_image = models.ImageField(
         upload_to='site_images/',

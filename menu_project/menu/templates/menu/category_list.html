@@ -16,65 +16,49 @@
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
     {% endif %}
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
     {% if site_settings %}
-    <style>
-        {% if site_settings.side_image %}
-        .background-with-gradient {
-            background: url('{{ site_settings.side_image.url }}');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            background-repeat: no-repeat;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: {% if category.hide_side_image %}0{% else %}10{% endif %};
-            pointer-events: none;
-        }
-        
-        @media (max-width: 768px) {
-            .background-with-gradient {
-                background-attachment: scroll;
-            }
-        }
-        {% endif %}
-        
-        {% if site_settings.category_name_font %}
-        @font-face {
-            font-family: 'CategoryNameFont';
-            src: url('{{ site_settings.category_name_font.url }}');
-        }
-        {% endif %}
-        {% if site_settings.category_name_en_font %}
-        @font-face {
-            font-family: 'CategoryNameEnFont';
-            src: url('{{ site_settings.category_name_en_font.url }}');
-        }
-        {% endif %}
-        
-        {% if site_settings.category_name_font or site_settings.category_name_color or site_settings.category_name_size or site_settings.category_name_bold or site_settings.category_name_italic %}
-        .category-name-ko {
-            {% if site_settings.category_name_font %}font-family: 'CategoryNameFont', sans-serif !important;{% endif %}
-            {% if site_settings.category_name_color %}color: {{ site_settings.category_name_color }} !important;{% endif %}
-            {% if site_settings.category_name_size %}font-size: {{ site_settings.category_name_size }}px !important;{% endif %}
-            {% if site_settings.category_name_bold %}font-weight: bold !important;{% endif %}
-            {% if site_settings.category_name_italic %}font-style: italic !important;{% endif %}
-        }
-        {% endif %}
-        
-        {% if site_settings.category_name_en_font or site_settings.category_name_en_color or site_settings.category_name_en_size or site_settings.category_name_en_bold or site_settings.category_name_en_italic %}
-        .category-name-en {
-            {% if site_settings.category_name_en_font %}font-family: 'CategoryNameEnFont', sans-serif !important;{% endif %}
-            {% if site_settings.category_name_en_color %}color: {{ site_settings.category_name_en_color }} !important;{% endif %}
-            {% if site_settings.category_name_en_size %}font-size: {{ site_settings.category_name_en_size }}px !important;{% endif %}
-            {% if site_settings.category_name_en_bold %}font-weight: bold !important;{% endif %}
-            {% if site_settings.category_name_en_italic %}font-style: italic !important;{% endif %}
-        }
-        {% endif %}
-    </style>
+    {% if site_settings.side_image and site_settings.side_image.name %}
+    <style>body { background: url('{{ site_settings.side_image.url }}'); background-size: cover; background-position: center; background-attachment: fixed; }</style>
     {% endif %}
+
+    {% if site_settings.category_name_font and site_settings.category_name_font.name %}
+    <style>@font-face { font-family: 'CategoryNameFont'; src: url('{{ site_settings.category_name_font.url }}'); }
+    .category-name-ko { font-family: 'CategoryNameFont', sans-serif !important; }</style>
+    {% endif %}
+
+    {% if site_settings.category_name_en_font and site_settings.category_name_en_font.name %}
+    <style>@font-face { font-family: 'CategoryNameEnFont'; src: url('{{ site_settings.category_name_en_font.url }}'); }
+    .category-name-en { font-family: 'CategoryNameEnFont', sans-serif !important; }</style>
+    {% endif %}
+
+    {% if site_settings.category_name_color %}
+    <style>.category-name-ko { color: {{ site_settings.category_name_color }} !important; }</style>
+    {% endif %}
+    {% if site_settings.category_name_size %}
+    <style>.category-name-ko { font-size: {{ site_settings.category_name_size }}px !important; }</style>
+    {% endif %}
+    {% if site_settings.category_name_bold %}
+    <style>.category-name-ko { font-weight: bold !important; }</style>
+    {% endif %}
+    {% if site_settings.category_name_italic %}
+    <style>.category-name-ko { font-style: italic !important; }</style>
+    {% endif %}
+
+    {% if site_settings.category_name_en_color %}
+    <style>.category-name-en { color: {{ site_settings.category_name_en_color }} !important; }</style>
+    {% endif %}
+    {% if site_settings.category_name_en_size %}
+    <style>.category-name-en { font-size: {{ site_settings.category_name_en_size }}px !important; }</style>
+    {% endif %}
+    {% if site_settings.category_name_en_bold %}
+    <style>.category-name-en { font-weight: bold !important; }</style>
+    {% endif %}
+    {% if site_settings.category_name_en_italic %}
+    <style>.category-name-en { font-style: italic !important; }</style>
+    {% endif %}
+    {% endif %}
+
 </head>
 <body style="margin: 0 !important; padding: 0 !important; background-color: {{ site_settings.background_color|default:'#000000' }};">
     <!-- 배경 레이어 -->

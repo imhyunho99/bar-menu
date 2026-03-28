@@ -38,6 +38,7 @@ class MenuApp {
         // 로딩 스크린 요소들
         this.loadingScreen = document.getElementById('loading-screen');
         this.loadingVideo = document.getElementById('loadingVideo');
+        this.loadingVideo2 = document.getElementById('loadingVideo2');
 
         // 리모컨 요소들
         this.navigationRemote = document.getElementById('navigationRemote');
@@ -118,24 +119,53 @@ class MenuApp {
         // 인트로 시청 시간 저장
         localStorage.setItem('lastIntroTime', currentTime.toString());
 
-        // 비디오 재생 완료 후 로딩 스크린 제거
+        // 비디오 1 이벤트 처리
         this.loadingVideo.addEventListener('ended', () => {
-            this.videoEnded = true;
-            this.hideLoadingScreen();
+            this.playSecondaryVideoOrFinish();
         });
 
-        // 비디오 로드 에러 시 이미지로 대체하고 3초 후 진행
         this.loadingVideo.addEventListener('error', () => {
-            console.log('Video failed to load, using fallback');
-            setTimeout(() => this.hideLoadingScreen(), 3000);
+            console.log('Main video failed to load, using fallback');
+            setTimeout(() => this.playSecondaryVideoOrFinish(), 3000);
         });
 
-        // 비디오가 5초 내에 시작되지 않으면 강제로 진행
-        setTimeout(() => {
-            if (!this.videoEnded) {
+        // 두 번째 비디오(loadingVideo2) 이벤트 연동
+        if (this.loadingVideo2) {
+            const skipVideoTwo = (e) => {
+                if (e && e.cancelable) e.preventDefault();
+                this.videoEnded = true;
                 this.hideLoadingScreen();
+            };
+            
+            // 종료되거나 사용자가 탭/클릭하면 스킵
+            this.loadingVideo2.addEventListener('ended', skipVideoTwo);
+            this.loadingVideo2.addEventListener('click', skipVideoTwo);
+            this.loadingVideo2.addEventListener('touchstart', skipVideoTwo, { passive: false });
+            this.loadingVideo2.addEventListener('error', skipVideoTwo);
+        }
+
+        // 비디오가 5초 내에 시작되지 않으면 다음으로 진행
+        const fallbackTimeout = setTimeout(() => {
+            if (!this.videoEnded && this.loadingVideo.currentTime === 0) {
+                this.playSecondaryVideoOrFinish();
             }
         }, 5000);
+
+        this.loadingVideo.addEventListener('playing', () => clearTimeout(fallbackTimeout));
+    }
+
+    playSecondaryVideoOrFinish() {
+        if (this.loadingVideo2) {
+            this.loadingVideo.style.display = 'none';
+            this.loadingVideo2.style.display = 'block';
+            this.loadingVideo2.play().catch(e => {
+                this.videoEnded = true;
+                this.hideLoadingScreen();
+            });
+        } else {
+            this.videoEnded = true;
+            this.hideLoadingScreen();
+        }
     }
 
     hideLoadingScreen() {
