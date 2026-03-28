@@ -1,6 +1,7 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -16,57 +17,155 @@
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
     {% endif %}
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    
+
     {% if site_settings %}
     {% if site_settings.category_name_font and site_settings.category_name_font.name %}
-    <style>@font-face { font-family: 'CategoryNameFont'; src: url('{{ site_settings.category_name_font.url }}'); }
-    .category-name-ko, .manual-card h3 { font-family: 'CategoryNameFont', sans-serif !important; }</style>
+    <style>
+        @font-face {
+            font-family: 'CategoryNameFont';
+            src: url('{{ site_settings.category_name_font.url }}');
+        }
+
+        .category-name-ko,
+        .manual-card h3 {
+            font-family: 'CategoryNameFont', sans-serif !important;
+        }
+    </style>
     {% endif %}
 
     {% if site_settings.category_name_en_font and site_settings.category_name_en_font.name %}
-    <style>@font-face { font-family: 'CategoryNameEnFont'; src: url('{{ site_settings.category_name_en_font.url }}'); }
-    .category-name-en { font-family: 'CategoryNameEnFont', sans-serif !important; }</style>
+    <style>
+        @font-face {
+            font-family: 'CategoryNameEnFont';
+            src: url('{{ site_settings.category_name_en_font.url }}');
+        }
+
+        .category-name-en {
+            font-family: 'CategoryNameEnFont', sans-serif !important;
+        }
+    </style>
     {% endif %}
 
     {% if site_settings.category_name_color %}
-    <style>.category-name-ko, .manual-card h3 { color: {{ site_settings.category_name_color }} !important; }</style>
+    <style>
+        .category-name-ko,
+        .manual-card h3 {
+            color: {
+                    {
+                    site_settings.category_name_color
+                }
+            }
+
+            !important;
+        }
+    </style>
     {% endif %}
     {% if site_settings.category_name_size %}
-    <style>.category-name-ko, .manual-card h3 { font-size: {{ site_settings.category_name_size }}px !important; }</style>
+    <style>
+        .category-name-ko,
+        .manual-card h3 {
+            font-size: {
+                    {
+                    site_settings.category_name_size
+                }
+            }
+
+            px !important;
+        }
+    </style>
     {% endif %}
     {% if site_settings.category_name_bold %}
-    <style>.category-name-ko, .manual-card h3 { font-weight: bold !important; }</style>
+    <style>
+        .category-name-ko,
+        .manual-card h3 {
+            font-weight: bold !important;
+        }
+    </style>
     {% endif %}
     {% if site_settings.category_name_italic %}
-    <style>.category-name-ko, .manual-card h3 { font-style: italic !important; }</style>
+    <style>
+        .category-name-ko,
+        .manual-card h3 {
+            font-style: italic !important;
+        }
+    </style>
     {% endif %}
 
     {% if site_settings.category_name_en_color %}
-    <style>.category-name-en { color: {{ site_settings.category_name_en_color }} !important; }</style>
+    <style>
+        .category-name-en {
+            color: {
+                    {
+                    site_settings.category_name_en_color
+                }
+            }
+
+            !important;
+        }
+    </style>
     {% endif %}
     {% if site_settings.category_name_en_size %}
-    <style>.category-name-en { font-size: {{ site_settings.category_name_en_size }}px !important; }</style>
+    <style>
+        .category-name-en {
+            font-size: {
+                    {
+                    site_settings.category_name_en_size
+                }
+            }
+
+            px !important;
+        }
+    </style>
     {% endif %}
     {% if site_settings.category_name_en_bold %}
-    <style>.category-name-en { font-weight: bold !important; }</style>
+    <style>
+        .category-name-en {
+            font-weight: bold !important;
+        }
+    </style>
     {% endif %}
     {% if site_settings.category_name_en_italic %}
-    <style>.category-name-en { font-style: italic !important; }</style>
+    <style>
+        .category-name-en {
+            font-style: italic !important;
+        }
+    </style>
     {% endif %}
 
     {% if site_settings.category_card_color %}
-    <style>.category-card, .manual-card { background-color: {{ site_settings.category_card_color }} !important; border-color: {{ site_settings.category_card_color }} !important; }</style>
+    <style>
+        .category-card,
+        .manual-card {
+            background-color: {
+                    {
+                    site_settings.category_card_color
+                }
+            }
+
+            !important;
+
+            border-color: {
+                    {
+                    site_settings.category_card_color
+                }
+            }
+
+            !important;
+        }
+    </style>
     {% endif %}
     {% endif %}
 
 </head>
+
 <body style="background-color: {{ site_settings.background_color|default:'#000000' }} !important;">
     <div class="top-bar">
         <div class="top-bar-buttons" id="topBarButtons">
             <button class="search-toggle" id="searchToggle"><img src="{% static 'search.png' %}" alt="Search"></button>
             <button class="menu-toggle" id="menuToggle"><img src="{% static 'menu.png' %}" alt="Menu"></button>
         </div>
-        <form class="search-container" id="searchContainer" style="display: none;" action="{% url 'menu:search_redirect' request.restaurant.slug %}" method="get">
+        <form class="search-container" id="searchContainer" style="display: none;"
+            action="{% url 'menu:search_redirect' request.restaurant.slug %}" method="get">
             <div class="search-input-wrapper">
                 <input type="text" id="searchInput" name="q" placeholder="메뉴 검색..." required />
                 <button type="button" class="search-close" id="searchClose">×</button>
@@ -74,23 +173,25 @@
             <div class="search-results" id="searchResults"></div>
         </form>
     </div>
-    
+
     <!-- 사이드 메뉴 -->
     {% include "menu/_side_menu.html" %}
 
     <!-- 사이드 메뉴 오버레이 -->
     <div class="menu-overlay" id="menuOverlay"></div>
-    
+
     <!-- 로딩 스크린 -->
     {% if site_settings and site_settings.intro_video %}
     <div id="loading-screen" class="loading-screen">
         <div class="loading-logo">
-                        <video id="loadingVideo" autoplay muted playsinline webkit-playsinline preload="metadata">
+            <video id="loadingVideo" autoplay muted playsinline webkit-playsinline preload="metadata">
                 <source src="{{ site_settings.intro_video.url }}" type="video/mp4">
-                <img src="{% static 'logo.png' %}" alt="Logo" style="width: 80vw; max-width: 400px; height: auto;" loading="lazy">
+                <img src="{% static 'logo.png' %}" alt="Logo" style="width: 80vw; max-width: 400px; height: auto;"
+                    loading="lazy">
             </video>
             {% if site_settings.loading_video_2 %}
-            <video id="loadingVideo2" muted playsinline webkit-playsinline preload="metadata" style="display: none; width: 100%; height: 100%; object-fit: cover;">
+            <video id="loadingVideo2" muted playsinline webkit-playsinline preload="metadata"
+                style="display: none; width: 100%; height: 100%; object-fit: cover;">
                 <source src="{{ site_settings.loading_video_2.url }}" type="video/mp4">
             </video>
             {% endif %}
@@ -100,21 +201,49 @@
 
     <main class="main" style="padding: 0 !important;">
         <div class="container" style="padding: 0 !important; margin: 0 !important; max-width: none !important;">
-                        {% if site_settings and site_settings.intro_image %}
+            {% if site_settings and site_settings.intro_image %}
             <div class="intro-section" style="margin: 0 !important; padding: 0 !important;">
-                <img src="{{ site_settings.intro_image.url }}" alt="Menu Introduction" class="intro-image" style="margin: 0 !important; padding: 0 !important; display: block;" loading="lazy" decoding="async">
+                <img src="{{ site_settings.intro_image.url }}" alt="Menu Introduction" class="intro-image"
+                    style="margin: 0 !important; padding: 0 !important; display: block;" loading="lazy"
+                    decoding="async">
             </div>
             {% endif %}
 
             {% if site_settings.show_manual_card and site_settings.loading_video_2 %}
             <div class="manual-card-container" style="padding: 20px;">
-                <div class="category-card manual-card" style="display: block; text-align: center; cursor: default;">
-                    <h3 class="category-name-ko" style="margin-bottom: 15px;">메뉴판 설명서</h3>
-                    <video autoplay loop muted playsinline webkit-playsinline style="width: 100%; max-width: 100%; border-radius: 8px; display: block;">
-                        <source src="{{ site_settings.loading_video_2.url }}" type="video/mp4">
-                    </video>
+                <div class="category-card manual-card" onclick="toggleManualVideo()"
+                    style="display: block; text-align: center; cursor: pointer;">
+                    <h3 class="category-name-ko"
+                        style="margin-bottom: 0; display: flex; justify-content: space-between; align-items: center;">
+                        <span>메뉴판 설명서</span>
+                        <span id="manual-toggle-icon" style="font-size: 0.8em; transition: transform 0.3s;">▼</span>
+                    </h3>
+                    <div id="manual-video-wrapper" style="display: none; margin-top: 15px;">
+                        <video id="manual-video" loop muted playsinline webkit-playsinline
+                            style="width: 100%; max-width: 100%; border-radius: 8px; display: block;">
+                            <source src="{{ site_settings.loading_video_2.url }}" type="video/mp4">
+                        </video>
+                    </div>
                 </div>
             </div>
+
+            <script>
+            function toggleManualVideo() {
+            a                ocument.getElementById('manual-video-wrapper');
+                const icon = mentmentById('manual-toggle-icon');
+                const video = document.getElementById('manual-video');
+                
+                if (wrapper.style.display === 'none') {
+                    wrapper.style.display = 'block';
+                    icon.style.transform = 'rotate(180deg)';
+                    video.play().catch(e => console.log(e));
+                } else {
+                    wrapper.style.display = 'none';
+                    icon.style.transform = 'rotate(0deg)';
+                    video.pause();
+                }
+            }
+            </script>
             {% endif %}
 
             <div class="category-section">
@@ -141,4 +270,5 @@
     </script>
     <script src="{% static 'js/menu-common.js' %}"></script>
 </body>
+
 </html>
