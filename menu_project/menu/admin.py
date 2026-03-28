@@ -80,7 +80,7 @@ class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
     list_display = ('restaurant', 'created_at')
     fieldsets = (
         ('기본 설정', {
-            'fields': ('restaurant', 'logo_image', 'intro_image', 'intro_video', 'side_image')
+            'fields': ('restaurant', 'logo_image', 'intro_image', 'intro_video', 'loading_video_2', 'show_manual_card', 'side_image')
         }),
         ('색상 설정', {
             'fields': ('background_color', 'category_card_color', 'menu_card_color'),
