@@ -209,45 +209,43 @@
             </div>
             {% endif %}
 
-            {% if site_settings.show_manual_card and site_settings.loading_video_2 %}
-            <div class="manual-card-container" style="padding: 20px;">
-                <div class="category-card manual-card" onclick="toggleManualVideo()"
-                    style="display: block; text-align: center; cursor: pointer;">
-                    <h3 class="category-name-ko"
-                        style="margin-bottom: 0; display: flex; justify-content: space-between; align-items: center;">
-                        <span>메뉴판 설명서</span>
-                        <span id="manual-toggle-icon" style="font-size: 0.8em; transition: transform 0.3s;">▼</span>
-                    </h3>
-                    <div id="manual-video-wrapper" style="display: none; margin-top: 15px;">
-                        <video id="manual-video" loop muted playsinline webkit-playsinline
-                            style="width: 100%; max-width: 100%; border-radius: 8px; display: block;">
-                            <source src="{{ site_settings.loading_video_2.url }}" type="video/mp4">
-                        </video>
-                    </div>
-                </div>
-            </div>
-
-            <script>
-            function toggleManualVideo() {
-            a                ocument.getElementById('manual-video-wrapper');
-                const icon = mentmentById('manual-toggle-icon');
-                const video = document.getElementById('manual-video');
-                
-                if (wrapper.style.display === 'none') {
-                    wrapper.style.display = 'block';
-                    icon.style.transform = 'rotate(180deg)';
-                    video.play().catch(e => console.log(e));
-                } else {
-                    wrapper.style.display = 'none';
-                    icon.style.transform = 'rotate(0deg)';
-                    video.pause();
-                }
-            }
-            </script>
-            {% endif %}
-
             <div class="category-section">
                 <div class="category-grid">
+                    {% if site_settings.show_manual_card and site_settings.loading_video_2 %}
+                    <div class="category-card manual-card" onclick="toggleManualVideo()"
+                        style="cursor: pointer; display: block;">
+                        <p class="category-name-en" style="margin-bottom: 5px;">
+                            Menu Guide <span id="manual-toggle-icon"
+                                style="display: inline-block; font-size: 0.8em; transition: transform 0.3s; margin-left: 5px;">▼</span>
+                        </p>
+                        <h3 class="category-name-ko">메뉴판 설명서</h3>
+
+                        <div id="manual-video-wrapper" style="display: none; margin-top: 1.5rem; width: 100%;">
+                            <video id="manual-video" loop muted playsinline webkit-playsinline
+                                style="width: 100%; height: auto; border-radius: 8px; display: block; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+                                <source src="{{ site_settings.loading_video_2.url }}" type="video/mp4">
+                            </video>
+                        </div>
+                    </div>
+                    <script>
+                        function toggleManualVideo() {
+                            const wrapper = document.getElementById('manual-video-wrapper');
+                            const icon = document.getElementById('manual-toggle-icon');
+                            const video = document.getElementById('manual-video');
+
+                            if (wrapper.style.display === 'none') {
+                                wrapper.style.display = 'block';
+                                icon.style.transform = 'rotate(180deg)';
+                                video.play().catch(e => console.log(e));
+                            } else {
+                                wrapper.style.display = 'none';
+                                icon.style.transform = 'rotate(0deg)';
+                                video.pause();
+                            }
+                        }
+                    </script>
+                    {% endif %}
+
                     {% for category in categories %}
                     <a href="{% url 'menu:menu_list' request.restaurant.slug category.id %}" class="category-card">
                         {% if category.name_en %}
