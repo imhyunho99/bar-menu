@@ -1,220 +1,116 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bid</title>
+    <title>Menu QR Code</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap');
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
-        body {
-            font-family: 'GT Walsheim Pro', -webkit-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #000;
-            color: #fff;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-        }
-
-        .qr-container {
-            border-left: 1px solid rgba(0, 0, 0, 1);
-            overflow-y: auto;
-        }
 
         body {
-            font-family: 'GT Walsheim Pro', -webkit-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: #000;
             color: #fff;
-            margin: 0;
-            padding: 0;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
-            line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
-        
-        .qr-container {
-            background-color: #1a1a1a;
-            border-radius: 16px;
-            padding: 2rem;
-            text-align: center;
-            border: 1px solid #333;
-            max-width: 400px;
+
+        /* 아치형 컨테이너 */
+        .arch-frame {
+            background-color: #000;
+            border: 8px solid #fff; /* 유선형 느낌을 위한 두꺼운 흰색 테두리 */
+            border-top-left-radius: 200px;
+            border-top-right-radius: 200px;
+            width: 380px;
+            padding: 60px 40px 40px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* QR 코드를 감싸는 흰색 둥근 사각형 */
+        .qr-wrapper {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             width: 100%;
-            transition: all 0.3s ease;
+            margin-bottom: 30px;
+            margin-top: 40px;
         }
-        
-        .qr-container:hover {
-            background-color: #222;
-            border-color: #555;
-            transform: translateY(-4px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-        }
-        
-        h1 {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            color: #fff;
-        }
-        
-        .subtitle {
-            font-size: 1rem;
-            color: #aaa;
-            margin-bottom: 2rem;
-            font-style: italic;
-        }
-        
-        .qr-code {
-            background: #fff;
-            padding: 1.5rem;
-            border-radius: 12px;
-            display: inline-block;
-            margin: 1.5rem 0;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        }
-        
-        .qr-code img {
-            display: block;
-            max-width: 100%;
+
+        .qr-wrapper img {
+            width: 100%;
             height: auto;
+            display: block;
         }
-        
-        .instructions {
-            font-size: 0.9rem;
-            color: #ccc;
-            margin-top: 1.5rem;
-            line-height: 1.5;
+
+        /* MENU_ 텍스트 */
+        .menu-text {
+            font-family: 'Courier Prime', monospace;
+            font-size: 52px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            margin-top: 10px;
+            color: #fff;
+            text-transform: uppercase;
         }
-        
+
+        /* 하단 URL 정보 (필요시 표시, 디자인상 숨김 처리 가능) */
         .url-info {
-            background-color: #222;
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1.5rem;
-            font-size: 0.85rem;
-            word-break: break-all;
-        }
-        
-        .url-info p {
-            margin-bottom: 0.5rem;
-        }
-        
-        .url-info a {
-            color: #007bff;
+            margin-top: 30px;
+            font-size: 12px;
+            color: #444;
             text-decoration: none;
-            transition: color 0.3s;
+            word-break: break-all;
+            text-align: center;
         }
-        
-        .url-info a:hover {
-            color: #0056b3;
-        }
-        
+
         @media (max-width: 480px) {
-            body {
-                padding: 15px;
+            .arch-frame {
+                width: 100%;
+                max-width: 320px;
+                padding: 40px 30px 30px 30px;
+                border-top-left-radius: 160px;
+                border-top-right-radius: 160px;
             }
             
-            .qr-container {
-                padding: 1.5rem;
-                margin: 0;
-                border-radius: 12px;
-            }
-            
-            h1 {
-                font-size: 1.8rem;
-            }
-            
-            .subtitle {
-                font-size: 0.9rem;
-                margin-bottom: 1.5rem;
-            }
-            
-            .qr-code {
-                padding: 1rem;
-                margin: 1rem 0;
-            }
-            
-            .instructions {
-                font-size: 0.85rem;
-                line-height: 1.6;
-            }
-            
-            .url-info {
-                font-size: 0.8rem;
-                padding: 0.8rem;
-            }
-        }
-        
-        @media (max-width: 360px) {
-            body {
-                padding: 10px;
-            }
-            
-            .qr-container {
-                padding: 1rem;
-            }
-            
-            h1 {
-                font-size: 1.6rem;
-            }
-            
-            .subtitle {
-                font-size: 0.85rem;
-            }
-            
-            .qr-code {
-                padding: 0.8rem;
-            }
-            
-            .instructions {
-                font-size: 0.8rem;
-            }
-            
-            .url-info {
-                font-size: 0.75rem;
-                padding: 0.6rem;
-            }
-        }
-        
-        /* 터치 디바이스 최적화 */
-        @media (hover: none) and (pointer: coarse) {
-            .qr-container:hover {
-                transform: none;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            }
-            
-            .url-info a {
-                padding: 0.5rem 0;
-                display: inline-block;
-                min-height: 44px;
-                line-height: 1.2;
+            .menu-text {
+                font-size: 40px;
             }
         }
     </style>
 </head>
+
 <body>
-    <div class="qr-container">
-        
-        <div class="qr-code">
-            <img src="data:image/png;base64,{{ qr_image }}" alt="QR Code">
+    <div class="arch-frame">
+        <div class="qr-wrapper">
+            <img src="data:image/png;base64,{{ qr_image }}" alt="Menu QR Code">
         </div>
+        <div class="menu-text">MENU_</div>
         
-        
-        <div class="url-info">
-            
-            <p><strong>URL   :   </strong><a href="{{ menu_url }}" target="_blank">{{ menu_url }}</a></p>
-        </div>
+        <!-- 개발 확인용 URL (실제 운영 시 제거 가능) -->
+        <a href="{{ menu_url }}" class="url-info">{{ menu_url }}</a>
     </div>
+</body>
+
+</html>
+
 
 </body>
+
 </html>
