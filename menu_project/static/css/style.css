@@ -488,7 +488,7 @@
    - 스크롤 시 밀림 현상 방지를 위해 will-change 및 fixed 로직 개선
 */
 .background-with-gradient {
-    background: url('../side.png');
+    /* background: url('../side.png'); */
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;

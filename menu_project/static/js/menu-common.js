@@ -168,11 +168,35 @@ class MenuApp {
         }
     }
 
+    showManualVideo() {
+        if (!this.loadingScreen || !this.loadingVideo2) return;
+
+        // 로딩 스크린 상태 초기화 (재사용 가능하도록)
+        this.loadingScreen.classList.remove('door-open');
+        this.loadingScreen.style.display = 'flex';
+        this.loadingScreen.style.opacity = '1';
+
+        // 첫 번째 영상 숨기고 두 번째 영상(설명서) 표시
+        if (this.loadingVideo) this.loadingVideo.style.display = 'none';
+        this.loadingVideo2.style.display = 'block';
+        this.loadingVideo2.currentTime = 0;
+
+        // 비디오 재생
+        this.loadingVideo2.play().catch(e => {
+            console.log('Manual video play failed:', e);
+            // 재생 실패 시 닫기 (사용자 클릭으로 실행되므로 대부분 성공함)
+            this.hideLoadingScreen();
+        });
+    }
+
     hideLoadingScreen() {
         if (!this.loadingScreen) return;
         this.loadingScreen.classList.add('door-open');
         setTimeout(() => {
-            this.loadingScreen.style.display = 'none';
+            // door-open 애니메이션이 끝난 후 hide
+            if (this.loadingScreen.classList.contains('door-open')) {
+                this.loadingScreen.style.display = 'none';
+            }
         }, 500);
     }
 

@@ -134,8 +134,7 @@
 
     {% if site_settings.category_card_color %}
     <style>
-        .category-card,
-        .manual-card {
+        .category-card {
             background-color: {
                     {
                     site_settings.category_card_color
@@ -212,38 +211,10 @@
             <div class="category-section">
                 <div class="category-grid">
                     {% if site_settings.show_manual_card and site_settings.loading_video_2 %}
-                    <div class="category-card manual-card" onclick="toggleManualVideo()"
-                        style="cursor: pointer; display: block;">
-                        <p class="category-name-en" style="margin-bottom: 5px;">
-                            Menu Guide <span id="manual-toggle-icon"
-                                style="display: inline-block; font-size: 0.8em; transition: transform 0.3s; margin-left: 5px;">▼</span>
-                        </p>
+                    <a href="javascript:void(0)" class="category-card" onclick="window.menuApp.showManualVideo()">
+                        <p class="category-name-en">Menu Guide</p>
                         <h3 class="category-name-ko">메뉴판 설명서</h3>
-
-                        <div id="manual-video-wrapper" style="display: none; margin-top: 1.5rem; width: 100%;">
-                            <video id="manual-video" loop muted playsinline webkit-playsinline
-                                style="width: 100%; height: auto; border-radius: 8px; display: block; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
-                                <source src="{{ site_settings.loading_video_2.url }}" type="video/mp4">
-                            </video>
-                        </div>
-                    </div>
-                    <script>
-                        function toggleManualVideo() {
-                            const wrapper = document.getElementById('manual-video-wrapper');
-                            const icon = document.getElementById('manual-toggle-icon');
-                            const video = document.getElementById('manual-video');
-
-                            if (wrapper.style.display === 'none') {
-                                wrapper.style.display = 'block';
-                                icon.style.transform = 'rotate(180deg)';
-                                video.play().catch(e => console.log(e));
-                            } else {
-                                wrapper.style.display = 'none';
-                                icon.style.transform = 'rotate(0deg)';
-                                video.pause();
-                            }
-                        }
-                    </script>
+                    </a>
                     {% endif %}
 
                     {% for category in categories %}
