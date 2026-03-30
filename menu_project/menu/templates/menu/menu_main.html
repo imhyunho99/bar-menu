@@ -47,111 +47,33 @@
     {% endif %}
 
     {% if site_settings.category_name_color %}
-    <style>
-        .category-name-ko,
-        .manual-card h3 {
-            color: {
-                    {
-                    site_settings.category_name_color
-                }
-            }
-
-            !important;
-        }
-    </style>
+    <style>.category-name-ko, .manual-card h3 { color: {{ site_settings.category_name_color }} !important; }</style>
     {% endif %}
     {% if site_settings.category_name_size %}
-    <style>
-        .category-name-ko,
-        .manual-card h3 {
-            font-size: {
-                    {
-                    site_settings.category_name_size
-                }
-            }
-
-            px !important;
-        }
-    </style>
+    <style>.category-name-ko, .manual-card h3 { font-size: {{ site_settings.category_name_size }}px !important; }</style>
     {% endif %}
     {% if site_settings.category_name_bold %}
-    <style>
-        .category-name-ko,
-        .manual-card h3 {
-            font-weight: bold !important;
-        }
-    </style>
+    <style>.category-name-ko, .manual-card h3 { font-weight: bold !important; }</style>
     {% endif %}
     {% if site_settings.category_name_italic %}
-    <style>
-        .category-name-ko,
-        .manual-card h3 {
-            font-style: italic !important;
-        }
-    </style>
+    <style>.category-name-ko, .manual-card h3 { font-style: italic !important; }</style>
     {% endif %}
 
     {% if site_settings.category_name_en_color %}
-    <style>
-        .category-name-en {
-            color: {
-                    {
-                    site_settings.category_name_en_color
-                }
-            }
-
-            !important;
-        }
-    </style>
+    <style>.category-name-en { color: {{ site_settings.category_name_en_color }} !important; }</style>
     {% endif %}
     {% if site_settings.category_name_en_size %}
-    <style>
-        .category-name-en {
-            font-size: {
-                    {
-                    site_settings.category_name_en_size
-                }
-            }
-
-            px !important;
-        }
-    </style>
+    <style>.category-name-en { font-size: {{ site_settings.category_name_en_size }}px !important; }</style>
     {% endif %}
     {% if site_settings.category_name_en_bold %}
-    <style>
-        .category-name-en {
-            font-weight: bold !important;
-        }
-    </style>
+    <style>.category-name-en { font-weight: bold !important; }</style>
     {% endif %}
     {% if site_settings.category_name_en_italic %}
-    <style>
-        .category-name-en {
-            font-style: italic !important;
-        }
-    </style>
+    <style>.category-name-en { font-style: italic !important; }</style>
     {% endif %}
 
     {% if site_settings.category_card_color %}
-    <style>
-        .category-card {
-            background-color: {
-                    {
-                    site_settings.category_card_color
-                }
-            }
-
-            !important;
-
-            border-color: {
-                    {
-                    site_settings.category_card_color
-                }
-            }
-
-            !important;
-        }
-    </style>
+    <style>.category-card { background-color: {{ site_settings.category_card_color }} !important; border-color: {{ site_settings.category_card_color }} !important; }</style>
     {% endif %}
     {% endif %}
 
