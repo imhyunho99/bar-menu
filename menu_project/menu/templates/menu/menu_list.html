@@ -161,7 +161,7 @@
                                 <div class="menu-info">
                                                                         <div class="menu-title-line">
                                                                             <div class="menu-title">
-                                                                                {% if item.name_en %}<span class="menu-title-en">{{ item.name_en|linebreaks }}</span>{% endif %}{{ item.name|linebreaks }}
+                                                                                {% if item.name_en %}<span class="menu-name-en">{{ item.name_en|linebreaksbr }}</span>{% endif %}<span class="menu-name-ko">{{ item.name|linebreaksbr }}</span>
                                                                             </div>
                                                                         </div>
                                                                         <div class="menu-description">{{ item.description|linebreaks }}</div>
