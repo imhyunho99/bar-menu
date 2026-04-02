@@ -1,6 +1,6 @@
 import qrcode
 from qrcode.image.styledpil import StyledPilImage
-from qrcode.image.styles.moduledrawers import RoundedModuleDrawer
+from qrcode.image.styles.moduledrawers import RoundedModuleDrawer, CircleModuleDrawer
 from django.http import HttpResponse
 from django.shortcuts import render
 from io import BytesIO
@@ -45,14 +45,16 @@ def generate_qr_code(request, restaurant_slug=None):
         # 로고가 있는 경우 삽입
         img = qr.make_image(
             image_factory=StyledPilImage,
-            module_drawer=RoundedModuleDrawer(),
+            module_drawer=CircleModuleDrawer(),
+            finder_drawer=RoundedModuleDrawer(),
             embed_image=logo_img
         )
     else:
         # 로고가 없는 경우 도트 형태만 적용
         img = qr.make_image(
             image_factory=StyledPilImage,
-            module_drawer=RoundedModuleDrawer()
+            module_drawer=CircleModuleDrawer(),
+            finder_drawer=RoundedModuleDrawer()
         )
     
     # 이미지를 base64로 인코딩
