@@ -105,21 +105,10 @@ class MenuApp {
     initLoadingScreen() {
         if (!this.loadingScreen || !this.loadingVideo) return;
 
-        // 인트로 영상 캐시 체크 (1시간)
-        const lastIntroTime = localStorage.getItem('lastIntroTime');
-        const currentTime = Date.now();
-        const oneHour = 60 * 60 * 1000;
-
-        if (lastIntroTime && (currentTime - parseInt(lastIntroTime)) < oneHour) {
-            // 1시간 이내에 본 경우 인트로 완전 스킵
-            this.loadingScreen.style.display = 'none';
-            return;
-        }
-
-        // 인트로 시청 시간 저장
-        localStorage.setItem('lastIntroTime', currentTime.toString());
-
-        // 비디오 1 이벤트 처리
+        // [중요] 비디오 1(인트로)과 비디오 2(설명서)에 이벤트 리스너를 미리 심어둠
+        // (1시간 이내 시청 기록이 있어 'return' 되더라도 설명서는 작동해야 하므로)
+        
+        // 1. 첫 번째 비디오(인트로) 이벤트
         this.loadingVideo.addEventListener('ended', () => {
             this.playSecondaryVideoOrFinish();
         });
@@ -129,7 +118,7 @@ class MenuApp {
             setTimeout(() => this.playSecondaryVideoOrFinish(), 3000);
         });
 
-        // 두 번째 비디오(loadingVideo2) 이벤트 연동
+        // 2. 두 번째 비디오(loadingVideo2, 메뉴판 설명서) 이벤트 연동
         if (this.loadingVideo2) {
             const skipVideoTwo = (e) => {
                 if (e && e.cancelable) e.preventDefault();
@@ -143,6 +132,30 @@ class MenuApp {
             this.loadingVideo2.addEventListener('touchstart', skipVideoTwo, { passive: false });
             this.loadingVideo2.addEventListener('error', skipVideoTwo);
         }
+
+        // 3. 로딩 화면(배경) 전체 터치 시 닫기 (모바일 인식률 향상을 위한 안전 장치)
+        // (단, 인트로 영상이 아닌 '설명서 영상(video2)' 재생 중에만 동작하도록 유도)
+        this.loadingScreen.addEventListener('click', (e) => {
+            if (this.loadingVideo2 && this.loadingVideo2.style.display === 'block') {
+                this.videoEnded = true;
+                this.hideLoadingScreen();
+            }
+        });
+
+        // [체크] 이제 인트로 영상 캐시를 체크하여 스킵 여부를 결정함
+        const lastIntroTime = localStorage.getItem('lastIntroTime');
+        const currentTime = Date.now();
+        const oneHour = 60 * 60 * 1000;
+
+        if (lastIntroTime && (currentTime - parseInt(lastIntroTime)) < oneHour) {
+            // 1시간 이내에 본 경우 인트로 영상만 안 보여주고 바로 빠져나감
+            // (하지만 위에서 설정한 이벤트 리스너들은 이미 메모리에 살아있음)
+            this.loadingScreen.style.display = 'none';
+            return;
+        }
+
+        // 인트로 시청 시간 저장
+        localStorage.setItem('lastIntroTime', currentTime.toString());
 
         // 비디오가 5초 내에 시작되지 않으면 다음으로 진행
         const fallbackTimeout = setTimeout(() => {
