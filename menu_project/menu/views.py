@@ -25,13 +25,13 @@ def menu_main(request, restaurant_slug=None):
     top_categories = Category.objects.filter(
         parent=None, 
         restaurant=request.restaurant
-    ).order_by('priority', 'name')
+    ).distinct().order_by('priority', 'name')
     
     # 사이드 메뉴를 위해 모든 카테고리 가져오기
     # N+1 문제 해결: 사이드 메뉴 렌더링 시 sub_categories 접근함
     all_categories = Category.objects.filter(
         restaurant=request.restaurant
-    ).prefetch_related('sub_categories').order_by('priority', 'name')
+    ).prefetch_related('sub_categories').distinct().order_by('priority', 'name')
     
     # 사이트 설정에서 인트로 이미지 가져오기
     site_settings = SiteSettings.objects.filter(restaurant=request.restaurant).first()
@@ -61,7 +61,7 @@ def menu_list(request, category_id, restaurant_slug=None):
     # 모든 카테고리 가져오기 (사이드 메뉴용)
     all_categories = Category.objects.filter(
         restaurant=request.restaurant
-    ).prefetch_related('sub_categories').order_by('priority', 'name')
+    ).prefetch_related('sub_categories').distinct().order_by('priority', 'name')
     
     # 사이트 설정 가져오기
     site_settings = SiteSettings.objects.filter(restaurant=request.restaurant).first()
