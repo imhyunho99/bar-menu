@@ -781,6 +781,7 @@ body {
 
 .menu-title .menu-name-ko {
     display: block;
+    white-space: pre-wrap;
 }
 
 .menu-title .menu-name-en {
@@ -790,6 +791,7 @@ body {
     font-style: normal;
     display: block;
     margin-bottom: 2px;
+    white-space: pre-wrap;
 }
 
 .menu-description {

@@ -225,17 +225,17 @@ class MenuItem(models.Model):
     개별 메뉴 항목에 대한 모델
     """
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='menu_items', null=True, blank=True)
-    # 1. 이름
-    name = models.CharField(max_length=100, verbose_name="메뉴명")
+    # 1. 이름 (여러 줄 지원을 위해 TextField로 변경)
+    name = models.TextField(verbose_name="메뉴명")
     
-    # 2. 영문명
-    name_en = models.CharField(max_length=100, blank=True, null=True, verbose_name="메뉴명(영문)")
+    # 2. 영문명 (여러 줄 지원을 위해 TextField로 변경)
+    name_en = models.TextField(blank=True, null=True, verbose_name="메뉴명(영문)")
 
     # 3. 가격
     price = models.TextField(verbose_name="가격", help_text="가격을 입력하세요 (예: 15000, 15.5, 15,000)")
 
-    # 3. 설명
-    description = models.TextField(verbose_name="메뉴 설명")
+    # 3. 설명 (선택 사항으로 변경)
+    description = models.TextField(blank=True, null=True, verbose_name="메뉴 설명")
 
     # 4. 카테고리 (부모/서브 카테고리)
     # Category 모델과 연결하여 메뉴의 소속 카테고리를 지정합니다.
