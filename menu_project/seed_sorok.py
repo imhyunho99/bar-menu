@@ -93,7 +93,7 @@ def seed():
     )
 
     # Helper function to bulk create MenuItems
-    def add_item(cat, name, price, desc="", notes="", name_en="", priority=0.0):
+    def add_item(cat, name, price, desc="", notes="", name_en="", priority=0.0, image_name=""):
         MenuItem.objects.create(
             restaurant=restaurant,
             category=cat,
@@ -102,40 +102,43 @@ def seed():
             price=price,
             description=desc,
             notes=notes,
-            priority=priority
+            priority=priority,
+            menu_image=f"menu_images/{image_name}" if image_name else "",
+            click_expand=bool(image_name),
+            enable_detail_view=bool(image_name)
         )
 
     # --- 큰상 Items ---
     big_items = [
-        ("제철 특대 부시리 회 술상", "40,0", "10kg 급 제철 부시리 회와 밥, 목포산 곱창김, 소록표 막장, 묵은지 무침과 싸먹는 든든한 술상", "", "Seasonal Yellowtail Sashimi Table"),
-        ("1++ 한우 육회와 감태김밥", "30,0", "1++ 한우를 썰어 간장양념에 버무려 감태김밥과 소록 표 특제양념과 곁들여 먹는 육회 한상", "감태김밥 추가 5,0", "Hanwoo Beef Tartare & Rice Roll"),
-        ("1++ 한우 육사시미 한판", "30,0", "1++ 한우를 얇게 썰어 방앗간 참기름, 소록 표 고추장다데기, 특제소스와 함께 먹는 육사시미 한판", "고노와다 추가 5,0 / 감태김밥 추가 5,0", "Hanwoo Beef Sashimi Plate"),
-        ("항정수육과 고흥 갓김치", "29,0", "물을 넣지 않고 야채와 과일의 수분으로 삶아내어 더욱 촉촉하고 부드러운 항정살 수육", "", "Pork Neck Suyuk & Kimchi"),
-        ("꽃추장찌개", "27,0", "고추장 베이스 찌개에 꽃게를 넣어 끓여낸 전라도식 고추장찌개, [기본칼국수사리 제공]", "", "Flower Gochujang Stew"),
-        ("칼칼, 얼큰 조개뚝배기", "26,0", "바지락, 백합, 꽃게, 새우를 넣고 칼칼하게 푹 끓인 후 봄나물과 함께 먹는 빨간 조개탕", "칼국수사리 추가 3,0", "Spicy Clam Hot Pot"),
-        ("항정살 튀김과 쌈장페스토", "24,0", "항정살을 깍둑썰어 튀김옷을 입혀 튀겨낸 후 고추마늘이 들어간 쌈장페스토와 함께먹는 일품안주", "", "Crispy Pork Neck & Ssamjang Pesto"),
-        ("조개듬뿍, 버터 술찜", "23,0", "백합조개, 바지락을 불 맛나게 볶아 청주에 쪄 먹는 조개 찜", "카펠리니 파스타 추가 3,0", "Clam Butter Wine Stew"),
-        ("통 꽃게, 홍게장 크림파스타", "19,0", "꽃게 한 마리와 생크림에 홍게의 딱지 장을 넣어 감칠맛을 살린 소록의 시그니처 크림파스타", "", "Whole Crab & Paste Cream Pasta"),
-        ("우삼겹 된장술밥", "15,0", "고소한 우삼겹과 야채를 같이 볶아 낸 후 소록의 된장으로 깊은 맛을 낸 된장 술밥", "요청시 공깃밥 따로 제공", "Beef Short Plate Doenjang Rice Stew"),
+        ("제철 특대 부시리 회 술상", "40,0", "10kg 급 제철 부시리 회와 밥, 목포산 곱창김, 소록표 막장, 묵은지 무침과 싸먹는 든든한 술상", "", "Seasonal Yellowtail Sashimi Table", "부시리한상.jpeg"),
+        ("1++ 한우 육회와 감태김밥", "30,0", "1++ 한우를 썰어 간장양념에 버무려 감태김밥과 소록 표 특제양념과 곁들여 먹는 육회 한상", "감태김밥 추가 5,0", "Hanwoo Beef Tartare & Rice Roll", "감태육회.jpeg"),
+        ("1++ 한우 육사시미 한판", "30,0", "1++ 한우를 얇게 썰어 방앗간 참기름, 소록 표 고추장다데기, 특제소스와 함께 먹는 육사시미 한판", "고노와다 추가 5,0 / 감태김밥 추가 5,0", "Hanwoo Beef Sashimi Plate", "육사시미.jpeg"),
+        ("항정수육과 고흥 갓김치", "29,0", "물을 넣지 않고 야채와 과일의 수분으로 삶아내어 더욱 촉촉하고 부드러운 항정살 수육", "", "Pork Neck Suyuk & Kimchi", "항정수육.jpeg"),
+        ("꽃추장찌개", "27,0", "고추장 베이스 찌개에 꽃게를 넣어 끓여낸 전라도식 고추장찌개, [기본칼국수사리 제공]", "", "Flower Gochujang Stew", ""),
+        ("칼칼, 얼큰 조개뚝배기", "26,0", "바지락, 백합, 꽃게, 새우를 넣고 칼칼하게 푹 끓인 후 봄나물과 함께 먹는 빨간 조개탕", "칼국수사리 추가 3,0", "Spicy Clam Hot Pot", "조개뚝배기.jpeg"),
+        ("항정살 튀김과 쌈장페스토", "24,0", "항정살을 깍둑썰어 튀김옷을 입혀 튀겨낸 후 고추마늘이 들어간 쌈장페스토와 함께먹는 일품안주", "", "Crispy Pork Neck & Ssamjang Pesto", "항정살튀김.jpeg"),
+        ("조개듬뿍, 버터 술찜", "23,0", "백합조개, 바지락을 불 맛나게 볶아 청주에 쪄 먹는 조개 찜", "카펠리니 파스타 추가 3,0", "Clam Butter Wine Stew", "조개버터술찜.jpeg"),
+        ("통 꽃게, 홍게장 크림파스타", "19,0", "꽃게 한 마리와 생크림에 홍게의 딱지 장을 넣어 감칠맛을 살린 소록의 시그니처 크림파스타", "", "Whole Crab & Paste Cream Pasta", "게내장크림파스타.jpeg"),
+        ("우삼겹 된장술밥", "15,0", "고소한 우삼겹과 야채를 같이 볶아 낸 후 소록의 된장으로 깊은 맛을 낸 된장 술밥", "요청시 공깃밥 따로 제공", "Beef Short Plate Doenjang Rice Stew", "된장술밥.jpeg"),
     ]
     for idx, item in enumerate(big_items):
-        add_item(cat_big, item[0], item[1], item[2], item[3], item[4], priority=float(idx))
+        add_item(cat_big, item[0], item[1], item[2], item[3], item[4], priority=float(idx), image_name=item[5])
 
     # --- 작은상 Items ---
     small_items = [
-        ("감태김밥과 젓갈 3종", "15,0", "바다향이 살아있는 생감태로 말은 꼬마김밥과 씨앗젓갈, 낙지젓, 명란젓 3종 그리고 큐피마요네즈", "", "Gamtae Rice Roll & 3 Salted Seafood"),
-        ("우엉튀김과 수제 할라피뇨잼마요", "13,0", "향긋한 우엉을 얇게 저며 튀겨내어, 매콤달콤한 할라피뇨잼과 큐피마요네즈를 곁들여 먹는 튀김요리", "", "Burdock Fry & Jalapeno Mayo"),
-        ("들기름 메밀국수", "12,0", "방앗간에서 짜온 들기름과 소록의 비법 맛간장을 비벼 만든 들기름메밀국수", "", "Perilla Oil Buckwheat Noodles"),
-        ("들기름 비빔메밀국수", "12,0", "방앗간에서 짜온 들기름과 매콤달콤한 비빔양념을 넣어 간장과는 다른 스타일의 메밀국수", "", "Perilla Oil Spicy Buckwheat Noodles"),
-        ("김치메밀전병 튀김과 부추무침", "9,5", "고기와 김치 속을 쫄깃한 메밀피로 감싼 전병을 튀겨 부추무침과 곁들여 먹는 간단 안주", "", "Kimchi Buckwheat Pancake Fry"),
-        ("낙지젓 볶음밥", "9,5", "고슬고슬한 밥에 낙지젓을 넣어 짭짤하게 볶아 낸 밥", "", "Octopus Salted Gut Fried Rice"),
-        ("홍시 치즈케이크", "9,0", "치즈케이크 위에 홍시퓨레를 얹어 만든 달콤한 디저트", "", "Ripe Persimmon Cheesecake"),
-        ("게 딱지장 라면", "8,5", "녹진한 게 딱지장을 넣어 함께 먹는 해장라면", "", "Crab Paste Ramen"),
-        ("막포카토", "7,0", "달달한 바닐라 아이스크림 위에 꿀, 견과류, 과자를 뿌려 막걸리 한잔을 부어먹는 술-저트", "", "Makpocato"),
-        ("공기밥", "2,0", "공기밥", "", "Steamed Rice"),
+        ("감태김밥과 젓갈 3종", "15,0", "바다향이 살아있는 생감태로 말은 꼬마김밥과 씨앗젓갈, 낙지젓, 명란젓 3종 그리고 큐피마요네즈", "", "Gamtae Rice Roll & 3 Salted Seafood", "감태김밥.jpeg"),
+        ("우엉튀김과 수제 할라피뇨잼마요", "13,0", "향긋한 우엉을 얇게 저며 튀겨내어, 매콤달콤한 할라피뇨잼과 큐피마요네즈를 곁들여 먹는 튀김요리", "", "Burdock Fry & Jalapeno Mayo", "우엉튀김.jpeg"),
+        ("들기름 메밀국수", "12,0", "방앗간에서 짜온 들기름과 소록의 비법 맛간장을 비벼 만든 들기름메밀국수", "", "Perilla Oil Buckwheat Noodles", ""),
+        ("들기름 비빔메밀국수", "12,0", "방앗간에서 짜온 들기름과 매콤달콤한 비빔양념을 넣어 간장과는 다른 스타일의 메밀국수", "", "Perilla Oil Spicy Buckwheat Noodles", "들기름메밀비빔국수.jpeg"),
+        ("김치메밀전병 튀김과 부추무침", "9,5", "고기와 김치 속을 쫄깃한 메밀피로 감싼 전병을 튀겨 부추무침과 곁들여 먹는 간단 안주", "", "Kimchi Buckwheat Pancake Fry", ""),
+        ("낙지젓 볶음밥", "9,5", "고슬고슬한 밥에 낙지젓을 넣어 짭짤하게 볶아 낸 밥", "", "Octopus Salted Gut Fried Rice", ""),
+        ("홍시 치즈케이크", "9,0", "치즈케이크 위에 홍시퓨레를 얹어 만든 달콤한 디저트", "", "Ripe Persimmon Cheesecake", ""),
+        ("게 딱지장 라면", "8,5", "녹진한 게 딱지장을 넣어 함께 먹는 해장라면", "", "Crab Paste Ramen", ""),
+        ("막포카토", "7,0", "달달한 바닐라 아이스크림 위에 꿀, 견과류, 과자를 뿌려 막걸리 한잔을 부어먹는 술-저트", "", "Makpocato", ""),
+        ("공기밥", "2,0", "공기밥", "", "Steamed Rice", ""),
     ]
     for idx, item in enumerate(small_items):
-        add_item(cat_small, item[0], item[1], item[2], item[3], item[4], priority=float(idx))
+        add_item(cat_small, item[0], item[1], item[2], item[3], item[4], priority=float(idx), image_name=item[5])
 
     # --- 주류 - 탁주 Items ---
     takju_items = [
