@@ -104,7 +104,8 @@ def seed():
             notes=notes,
             priority=priority,
             menu_image=f"menu_images/{image_name}" if image_name else "",
-            click_expand=bool(image_name),
+            display_mode='combined' if image_name else 'auto',
+            click_expand=False,
             enable_detail_view=bool(image_name)
         )
 
