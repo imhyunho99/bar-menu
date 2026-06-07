@@ -87,7 +87,9 @@
     <div class="menu-overlay" id="menuOverlay"></div>
     
     <!-- 콘텐츠 레이어 -->
-    <div class="menu-container">
+    {% with first_cat=categories|first %}
+    <div class="menu-container{% if not first_cat or not first_cat.category_image %} top-bar-spacing{% endif %}">
+    {% endwith %}
         <main class="main" style="padding: 0 !important; margin: 0 !important;">
             <div class="container" style="padding: 0 !important; margin: 0 !important; max-width: none !important;">
                 <div class="category-section" style="margin: 0 !important; padding: 0 !important;">

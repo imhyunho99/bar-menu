@@ -92,6 +92,13 @@ def add_menu(request, restaurant_slug=None):
             category=category,
             notes=request.POST.get('notes', ''),
             menu_image=request.FILES.get('image'),
+            display_mode=request.POST.get('display_mode', 'auto'),
+            click_expand=request.POST.get('click_expand') == 'on',
+            lightbox_style=request.POST.get('lightbox_style', 'zoom'),
+            lightbox_opacity=int(request.POST.get('lightbox_opacity', 35) or 35),
+            enable_detail_view=request.POST.get('enable_detail_view') == 'on',
+            detail_image=request.FILES.get('detail_image'),
+            detail_description=request.POST.get('detail_description', ''),
             restaurant=request.restaurant
         )
         return redirect('admin_dashboard', restaurant_slug=request.restaurant.slug)
@@ -119,6 +126,18 @@ def edit_menu(request, menu_id, restaurant_slug=None):
         menu.notes = request.POST.get('notes', '')
         if request.FILES.get('image'):
             menu.menu_image = request.FILES['image']
+        
+        menu.display_mode = request.POST.get('display_mode', 'auto')
+        menu.click_expand = request.POST.get('click_expand') == 'on'
+        menu.lightbox_style = request.POST.get('lightbox_style', 'zoom')
+        menu.lightbox_opacity = int(request.POST.get('lightbox_opacity', 35) or 35)
+        
+        # 상세보기 설정
+        menu.enable_detail_view = request.POST.get('enable_detail_view') == 'on'
+        if request.FILES.get('detail_image'):
+            menu.detail_image = request.FILES['detail_image']
+        menu.detail_description = request.POST.get('detail_description', '')
+        
         menu.save()
         return redirect('admin_dashboard', restaurant_slug=request.restaurant.slug)
     categories = Category.objects.filter(restaurant=request.restaurant)

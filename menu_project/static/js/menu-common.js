@@ -45,6 +45,22 @@ class MenuApp {
         this.remoteTop = document.getElementById('remoteTop');
         this.remotePrev = document.getElementById('remotePrev');
         this.remoteNext = document.getElementById('remoteNext');
+
+        // 상세 모달 요소들
+        this.detailOverlay = document.getElementById('detailModalOverlay');
+        this.detailClose = document.getElementById('detailModalClose');
+        this.detailImage = document.getElementById('detailModalImage');
+        this.detailImageWrap = document.getElementById('detailModalImageWrap');
+        this.detailNameKo = document.getElementById('detailModalNameKo');
+        this.detailNameEn = document.getElementById('detailModalNameEn');
+        this.detailDesc = document.getElementById('detailModalDesc');
+        this.detailNotes = document.getElementById('detailModalNotes');
+        this.detailPrice = document.getElementById('detailModalPrice');
+
+        // 라이트박스 요소들
+        this.lightboxOverlay = document.getElementById('lightboxOverlay');
+        this.lightboxClose = document.getElementById('lightboxClose');
+        this.lightboxImage = document.getElementById('lightboxImage');
     }
 
     bindEvents() {
@@ -79,6 +95,12 @@ class MenuApp {
         // 리모컨 높이 조절
         window.addEventListener('load', () => this.adjustRemoteTopHeight());
         window.addEventListener('resize', () => this.adjustRemoteTopHeight());
+
+        // 상세 모달 이벤트
+        this.initDetailModal();
+
+        // 라이트박스 이벤트
+        this.initLightbox();
     }
     
     initPageLoadActions() {
@@ -459,6 +481,145 @@ class MenuApp {
                 this.remoteTop.style.height = `${targetHeight}px`;
             }
         }
+    }
+
+    // ==========================================
+    // 상세 모달 기능
+    // ==========================================
+    initDetailModal() {
+        if (!this.detailOverlay) return;
+
+        // 이벤트 위임: menu-item 클릭 시 detail 데이터가 있으면 모달 열기
+        const menuGrid = document.getElementById('menuGrid');
+        if (menuGrid) {
+            menuGrid.addEventListener('click', (e) => {
+                // 라이트박스 이미지 클릭은 제외
+                if (e.target.closest('[data-expand]')) return;
+
+                // click_expand가 꺼져 있어서 data-expand가 없는 이미지 또는 그 컨테이너 영역(여백 등)을 클릭한 경우 아무 일도 일어나지 않도록 리턴
+                if (e.target.closest('.menu-combined-image') || e.target.closest('.menu-only-image') || e.target.tagName === 'IMG') {
+                    return;
+                }
+
+                const menuItem = e.target.closest('.menu-item[data-detail="true"]');
+                if (menuItem) {
+                    this.openDetailModal(menuItem);
+                }
+            });
+        }
+
+        // 닫기 버튼
+        if (this.detailClose) {
+            this.detailClose.addEventListener('click', () => this.closeDetailModal());
+        }
+
+        // 오버레이 클릭으로 닫기
+        this.detailOverlay.addEventListener('click', (e) => {
+            if (e.target === this.detailOverlay) {
+                this.closeDetailModal();
+            }
+        });
+
+        // ESC 키로 닫기
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.detailOverlay.classList.contains('active')) {
+                this.closeDetailModal();
+            }
+        });
+    }
+
+    openDetailModal(menuItem) {
+        const data = menuItem.dataset;
+
+        // 이미지
+        if (data.detailImg) {
+            this.detailImage.src = data.detailImg;
+            this.detailImage.alt = data.detailName || '';
+            this.detailImageWrap.style.display = 'block';
+        } else {
+            this.detailImage.src = '';
+            this.detailImageWrap.style.display = 'none';
+        }
+
+        // 텍스트
+        this.detailNameKo.textContent = data.detailName || '';
+        this.detailNameEn.textContent = data.detailNameEn || '';
+        this.detailNameEn.style.display = data.detailNameEn ? 'block' : 'none';
+        this.detailDesc.textContent = data.detailDesc || '';
+        this.detailDesc.style.display = data.detailDesc ? 'block' : 'none';
+        this.detailNotes.textContent = data.detailNotes || '';
+        this.detailNotes.style.display = data.detailNotes ? 'inline' : 'none';
+        this.detailPrice.textContent = data.detailPrice || '';
+
+        // 투명도(불투명도) 적용
+        const opacity = data.detailOpacity || '35';
+        const op = parseInt(opacity) / 100;
+        this.detailOverlay.style.backgroundColor = `rgba(0, 0, 0, ${op})`;
+
+        // 모달 열기
+        this.detailOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    closeDetailModal() {
+        this.detailOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    // ==========================================
+    // 라이트박스 기능 (이미지 확대)
+    // ==========================================
+    initLightbox() {
+        if (!this.lightboxOverlay) return;
+
+        // 이벤트 위임: data-expand 속성이 있는 요소 클릭
+        document.addEventListener('click', (e) => {
+            const expandEl = e.target.closest('[data-expand]');
+            if (expandEl) {
+                e.preventDefault();
+                e.stopPropagation();
+                const src = expandEl.dataset.expandSrc;
+                const alt = expandEl.dataset.expandAlt || '';
+                const style = expandEl.dataset.expandStyle || 'zoom';
+                const opacity = expandEl.dataset.expandOpacity || '35';
+                if (src) {
+                    this.openLightbox(src, alt, style, opacity);
+                }
+            }
+        });
+
+        // 닫기
+        if (this.lightboxClose) {
+            this.lightboxClose.addEventListener('click', () => this.closeLightbox());
+        }
+        this.lightboxOverlay.addEventListener('click', (e) => {
+            if (e.target === this.lightboxOverlay || e.target === this.lightboxImage) {
+                this.closeLightbox();
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.lightboxOverlay.classList.contains('active')) {
+                this.closeLightbox();
+            }
+        });
+    }
+
+    openLightbox(src, alt, style, opacity) {
+        this.lightboxImage.src = src;
+        this.lightboxImage.alt = alt;
+        // 스타일 클래스 적용 (zoom, slide_up, fade)
+        this.lightboxOverlay.className = 'lightbox-overlay style-' + (style || 'zoom');
+        // 투명도(불투명도) 적용
+        const op = parseInt(opacity || '35') / 100;
+        this.lightboxOverlay.style.backgroundColor = `rgba(0, 0, 0, ${op})`;
+        // display가 항상 flex이므로 곧바로 active 추가하여 자연스럽게 트랜지션 적용
+        this.lightboxOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    closeLightbox() {
+        this.lightboxOverlay.classList.remove('active');
+        document.body.style.overflow = '';
     }
 }
 

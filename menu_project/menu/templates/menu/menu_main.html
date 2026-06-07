@@ -120,7 +120,7 @@
     </div>
     {% endif %}
 
-    <main class="main" style="padding: 0 !important;">
+    <main class="main" style="padding: {% if site_settings and site_settings.intro_image %}0{% else %}60px 0 0 0{% endif %} !important;">
         <div class="container" style="padding: 0 !important; margin: 0 !important; max-width: none !important;">
             {% if site_settings and site_settings.intro_image %}
             <div class="intro-section" style="margin: 0 !important; padding: 0 !important;">

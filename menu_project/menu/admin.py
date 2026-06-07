@@ -65,9 +65,24 @@ class CategoryAdmin(RestaurantFilterMixin, admin.ModelAdmin):
 
 @admin.register(MenuItem)
 class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
-    list_display = ('name', 'restaurant', 'category', 'price', 'is_available')
-    list_filter = ('restaurant', 'category', 'is_available')
+    list_display = ('name', 'restaurant', 'category', 'price', 'display_mode', 'is_available')
+    list_filter = ('restaurant', 'category', 'is_available', 'display_mode')
     search_fields = ('name', 'description')
+    fieldsets = (
+        ('기본 정보', {
+            'fields': ('restaurant', 'name', 'name_en', 'price', 'description', 'category', 'notes', 'menu_image', 'priority', 'is_available')
+        }),
+        ('표시 설정', {
+            'fields': ('display_mode', 'click_expand', 'lightbox_style', 'lightbox_opacity'),
+            'classes': ('collapse',),
+            'description': '메뉴 카드의 표시 방식을 설정합니다.',
+        }),
+        ('상세보기 설정', {
+            'fields': ('enable_detail_view', 'detail_image', 'detail_description'),
+            'classes': ('collapse',),
+            'description': '메뉴 클릭 시 표시될 상세 모달의 내용을 설정합니다.',
+        }),
+    )
     
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "category" and not request.user.is_superuser:

@@ -224,6 +224,21 @@ class MenuItem(models.Model):
     """
     개별 메뉴 항목에 대한 모델
     """
+    # 표시 모드 선택지
+    DISPLAY_MODE_CHOICES = [
+        ('auto', '자동 (이미지 있으면 이미지만, 없으면 텍스트만)'),
+        ('image_only', '이미지만 표시'),
+        ('text_only', '텍스트만 표시'),
+        ('combined', '이미지 + 텍스트 (좌측 이미지, 우측 텍스트)'),
+    ]
+
+    # 라이트박스 스타일 선택지
+    LIGHTBOX_STYLE_CHOICES = [
+        ('zoom', '확대 (기본) — 이미지가 중앙에서 확대됩니다'),
+        ('slide_up', '슬라이드 — 아래에서 위로 올라옵니다'),
+        ('fade', '페이드 — 서서히 나타납니다'),
+    ]
+
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='menu_items', null=True, blank=True)
     # 1. 이름 (여러 줄 지원을 위해 TextField로 변경)
     name = models.TextField(verbose_name="메뉴명")
@@ -268,6 +283,62 @@ class MenuItem(models.Model):
     
     is_available = models.BooleanField(default=True, verbose_name="판매 가능 여부")
 
+    # 8. 표시 모드 (플랜 2-2)
+    display_mode = models.CharField(
+        max_length=20,
+        choices=DISPLAY_MODE_CHOICES,
+        default='auto',
+        verbose_name="표시 모드",
+        help_text="메뉴 카드의 표시 방식을 선택합니다"
+    )
+
+    # 9. 이미지 클릭 확대 (플랜 2-2)
+    click_expand = models.BooleanField(
+        default=False,
+        verbose_name="이미지 클릭 확대",
+        help_text="체크하면 이미지 클릭 시 라이트박스로 확대됩니다"
+    )
+
+    # 9-1. 라이트박스 스타일 선택
+    lightbox_style = models.CharField(
+        max_length=20,
+        choices=LIGHTBOX_STYLE_CHOICES,
+        default='zoom',
+        verbose_name="라이트박스 스타일",
+        help_text="이미지 확대 시 애니메이션 스타일을 선택합니다"
+    )
+
+    # 9-2. 라이트박스 및 모달 배경 투명도 (%)
+    lightbox_opacity = models.IntegerField(
+        default=35,
+        verbose_name="라이트박스 투명도 (%)",
+        help_text="배경 오버레이의 투명도(불투명도)를 설정합니다 (10% ~ 100%)"
+    )
+
+    # 10. 상세보기 활성화 (플랜 2-1)
+    enable_detail_view = models.BooleanField(
+        default=False,
+        verbose_name="상세보기 활성화",
+        help_text="체크하면 메뉴 클릭 시 상세 정보 모달이 표시됩니다"
+    )
+
+    # 11. 상세보기 전용 이미지 (플랜 2-1)
+    detail_image = models.ImageField(
+        upload_to='menu_images/detail/',
+        blank=True,
+        null=True,
+        verbose_name="상세보기 이미지",
+        help_text="상세 모달에 표시될 이미지 (미설정 시 기본 메뉴 이미지 사용)"
+    )
+
+    # 12. 메뉴 세부 설명
+    detail_description = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="메뉴 세부 설명",
+        help_text="상세 모달(라이트박스)에 표시될 메뉴 세부 설명 및 주류 페어링 정보 (미설정 시 표시되지 않음)"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -279,9 +350,11 @@ class MenuItem(models.Model):
 
     def __str__(self):
         return self.name
-    
+
     def save(self, *args, **kwargs):
         if self.menu_image:
             self.menu_image = optimize_image(self.menu_image, max_width=800, quality=80)
+        if self.detail_image:
+            self.detail_image = optimize_image(self.detail_image, max_width=1200, quality=85)
         super().save(*args, **kwargs)
     

@@ -64,6 +64,82 @@
                         {% endif %}
                     </div>
                 </div>
+
+                <!-- 표시 설정 -->
+                <div style="margin: 20px 0; padding-top: 15px; border-top: 1px solid var(--admin-border-color);">
+                    <h3 style="font-size: 1rem; color: var(--admin-text-primary); margin-bottom: 15px;">📐 표시 설정</h3>
+                    
+                    <div class="admin-form-group">
+                        <label for="display_mode">표시 모드</label>
+                        <select id="display_mode" name="display_mode">
+                            <option value="auto" {% if menu.display_mode == 'auto' or not menu %}selected{% endif %}>자동 (이미지 있으면 이미지만, 없으면 텍스트만)</option>
+                            <option value="image_only" {% if menu.display_mode == 'image_only' %}selected{% endif %}>이미지만 표시</option>
+                            <option value="text_only" {% if menu.display_mode == 'text_only' %}selected{% endif %}>텍스트만 표시</option>
+                            <option value="combined" {% if menu.display_mode == 'combined' %}selected{% endif %}>이미지 + 텍스트 (좌측 이미지, 우측 텍스트)</option>
+                        </select>
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="click_expand" name="click_expand" {% if menu.click_expand %}checked{% endif %} style="width: auto; margin: 0;">
+                            <span>이미지 클릭 시 확대 (라이트박스)</span>
+                        </label>
+                    </div>
+
+                    <div id="lightboxStyleGroup" class="admin-form-group" style="{% if not menu.click_expand %}opacity: 0.5; pointer-events: none;{% endif %}">
+                        <label for="lightbox_style">라이트박스 스타일</label>
+                        <select id="lightbox_style" name="lightbox_style">
+                            <option value="zoom" {% if menu.lightbox_style == 'zoom' or not menu %}selected{% endif %}>확대 (기본) — 이미지가 중앙에서 확대됩니다</option>
+                            <option value="slide_up" {% if menu.lightbox_style == 'slide_up' %}selected{% endif %}>슬라이드 — 아래에서 위로 올라옵니다</option>
+                            <option value="fade" {% if menu.lightbox_style == 'fade' %}selected{% endif %}>페이드 — 서서히 나타납니다</option>
+                        </select>
+                    </div>
+
+                    <div id="lightboxOpacityGroup" class="admin-form-group" style="{% if not menu.click_expand %}opacity: 0.5; pointer-events: none;{% endif %} margin-top: 15px;">
+                        <label for="lightbox_opacity" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>라이트박스 투명도 (배경 흐림도)</span>
+                            <span id="opacityValue" style="font-weight: bold; color: var(--admin-primary-color);">{% if menu %}{{ menu.lightbox_opacity }}{% else %}35{% endif %}%</span>
+                        </label>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <input type="range" id="lightbox_opacity" name="lightbox_opacity" min="10" max="100" step="5" value="{% if menu %}{{ menu.lightbox_opacity }}{% else %}35{% endif %}" style="flex: 1; height: 6px; background: #333; outline: none; border: none; border-radius: 3px;" oninput="document.getElementById('opacityValue').textContent = this.value + '%'">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 상세보기 설정 -->
+                <div style="margin: 20px 0; padding-top: 15px; border-top: 1px solid var(--admin-border-color);">
+                    <h3 style="font-size: 1rem; color: var(--admin-text-primary); margin-bottom: 15px;">🔍 상세보기 설정</h3>
+                    
+                    <div class="admin-form-group">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="enable_detail_view" name="enable_detail_view" {% if menu.enable_detail_view %}checked{% endif %} style="width: auto; margin: 0;">
+                            <span>상세보기 모달 활성화</span>
+                        </label>
+                        <p style="margin-top: 5px; font-size: 0.85em; color: var(--admin-text-secondary);">
+                            체크하면 고객이 메뉴를 탭할 때 상세 정보가 모달로 표시됩니다.
+                        </p>
+                    </div>
+
+                    <div id="detailViewFields" style="{% if not menu.enable_detail_view %}opacity: 0.5; pointer-events: none;{% endif %}">
+                        <div class="admin-form-group">
+                            <label for="detail_image">상세보기 이미지 (선택)</label>
+                            <div style="margin-bottom: 10px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: var(--admin-radius); border: 1px solid var(--admin-border-color);">
+                                <input type="file" id="detail_image" name="detail_image" accept="image/*" style="border: none; padding: 0;">
+                                {% if menu.detail_image %}
+                                    <div class="admin-current-image" style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                                        <img src="{{ menu.detail_image.url }}" alt="Detail" style="height: 60px; border-radius: 4px;">
+                                        <span style="color: var(--admin-text-secondary); font-size: 0.9em;">현재 상세보기 이미지</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="admin-form-group">
+                            <label for="detail_description">메뉴 세부 설명 (선택)</label>
+                            <textarea id="detail_description" name="detail_description" placeholder="상세 모달(라이트박스)에 표시될 자세한 설명 및 주류 페어링 정보를 입력하세요. (미입력 시 기본 메뉴 설명 사용)">{{ menu.detail_description|default:'' }}</textarea>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="admin-actions">
                     <a href="{% url 'menu:admin_dashboard' request.restaurant.slug %}" class="admin-btn admin-btn-secondary">취소</a>
@@ -72,5 +148,32 @@
             </form>
         </div>
     </div>
+
+    <script>
+        // 상세보기 토글
+        const detailToggle = document.getElementById('enable_detail_view');
+        const detailFields = document.getElementById('detailViewFields');
+        if (detailToggle && detailFields) {
+            detailToggle.addEventListener('change', function() {
+                detailFields.style.opacity = this.checked ? '1' : '0.5';
+                detailFields.style.pointerEvents = this.checked ? 'auto' : 'none';
+            });
+        }
+
+        // 라이트박스 스타일 및 투명도 토글
+        const expandToggle = document.getElementById('click_expand');
+        const styleGroup = document.getElementById('lightboxStyleGroup');
+        const opacityGroup = document.getElementById('lightboxOpacityGroup');
+        if (expandToggle && styleGroup && opacityGroup) {
+            expandToggle.addEventListener('change', function() {
+                const state = this.checked ? '1' : '0.5';
+                const events = this.checked ? 'auto' : 'none';
+                styleGroup.style.opacity = state;
+                styleGroup.style.pointerEvents = events;
+                opacityGroup.style.opacity = state;
+                opacityGroup.style.pointerEvents = events;
+            });
+        }
+    </script>
 </body>
 </html>

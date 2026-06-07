@@ -145,35 +145,86 @@
     <div class="menu-overlay" id="menuOverlay"></div>
     
     <!-- 콘텐츠 레이어 -->
-    <div class="menu-container">
+    {% with first_item=items|first %}
+    <div class="menu-container{% if not first_item or not first_item.menu_image or first_item.display_mode == 'text_only' or first_item.display_mode == 'combined' %} top-bar-spacing{% endif %}">
+    {% endwith %}
         <main class="main" style="padding: 0 !important; margin: 0 !important;">
             <div class="container" style="padding: 0 !important; margin: 0 !important; max-width: none !important;">
                 <!-- 메뉴 그리드 -->
                 <div class="menu-grid" id="menuGrid" style="margin: 0 !important; padding: 0 !important;">
                     {% for item in items %}
-                    <div class="menu-item" id="menu-{{ item.id }}">
-                        {% if item.menu_image %}
-                            <!-- 이미지가 있는 경우: 이미지만 표시 -->
-                            <img src="{{ item.menu_image.url }}" alt="{{ item.name }}" class="menu-only-image" loading="lazy" decoding="async">
-                        {% else %}
-                            <!-- 이미지가 없는 경우: 텍스트 정보 표시 -->
+                    <div class="menu-item{% if item.display_mode == 'combined' %} menu-item-combined{% endif %}" id="menu-{{ item.id }}"
+                         {% if item.enable_detail_view %}data-detail="true" data-detail-name="{{ item.name }}" data-detail-name-en="{{ item.name_en|default:'' }}" data-detail-price="{{ item.price }}" data-detail-desc="{{ item.detail_description|default:item.description|default:'' }}" data-detail-notes="{{ item.notes|default:'' }}" data-detail-img="{% if item.detail_image %}{{ item.detail_image.url }}{% elif item.menu_image %}{{ item.menu_image.url }}{% endif %}" data-detail-opacity="{{ item.lightbox_opacity|default:35 }}"{% endif %}>
+
+                        {% if item.display_mode == 'combined' and item.menu_image %}
+                            <!-- combined 모드: 좌측 이미지 + 우측 텍스트 -->
+                            <div class="menu-combined-image"{% if item.click_expand %} data-expand="true" data-expand-src="{{ item.menu_image.url }}" data-expand-alt="{{ item.name }}" data-expand-style="{{ item.lightbox_style }}" data-expand-opacity="{{ item.lightbox_opacity|default:35 }}"{% endif %}>
+                                <img src="{{ item.menu_image.url }}" alt="{{ item.name }}" loading="lazy" decoding="async">
+                            </div>
+                            <div class="menu-combined-text">
+                                <div class="menu-title">
+                                    {% if item.name_en %}<span class="menu-name-en">{{ item.name_en|linebreaksbr }}</span>{% endif %}
+                                    <span class="menu-name-ko">{{ item.name|linebreaksbr }}</span>
+                                </div>
+                                {% if item.description %}<div class="menu-description">{{ item.description|linebreaks }}</div>{% endif %}
+                                <div class="menu-notes-price-wrapper" style="display: flex; justify-content: space-between; align-items: baseline;">
+                                    {% if item.notes %}
+                                    <span class="menu-notes">{{ item.notes|linebreaks }}</span>
+                                    {% else %}
+                                    <span></span>
+                                    {% endif %}
+                                    <div class="menu-price">{{ item.price|linebreaks }}</div>
+                                </div>
+                            </div>
+
+                        {% elif item.display_mode == 'image_only' and item.menu_image %}
+                            <!-- image_only 모드 -->
+                            <img src="{{ item.menu_image.url }}" alt="{{ item.name }}" class="menu-only-image" loading="lazy" decoding="async"{% if item.click_expand %} data-expand="true" data-expand-src="{{ item.menu_image.url }}" data-expand-alt="{{ item.name }}" data-expand-style="{{ item.lightbox_style }}" data-expand-opacity="{{ item.lightbox_opacity|default:35 }}"{% endif %}>
+
+                        {% elif item.display_mode == 'text_only' %}
+                            <!-- text_only 모드 (이미지 무시) -->
                             <div class="menu-content">
                                 <div class="menu-info">
-                                                                        <div class="menu-title-line">
-                                                                            <div class="menu-title">
-                                                                                {% if item.name_en %}<span class="menu-name-en">{{ item.name_en|linebreaksbr }}</span>{% endif %}<span class="menu-name-ko">{{ item.name|linebreaksbr }}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="menu-description">{{ item.description|linebreaks }}</div>
-                                                                        <div class="menu-notes-price-wrapper" style="display: flex; justify-content: space-between; align-items: baseline;">
-                                                                            {% if item.notes %}
-                                                                            <span class="menu-notes">{{ item.notes|linebreaks }}</span>
-                                                                            {% else %}
-                                                                            <span></span> {# This is to ensure space-between works correctly even if notes are empty #}
-                                                                            {% endif %}
-                                                                            <div class="menu-price">{{ item.price|linebreaks }}</div>
-                                                                        </div>                                </div>
+                                    <div class="menu-title-line">
+                                        <div class="menu-title">
+                                            {% if item.name_en %}<span class="menu-name-en">{{ item.name_en|linebreaksbr }}</span>{% endif %}<span class="menu-name-ko">{{ item.name|linebreaksbr }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="menu-description">{{ item.description|linebreaks }}</div>
+                                    <div class="menu-notes-price-wrapper" style="display: flex; justify-content: space-between; align-items: baseline;">
+                                        {% if item.notes %}
+                                        <span class="menu-notes">{{ item.notes|linebreaks }}</span>
+                                        {% else %}
+                                        <span></span>
+                                        {% endif %}
+                                        <div class="menu-price">{{ item.price|linebreaks }}</div>
+                                    </div>
+                                </div>
                             </div>
+
+                        {% else %}
+                            <!-- auto 모드 (기존과 동일한 로직) -->
+                            {% if item.menu_image %}
+                                <img src="{{ item.menu_image.url }}" alt="{{ item.name }}" class="menu-only-image" loading="lazy" decoding="async"{% if item.click_expand %} data-expand="true" data-expand-src="{{ item.menu_image.url }}" data-expand-alt="{{ item.name }}" data-expand-style="{{ item.lightbox_style }}" data-expand-opacity="{{ item.lightbox_opacity|default:35 }}"{% endif %}>
+                            {% else %}
+                                <div class="menu-content">
+                                    <div class="menu-info">
+                                                                            <div class="menu-title-line">
+                                                                                <div class="menu-title">
+                                                                                    {% if item.name_en %}<span class="menu-name-en">{{ item.name_en|linebreaksbr }}</span>{% endif %}<span class="menu-name-ko">{{ item.name|linebreaksbr }}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="menu-description">{{ item.description|linebreaks }}</div>
+                                                                            <div class="menu-notes-price-wrapper" style="display: flex; justify-content: space-between; align-items: baseline;">
+                                                                                {% if item.notes %}
+                                                                                <span class="menu-notes">{{ item.notes|linebreaks }}</span>
+                                                                                {% else %}
+                                                                                <span></span> {# This is to ensure space-between works correctly even if notes are empty #}
+                                                                                {% endif %}
+                                                                                <div class="menu-price">{{ item.price|linebreaks }}</div>
+                                                                            </div>                                </div>
+                                </div>
+                            {% endif %}
                         {% endif %}
                     </div>
                     {% empty %}
@@ -184,6 +235,33 @@
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- 상세보기 모달 -->
+    <div class="detail-modal-overlay" id="detailModalOverlay">
+        <div class="detail-modal">
+            <button class="detail-modal-close" id="detailModalClose">&times;</button>
+            <div class="detail-modal-image-wrap" id="detailModalImageWrap">
+                <img id="detailModalImage" src="" alt="">
+            </div>
+            <div class="detail-modal-body">
+                <div class="detail-modal-title">
+                    <span class="menu-name-en" id="detailModalNameEn"></span>
+                    <span class="menu-name-ko" id="detailModalNameKo"></span>
+                </div>
+                <div class="detail-modal-desc" id="detailModalDesc"></div>
+                <div class="detail-modal-footer">
+                    <span class="menu-notes" id="detailModalNotes"></span>
+                    <span class="menu-price" id="detailModalPrice"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 라이트박스 (이미지 확대) -->
+    <div class="lightbox-overlay" id="lightboxOverlay">
+        <button class="lightbox-close" id="lightboxClose">&times;</button>
+        <img id="lightboxImage" src="" alt="">
     </div>
 
     <!-- 리모컨 (스크롤 하단 도달 시 표시) -->
@@ -216,3 +294,4 @@
     </script>
 </body>
 </html>
+

@@ -1702,3 +1702,275 @@ body {
     height: 60px;
     object-fit: contain;
 }
+
+/* ===== Combined Layout (이미지 + 텍스트) ===== */
+.menu-item-combined {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    padding-bottom: 0 !important;
+}
+
+.menu-combined-image {
+    flex: 0 0 38%;
+    max-width: 38%;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    cursor: default;
+}
+
+.menu-combined-image[data-expand] {
+    cursor: pointer;
+}
+
+.menu-combined-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 8px;
+}
+
+.menu-combined-text {
+    flex: 1;
+    padding: 1.2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0; /* prevent flex overflow */
+}
+
+.menu-combined-text .menu-title {
+    margin-bottom: 0.3rem;
+}
+
+.menu-combined-text .menu-description {
+    margin-bottom: 0;
+}
+
+@media (max-width: 480px) {
+    .menu-combined-image {
+        flex: 0 0 35%;
+        max-width: 35%;
+    }
+    .menu-combined-text {
+        padding: 0.8rem 1rem;
+    }
+}
+
+/* Detail-enabled items get pointer cursor */
+.menu-item[data-detail="true"] {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.menu-item[data-detail="true"]:active {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* ===== Detail Modal (상세보기) ===== */
+.detail-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    overflow-y: auto;
+}
+
+.detail-modal-overlay.active {
+    display: flex;
+}
+
+.detail-modal {
+    width: 100%;
+    max-width: 500px;
+    max-height: 100vh;
+    overflow-y: auto;
+    background: #0a0a0a;
+    position: relative;
+}
+
+.detail-modal-close {
+    position: fixed;
+    top: 12px;
+    right: 16px;
+    background: rgba(0, 0, 0, 0.6);
+    border: none;
+    color: #fff;
+    font-size: 28px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 2001;
+    border-radius: 50%;
+    backdrop-filter: blur(4px);
+}
+
+.detail-modal-close:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.detail-modal-image-wrap {
+    width: 100%;
+    max-height: 50vh;
+    overflow: hidden;
+}
+
+.detail-modal-image-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.detail-modal-image-wrap:empty,
+.detail-modal-image-wrap img[src=""] {
+    display: none;
+}
+
+.detail-modal-body {
+    padding: 1.5rem 2rem 2rem;
+}
+
+.detail-modal-title {
+    margin-bottom: 1rem;
+}
+
+.detail-modal-title .menu-name-en {
+    display: block;
+    font-size: 0.9rem;
+    color: #999;
+    margin-bottom: 4px;
+}
+
+.detail-modal-title .menu-name-ko {
+    display: block;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.detail-modal-desc {
+    color: #aaa;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+    white-space: pre-wrap;
+}
+
+.detail-modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.detail-modal-footer .menu-notes {
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.detail-modal-footer .menu-price {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+/* ===== Lightbox (이미지 확대) ===== */
+.lightbox-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.lightbox-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.lightbox-overlay img {
+    max-width: 95%;
+    max-height: 90vh;
+    object-fit: contain;
+}
+
+.lightbox-close {
+    position: fixed;
+    top: 12px;
+    right: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #fff;
+    font-size: 32px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 3001;
+    border-radius: 50%;
+    backdrop-filter: blur(4px);
+}
+
+.lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* --- Lightbox Style: Zoom (확대) --- */
+.lightbox-overlay.style-zoom img {
+    transform: scale(0.5);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.lightbox-overlay.style-zoom.active img {
+    transform: scale(1);
+}
+
+/* --- Lightbox Style: Slide Up (슬라이드) --- */
+.lightbox-overlay.style-slide_up img {
+    transform: translateY(60vh);
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lightbox-overlay.style-slide_up.active img {
+    transform: translateY(0);
+}
+
+/* --- Lightbox Style: Fade (페이드) --- */
+.lightbox-overlay.style-fade img {
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.lightbox-overlay.style-fade.active img {
+    opacity: 1;
+}
+
+/* Helper to prevent top-bar overlapping when no intro/banner image is present */
+.top-bar-spacing {
+    padding-top: 60px !important;
+}
