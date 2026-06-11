@@ -1714,7 +1714,7 @@ body {
 .menu-combined-image {
     flex: 0 0 38%;
     max-width: 38%;
-    padding: 8px;
+    padding: 12px;
     display: flex;
     align-items: center;
     overflow: hidden;
@@ -1973,4 +1973,132 @@ body {
 /* Helper to prevent top-bar overlapping when no intro/banner image is present */
 .top-bar-spacing {
     padding-top: 60px !important;
+}
+
+/* ===== 추천 페어링 스타일 ===== */
+.detail-modal-pairings {
+    margin-top: 1.5rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pairings-heading {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 0.8rem;
+}
+
+.pairings-container {
+    display: flex;
+    gap: 12px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 스크롤바 숨김 (iOS/Chrome 등 대응) */
+.pairings-container::-webkit-scrollbar {
+    height: 4px;
+}
+.pairings-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+}
+.pairings-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+}
+
+.pairing-item-card {
+    flex: 0 0 calc(50% - 6px);
+    min-width: 140px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 8px 10px;
+    box-sizing: border-box;
+}
+
+.pairing-item-image {
+    flex: 0 0 35px;
+    max-width: 35px;
+    height: 60px;
+    margin-right: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.pairing-item-image img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.pairing-item-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    min-width: 0;
+}
+
+.pairing-item-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pairing-item-desc {
+    font-size: 0.7rem;
+    color: #888;
+    line-height: 1.3;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pairing-item-price {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    text-align: right;
+    align-self: flex-end;
+}
+
+/* ===== 페어링 노출 시 레이아웃 여백 감소 (페어링 영역 최대 확보) ===== */
+.detail-modal.has-pairings .detail-modal-body {
+    padding: 1rem 1.5rem 1.5rem !important;
+}
+
+.detail-modal.has-pairings .detail-modal-title {
+    margin-bottom: 0.6rem !important;
+}
+
+.detail-modal.has-pairings .detail-modal-desc {
+    margin-bottom: 0.8rem !important;
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
+}
+
+.detail-modal.has-pairings .detail-modal-footer {
+    padding-top: 0.6rem !important;
+}
+
+.detail-modal.has-pairings .detail-modal-pairings {
+    margin-top: 1rem !important;
+    padding-top: 0.8rem !important;
 }

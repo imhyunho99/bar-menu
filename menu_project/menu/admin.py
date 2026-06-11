@@ -1,7 +1,12 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import Restaurant, UserProfile, Category, MenuItem, SiteSettings
+from .models import Restaurant, UserProfile, Category, MenuItem, SiteSettings, MenuItemPairing
+
+class MenuItemPairingInline(admin.TabularInline):
+    model = MenuItemPairing
+    extra = 1
+    classes = ('collapse',)
 
 # UserProfile을 UserAdmin 페이지에 인라인으로 추가
 class UserProfileInline(admin.StackedInline):
@@ -68,6 +73,7 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
     list_display = ('name', 'restaurant', 'category', 'price', 'display_mode', 'is_available')
     list_filter = ('restaurant', 'category', 'is_available', 'display_mode')
     search_fields = ('name', 'description')
+    inlines = [MenuItemPairingInline]
     fieldsets = (
         ('기본 정보', {
             'fields': ('restaurant', 'name', 'name_en', 'price', 'description', 'category', 'notes', 'menu_image', 'priority', 'is_available')
@@ -127,6 +133,18 @@ class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         }),
         ('카테고리명(영문) 스타일', {
             'fields': ('category_name_en_font', 'category_name_en_color', 'category_name_en_size', 'category_name_en_bold', 'category_name_en_italic'),
+            'classes': ('collapse',),
+        }),
+        ('페어링명 스타일', {
+            'fields': ('pairing_name_font', 'pairing_name_color', 'pairing_name_size', 'pairing_name_bold', 'pairing_name_italic'),
+            'classes': ('collapse',),
+        }),
+        ('페어링 설명 스타일', {
+            'fields': ('pairing_description_font', 'pairing_description_color', 'pairing_description_size', 'pairing_description_bold', 'pairing_description_italic'),
+            'classes': ('collapse',),
+        }),
+        ('페어링 가격 스타일', {
+            'fields': ('pairing_price_font', 'pairing_price_color', 'pairing_price_size', 'pairing_price_bold', 'pairing_price_italic'),
             'classes': ('collapse',),
         }),
     )

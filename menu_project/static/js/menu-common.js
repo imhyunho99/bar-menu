@@ -493,13 +493,8 @@ class MenuApp {
         const menuGrid = document.getElementById('menuGrid');
         if (menuGrid) {
             menuGrid.addEventListener('click', (e) => {
-                // 라이트박스 이미지 클릭은 제외
+                // 라이트박스 이미지 클릭은 제외 (data-expand가 있는 경우)
                 if (e.target.closest('[data-expand]')) return;
-
-                // click_expand가 꺼져 있어서 data-expand가 없는 이미지 또는 그 컨테이너 영역(여백 등)을 클릭한 경우 아무 일도 일어나지 않도록 리턴
-                if (e.target.closest('.menu-combined-image') || e.target.closest('.menu-only-image') || e.target.tagName === 'IMG') {
-                    return;
-                }
 
                 const menuItem = e.target.closest('.menu-item[data-detail="true"]');
                 if (menuItem) {
@@ -555,6 +550,23 @@ class MenuApp {
         const opacity = data.detailOpacity || '35';
         const op = parseInt(opacity) / 100;
         this.detailOverlay.style.backgroundColor = `rgba(0, 0, 0, ${op})`;
+
+        // 추천 페어링 연동
+        const pairingsSection = document.getElementById('detailModalPairingsSection');
+        const pairingsContainer = document.getElementById('detailModalPairingsContainer');
+        const modalEl = this.detailOverlay.querySelector('.detail-modal');
+        if (pairingsSection && pairingsContainer) {
+            const pairingsData = menuItem.querySelector('.menu-item-pairings-data');
+            if (pairingsData && pairingsData.children.length > 0) {
+                pairingsContainer.innerHTML = pairingsData.innerHTML;
+                pairingsSection.style.display = 'block';
+                if (modalEl) modalEl.classList.add('has-pairings');
+            } else {
+                pairingsContainer.innerHTML = '';
+                pairingsSection.style.display = 'none';
+                if (modalEl) modalEl.classList.remove('has-pairings');
+            }
+        }
 
         // 모달 열기
         this.detailOverlay.classList.add('active');

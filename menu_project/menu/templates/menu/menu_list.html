@@ -115,6 +115,57 @@
     {% if site_settings.menu_card_color %}
     <style>.menu-item { background-color: {{ site_settings.menu_card_color }} !important; border-color: {{ site_settings.menu_card_color }} !important; }</style>
     {% endif %}
+
+    {% if site_settings.pairing_name_font and site_settings.pairing_name_font.name %}
+    <style>@font-face { font-family: 'PairingNameFont'; src: url('{{ site_settings.pairing_name_font.url }}'); }
+    .pairing-item-name { font-family: 'PairingNameFont', sans-serif !important; }</style>
+    {% endif %}
+    {% if site_settings.pairing_name_color %}
+    <style>.pairing-item-name { color: {{ site_settings.pairing_name_color }} !important; }</style>
+    {% endif %}
+    {% if site_settings.pairing_name_size %}
+    <style>.pairing-item-name { font-size: {{ site_settings.pairing_name_size }}px !important; }</style>
+    {% endif %}
+    {% if site_settings.pairing_name_bold %}
+    <style>.pairing-item-name { font-weight: bold !important; }</style>
+    {% endif %}
+    {% if site_settings.pairing_name_italic %}
+    <style>.pairing-item-name { font-style: italic !important; }</style>
+    {% endif %}
+
+    {% if site_settings.pairing_description_font and site_settings.pairing_description_font.name %}
+    <style>@font-face { font-family: 'PairingDescFont'; src: url('{{ site_settings.pairing_description_font.url }}'); }
+    .pairing-item-desc { font-family: 'PairingDescFont', sans-serif !important; }</style>
+    {% endif %}
+    {% if site_settings.pairing_description_color %}
+    <style>.pairing-item-desc { color: {{ site_settings.pairing_description_color }} !important; }</style>
+    {% endif %}
+    {% if site_settings.pairing_description_size %}
+    <style>.pairing-item-desc { font-size: {{ site_settings.pairing_description_size }}px !important; }</style>
+    {% endif %}
+    {% if site_settings.pairing_description_bold %}
+    <style>.pairing-item-desc { font-weight: bold !important; }</style>
+    {% endif %}
+    {% if site_settings.pairing_description_italic %}
+    <style>.pairing-item-desc { font-style: italic !important; }</style>
+    {% endif %}
+
+    {% if site_settings.pairing_price_font and site_settings.pairing_price_font.name %}
+    <style>@font-face { font-family: 'PairingPriceFont'; src: url('{{ site_settings.pairing_price_font.url }}'); }
+    .pairing-item-price { font-family: 'PairingPriceFont', sans-serif !important; }</style>
+    {% endif %}
+    {% if site_settings.pairing_price_color %}
+    <style>.pairing-item-price { color: {{ site_settings.pairing_price_color }} !important; }</style>
+    {% endif %}
+    {% if site_settings.pairing_price_size %}
+    <style>.pairing-item-price { font-size: {{ site_settings.pairing_price_size }}px !important; }</style>
+    {% endif %}
+    {% if site_settings.pairing_price_bold %}
+    <style>.pairing-item-price { font-weight: bold !important; }</style>
+    {% endif %}
+    {% if site_settings.pairing_price_italic %}
+    <style>.pairing-item-price { font-style: italic !important; }</style>
+    {% endif %}
     {% endif %}
 
 </head>
@@ -155,6 +206,25 @@
                     {% for item in items %}
                     <div class="menu-item{% if item.display_mode == 'combined' %} menu-item-combined{% endif %}" id="menu-{{ item.id }}"
                          {% if item.enable_detail_view %}data-detail="true" data-detail-name="{{ item.name }}" data-detail-name-en="{{ item.name_en|default:'' }}" data-detail-price="{{ item.price }}" data-detail-desc="{{ item.detail_description|default:item.description|default:'' }}" data-detail-notes="{{ item.notes|default:'' }}" data-detail-img="{% if item.detail_image %}{{ item.detail_image.url }}{% elif item.menu_image %}{{ item.menu_image.url }}{% endif %}" data-detail-opacity="{{ item.lightbox_opacity|default:35 }}"{% endif %}>
+
+                        {% if item.enable_detail_view %}
+                        <div class="menu-item-pairings-data" style="display:none;">
+                            {% for pairing in item.pairings.all %}
+                                <div class="pairing-item-card">
+                                    {% if pairing.image %}
+                                        <div class="pairing-item-image">
+                                            <img src="{{ pairing.image.url }}" alt="{{ pairing.name }}">
+                                        </div>
+                                    {% endif %}
+                                    <div class="pairing-item-info">
+                                        <div class="pairing-item-name">{{ pairing.name }}</div>
+                                        <div class="pairing-item-desc">{{ pairing.description|linebreaksbr }}</div>
+                                        <div class="pairing-item-price">{{ pairing.price }}</div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
 
                         {% if item.display_mode == 'combined' and item.menu_image %}
                             <!-- combined 모드: 좌측 이미지 + 우측 텍스트 -->
@@ -253,6 +323,11 @@
                 <div class="detail-modal-footer">
                     <span class="menu-notes" id="detailModalNotes"></span>
                     <span class="menu-price" id="detailModalPrice"></span>
+                </div>
+                <!-- 추천 페어링 영역 -->
+                <div class="detail-modal-pairings" id="detailModalPairingsSection" style="display: none;">
+                    <div class="pairings-heading">추천 페어링</div>
+                    <div class="pairings-container" id="detailModalPairingsContainer"></div>
                 </div>
             </div>
         </div>

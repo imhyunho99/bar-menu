@@ -148,6 +148,27 @@ class SiteSettings(models.Model):
     category_name_en_bold = models.BooleanField(default=False, verbose_name="카테고리명(영문) 볼드")
     category_name_en_italic = models.BooleanField(default=False, verbose_name="카테고리명(영문) 이탤릭")
     
+    # 추천 페어링명 설정
+    pairing_name_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링명 폰트 파일")
+    pairing_name_color = models.CharField(max_length=7, blank=True, default='', verbose_name="페어링명 색상", help_text="#ffffff")
+    pairing_name_size = models.IntegerField(blank=True, null=True, verbose_name="페어링명 크기", help_text="픽셀 단위 (예: 14)")
+    pairing_name_bold = models.BooleanField(default=False, verbose_name="페어링명 볼드")
+    pairing_name_italic = models.BooleanField(default=False, verbose_name="페어링명 이탤릭")
+
+    # 추천 페어링 설명 설정
+    pairing_description_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링 설명 폰트 파일")
+    pairing_description_color = models.CharField(max_length=7, blank=True, default='', verbose_name="페어링 설명 색상", help_text="#888888")
+    pairing_description_size = models.IntegerField(blank=True, null=True, verbose_name="페어링 설명 크기", help_text="픽셀 단위 (예: 11)")
+    pairing_description_bold = models.BooleanField(default=False, verbose_name="페어링 설명 볼드")
+    pairing_description_italic = models.BooleanField(default=False, verbose_name="페어링 설명 이탤릭")
+
+    # 추천 페어링 가격 설정
+    pairing_price_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링 가격 폰트 파일")
+    pairing_price_color = models.CharField(max_length=7, blank=True, default='', verbose_name="페어링 가격 색상", help_text="#ffffff")
+    pairing_price_size = models.IntegerField(blank=True, null=True, verbose_name="페어링 가격 크기", help_text="픽셀 단위 (예: 12)")
+    pairing_price_bold = models.BooleanField(default=False, verbose_name="페어링 가격 볼드")
+    pairing_price_italic = models.BooleanField(default=False, verbose_name="페어링 가격 이탤릭")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -357,4 +378,27 @@ class MenuItem(models.Model):
         if self.detail_image:
             self.detail_image = optimize_image(self.detail_image, max_width=1200, quality=85)
         super().save(*args, **kwargs)
+
+
+class MenuItemPairing(models.Model):
+    menu_item = models.ForeignKey(MenuItem, on_delete=models.CASCADE, related_name='pairings', verbose_name="메뉴 항목")
+    name = models.CharField(max_length=100, verbose_name="주류 이름")
+    image = models.ImageField(upload_to='pairing_images/', blank=True, null=True, verbose_name="주류 이미지")
+    description = models.TextField(blank=True, null=True, verbose_name="주류 간단 설명")
+    price = models.CharField(max_length=50, blank=True, null=True, verbose_name="주류 가격")
+    priority = models.IntegerField(default=0, verbose_name="우선순위")
+
+    class Meta:
+        verbose_name = "추천 페어링"
+        verbose_name_plural = "추천 페어링"
+        ordering = ['priority', 'id']
+
+    def __str__(self):
+        return f"{self.menu_item.name} - {self.name}"
+
+    def save(self, *args, **kwargs):
+        if self.image:
+            self.image = optimize_image(self.image, max_width=300, quality=80)
+        super().save(*args, **kwargs)
+
     
