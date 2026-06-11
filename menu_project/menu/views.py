@@ -136,8 +136,9 @@ def menu_list(request, category_id, restaurant_slug=None):
 def contact_us_view(request):
     name = request.POST.get('name', '').strip()
     contact_info = request.POST.get('contact_info', '').strip()
+    plan = request.POST.get('plan', 'general').strip()
     if not name or not contact_info:
         return JsonResponse({'status': 'error', 'message': '모든 필드를 입력해 주세요.'}, status=400)
     
-    ContactSubmission.objects.create(name=name, contact_info=contact_info)
+    ContactSubmission.objects.create(name=name, contact_info=contact_info, plan=plan)
     return JsonResponse({'status': 'success', 'message': '문의가 정상적으로 접수되었습니다. 확인 후 연락드리겠습니다.'})

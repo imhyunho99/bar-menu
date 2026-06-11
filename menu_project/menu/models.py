@@ -405,6 +405,7 @@ class MenuItemPairing(models.Model):
 class ContactSubmission(models.Model):
     name = models.CharField(max_length=100, verbose_name="이름(업체명)")
     contact_info = models.CharField(max_length=200, verbose_name="연락처 또는 이메일")
+    plan = models.CharField(max_length=50, default='general', verbose_name="선택 요금제")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="접수 일시")
 
     class Meta:
@@ -413,7 +414,7 @@ class ContactSubmission(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.name} ({self.contact_info})"
+        return f"{self.name} ({self.contact_info}) - {self.plan}"
 
 
     

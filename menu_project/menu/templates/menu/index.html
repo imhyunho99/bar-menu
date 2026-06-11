@@ -492,6 +492,139 @@
                 color: var(--card-border);
             }
         }
+
+        /* Pricing Section */
+        .pricing-section {
+            padding: 80px 0;
+            border-top: 1px solid var(--card-border);
+            text-align: center;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .pricing-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 40px 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pricing-card.featured {
+            border-color: var(--primary);
+            box-shadow: 0 10px 30px rgba(138, 43, 226, 0.15);
+            background: linear-gradient(180deg, rgba(138, 43, 226, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+        }
+
+        .pricing-card.featured::after {
+            content: 'POPULAR';
+            position: absolute;
+            top: 15px;
+            right: -35px;
+            background: var(--gradient);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 4px 30px;
+            transform: rotate(45deg);
+            letter-spacing: 1px;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(138, 43, 226, 0.2);
+            border-color: rgba(138, 43, 226, 0.5);
+        }
+
+        .plan-name {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+            color: var(--text-primary);
+        }
+
+        .plan-price-box {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .price-setup {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--secondary);
+            margin-bottom: 5px;
+        }
+
+        .price-maintenance {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+            line-height: 1.5;
+        }
+
+        .plan-features-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 35px 0;
+            width: 100%;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .plan-feature-item {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .plan-feature-item::before {
+            content: '✓';
+            color: var(--secondary);
+            font-weight: 800;
+        }
+
+        .plan-cta-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+            background: rgba(255, 255, 255, 0.03);
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            text-decoration: none;
+            margin-top: auto;
+        }
+
+        .pricing-card.featured .plan-cta-btn {
+            background: var(--gradient);
+            border: none;
+        }
+
+        .plan-cta-btn:hover {
+            background: var(--gradient);
+            border-color: transparent;
+            box-shadow: 0 5px 15px var(--primary-glow);
+            transform: translateY(-2px);
+            color: white;
+        }
     </style>
 
     <!-- Schema.json for Google Local SEO -->
@@ -591,6 +724,62 @@
             </div>
         </section>
 
+        <!-- Pricing Section -->
+        <section class="pricing-section" id="pricing">
+            <h2 class="section-title">합리적인 도입 요금제</h2>
+            <p class="section-subtitle">매장 규모와 브랜딩 니즈에 맞춘 세 가지 옵션을 제공합니다.</p>
+            
+            <div class="pricing-grid">
+                <!-- Standard Card -->
+                <div class="pricing-card">
+                    <h3 class="plan-name">Standard</h3>
+                    <div class="plan-price-box">
+                        <div class="price-setup">구축비 50만원</div>
+                        <div class="price-maintenance">유지비 월 3만원 또는 연 30만원 (택 1)</div>
+                    </div>
+                    <ul class="plan-features-list">
+                        <li class="plan-feature-item">초기 메뉴판 데이터 구축 (기존 지면/이미지 기준)</li>
+                        <li class="plan-feature-item">기본 테마 및 레이아웃 제공</li>
+                        <li class="plan-feature-item">초경량 WebP 최적화 기본 적용</li>
+                        <li class="plan-feature-item">주류 페어링 연동 기본 적용</li>
+                    </ul>
+                    <a href="#contact" class="plan-cta-btn" onclick="selectPlan('standard')">Standard 도입 문의</a>
+                </div>
+                
+                <!-- Pro Card -->
+                <div class="pricing-card featured">
+                    <h3 class="plan-name">Pro</h3>
+                    <div class="plan-price-box">
+                        <div class="price-setup">구축비 80만원</div>
+                        <div class="price-maintenance">유지비 월 5만원 또는 연 50만원 (택 1)</div>
+                    </div>
+                    <ul class="plan-features-list">
+                        <li class="plan-feature-item"><strong>Standard의 모든 혜택 포함</strong></li>
+                        <li class="plan-feature-item">매장 맞춤형 프리미엄 디자인 고도화</li>
+                        <li class="plan-feature-item">인트로/로딩용 랜딩 비디오 제작 및 삽입</li>
+                        <li class="plan-feature-item">관리자 최적화 전용 서체 및 스타일 패키지</li>
+                    </ul>
+                    <a href="#contact" class="plan-cta-btn" onclick="selectPlan('pro')">Pro 도입 문의</a>
+                </div>
+                
+                <!-- Premium Card -->
+                <div class="pricing-card">
+                    <h3 class="plan-name">Premium</h3>
+                    <div class="plan-price-box">
+                        <div class="price-setup">가격 상담 문의</div>
+                        <div class="price-maintenance">요구사항에 맞춰 견적 산정</div>
+                    </div>
+                    <ul class="plan-features-list">
+                        <li class="plan-feature-item">커스텀 추가 기능 및 비즈니스 로직 개발</li>
+                        <li class="plan-feature-item">프랜차이즈 다지점 통합 관리자 계정 구성</li>
+                        <li class="plan-feature-item">전문 디자이너 1:1 전담 브랜딩 컨설팅</li>
+                        <li class="plan-feature-item">24/7 우선 기술 지원 서비스</li>
+                    </ul>
+                    <a href="#contact" class="plan-cta-btn" onclick="selectPlan('premium')">Premium 도입 문의</a>
+                </div>
+            </div>
+        </section>
+
         <!-- Contact Us Section -->
         <section class="contact-section" id="contact">
             <h2 class="section-title">제휴 및 도입 문의</h2>
@@ -606,6 +795,15 @@
                     <div class="form-group">
                         <label for="id_contact" class="form-label">연락처 또는 이메일</label>
                         <input type="text" id="id_contact" name="contact_info" class="form-input" placeholder="연락처 또는 이메일을 입력해 주세요" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="id_plan" class="form-label">관심 요금제</label>
+                        <select id="id_plan" name="plan" class="form-input" style="background-color: #080710; color: white;">
+                            <option value="general">일반 문의 (선택 안 함)</option>
+                            <option value="standard">Standard 요금제</option>
+                            <option value="pro">Pro 요금제</option>
+                            <option value="premium">Premium 요금제</option>
+                        </select>
                     </div>
                     <button type="submit" class="submit-btn" id="submitBtn">문의 접수하기</button>
                     <div id="formStatus" class="form-status"></div>
@@ -642,6 +840,13 @@
     </div>
 
     <script>
+        function selectPlan(planId) {
+            const selectEl = document.getElementById('id_plan');
+            if (selectEl) {
+                selectEl.value = planId;
+            }
+        }
+
         document.getElementById('contactForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const form = e.target;

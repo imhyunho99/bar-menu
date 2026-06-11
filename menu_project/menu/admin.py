@@ -160,7 +160,7 @@ class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
 
 @admin.register(ContactSubmission)
 class ContactSubmissionAdmin(admin.ModelAdmin):
-    list_display = ('name', 'contact_info', 'created_at')
-    search_fields = ('name', 'contact_info')
-    list_filter = ('created_at',)
+    list_display = ('name', 'contact_info', 'plan', 'created_at')
+    search_fields = ('name', 'contact_info', 'plan')
+    list_filter = ('plan', 'created_at')
 
