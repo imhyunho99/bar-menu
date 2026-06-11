@@ -369,6 +369,129 @@
                 gap: 10px;
             }
         }
+
+        /* Contact Form Section */
+        .contact-section {
+            padding: 80px 0;
+            border-top: 1px solid var(--card-border);
+            text-align: center;
+        }
+
+        .contact-container {
+            max-width: 600px;
+            margin: 40px auto 0;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .contact-form {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            text-align: left;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-label {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .form-input {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 14px 16px;
+            color: white;
+            font-size: 1rem;
+            font-family: var(--font-ko);
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--secondary);
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .submit-btn {
+            background: var(--gradient);
+            border: none;
+            border-radius: 8px;
+            padding: 16px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px var(--primary-glow);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .form-status {
+            margin-top: 15px;
+            font-size: 0.95rem;
+            text-align: center;
+            display: none;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .form-status.success {
+            display: block;
+            background: rgba(46, 213, 115, 0.1);
+            color: #2ed573;
+            border: 1px solid rgba(46, 213, 115, 0.2);
+        }
+
+        .form-status.error {
+            display: block;
+            background: rgba(255, 71, 87, 0.1);
+            color: #ff4757;
+            border: 1px solid rgba(255, 71, 87, 0.2);
+        }
+
+        .footer-info {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 15px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .footer-info span {
+            position: relative;
+        }
+
+        @media (min-width: 769px) {
+            .footer-info span:not(:last-child)::after {
+                content: '|';
+                position: absolute;
+                right: -12px;
+                color: var(--card-border);
+            }
+        }
     </style>
 
     <!-- Schema.json for Google Local SEO -->
@@ -403,7 +526,6 @@
         <header>
             <div class="header-logo" id="logoText">bar-menu</div>
             <div class="nav-links">
-                <a href="/admin/" class="nav-btn" id="loginBtn">관리자 로그인</a>
                 <a href="#demo" class="nav-btn nav-btn-primary" id="demoBtn">체험 매장 보기</a>
             </div>
         </header>
@@ -417,7 +539,7 @@
                 매장 분위기에 맞춰 폰트, 색상, 레이아웃을 마음대로 디자인하세요.
             </p>
             <div class="hero-buttons">
-                <a href="/admin/" class="nav-btn nav-btn-primary" id="ctaMain">무료로 시작하기</a>
+                <a href="#contact" class="nav-btn nav-btn-primary" id="ctaMain">제휴 문의하기</a>
                 <a href="#features" class="nav-btn" id="ctaSub">주요 기능 둘러보기</a>
             </div>
         </section>
@@ -469,6 +591,28 @@
             </div>
         </section>
 
+        <!-- Contact Us Section -->
+        <section class="contact-section" id="contact">
+            <h2 class="section-title">제휴 및 도입 문의</h2>
+            <p class="section-subtitle">bar-menu와 함께 스마트한 매장 관리를 시작해 보세요. 빠른 시일 내에 안내해 드리겠습니다.</p>
+            
+            <div class="contact-container">
+                <form id="contactForm" class="contact-form" method="POST">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="id_name" class="form-label">이름 또는 업체명 (매장명)</label>
+                        <input type="text" id="id_name" name="name" class="form-input" placeholder="예: 한식술집 소록" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="id_contact" class="form-label">연락처 또는 이메일</label>
+                        <input type="text" id="id_contact" name="contact_info" class="form-input" placeholder="예: 010-1234-5678 또는 contact@example.com" required>
+                    </div>
+                    <button type="submit" class="submit-btn" id="submitBtn">문의 접수하기</button>
+                    <div id="formStatus" class="form-status"></div>
+                </form>
+            </div>
+        </section>
+
         <!-- Partners Section / Live Demo Links -->
         <section class="partners" id="demo">
             <h2 class="section-title">이용 중인 매장 체험</h2>
@@ -488,9 +632,60 @@
 
         <!-- Footer -->
         <footer>
+            <div class="footer-info">
+                <span>상호명: bar-menu</span>
+                <span>대표자 성명: 나현호</span>
+                <span>사업자등록번호: 102-13-82292</span>
+            </div>
             <p>&copy; 2026 bar-menu. All Rights Reserved. 디자인 및 실시간 편집에 특화된 스마트 QR 메뉴판 서비스.</p>
         </footer>
     </div>
+
+    <script>
+        document.getElementById('contactForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const form = e.target;
+            const statusDiv = document.getElementById('formStatus');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            // disable button
+            submitBtn.disabled = true;
+            submitBtn.innerText = '접수 중...';
+            statusDiv.className = 'form-status';
+            statusDiv.style.display = 'none';
+
+            const formData = new FormData(form);
+            
+            fetch('/contact-us/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json().then(data => ({ status: response.status, body: data })))
+            .then(res => {
+                if (res.status === 200) {
+                    statusDiv.className = 'form-status success';
+                    statusDiv.innerText = res.body.message;
+                    form.reset();
+                } else {
+                    statusDiv.className = 'form-status error';
+                    statusDiv.innerText = res.body.message || '오류가 발생했습니다.';
+                }
+                statusDiv.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.innerText = '문의 접수하기';
+            })
+            .catch(error => {
+                statusDiv.className = 'form-status error';
+                statusDiv.innerText = '네트워크 연결 상태를 확인해 주세요.';
+                statusDiv.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.innerText = '문의 접수하기';
+            });
+        });
+    </script>
 </body>
 
 </html>

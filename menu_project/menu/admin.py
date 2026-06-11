@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import Restaurant, UserProfile, Category, MenuItem, SiteSettings, MenuItemPairing
+from .models import Restaurant, UserProfile, Category, MenuItem, SiteSettings, MenuItemPairing, ContactSubmission
 
 class MenuItemPairingInline(admin.TabularInline):
     model = MenuItemPairing
@@ -156,3 +156,11 @@ class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
                 if SiteSettings.objects.filter(restaurant=request.user.profile.restaurant).exists():
                     return False
         return super().has_add_permission(request)
+
+
+@admin.register(ContactSubmission)
+class ContactSubmissionAdmin(admin.ModelAdmin):
+    list_display = ('name', 'contact_info', 'created_at')
+    search_fields = ('name', 'contact_info')
+    list_filter = ('created_at',)
+

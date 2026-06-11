@@ -401,4 +401,19 @@ class MenuItemPairing(models.Model):
             self.image = optimize_image(self.image, max_width=300, quality=80)
         super().save(*args, **kwargs)
 
+
+class ContactSubmission(models.Model):
+    name = models.CharField(max_length=100, verbose_name="이름(업체명)")
+    contact_info = models.CharField(max_length=200, verbose_name="연락처 또는 이메일")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="접수 일시")
+
+    class Meta:
+        verbose_name = "제휴 문의"
+        verbose_name_plural = "제휴 문의 목록"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.contact_info})"
+
+
     

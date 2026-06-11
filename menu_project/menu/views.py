@@ -1,7 +1,8 @@
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Case, When, IntegerField, Q
 from django.http import JsonResponse
-from .models import MenuItem, Category, SiteSettings, Restaurant
+from django.views.decorators.http import require_POST
+from .models import MenuItem, Category, SiteSettings, Restaurant, ContactSubmission
 
 def index_view(request):
     """
@@ -129,3 +130,14 @@ def menu_list(request, category_id, restaurant_slug=None):
             'prev_category': prev_category,
             'next_category': next_category
         })
+
+
+@require_POST
+def contact_us_view(request):
+    name = request.POST.get('name', '').strip()
+    contact_info = request.POST.get('contact_info', '').strip()
+    if not name or not contact_info:
+        return JsonResponse({'status': 'error', 'message': '모든 필드를 입력해 주세요.'}, status=400)
+    
+    ContactSubmission.objects.create(name=name, contact_info=contact_info)
+    return JsonResponse({'status': 'success', 'message': '문의가 정상적으로 접수되었습니다. 확인 후 연락드리겠습니다.'})

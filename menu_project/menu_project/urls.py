@@ -15,6 +15,9 @@ urlpatterns = [
     # 메인 페이지 (매장 목록)
     path('', menu_views.index_view, name='index'),
     
+    # 제휴 문의 접수
+    path('contact-us/', menu_views.contact_us_view, name='contact_us'),
+    
     # 식당별 URL (예: /bid/..., /cafe/...)
     path('<slug:restaurant_slug>/', include('menu.urls')),
 ]
