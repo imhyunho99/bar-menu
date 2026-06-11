@@ -68,10 +68,23 @@ class CategoryAdmin(RestaurantFilterMixin, admin.ModelAdmin):
     list_display = ('name', 'restaurant', 'priority')
     list_filter = ('restaurant',) # Superuser에게만 보임 (Mixin 처리)
 
+class RestaurantCategoryFilter(admin.RelatedFieldListFilter):
+    def __init__(self, field, request, params, model, model_admin, field_path):
+        super().__init__(field, request, params, model, model_admin, field_path)
+        if not request.user.is_superuser and hasattr(request.user, 'profile') and request.user.profile.restaurant:
+            allowed_category_ids = set(
+                Category.objects.filter(restaurant=request.user.profile.restaurant).values_list('id', flat=True)
+            )
+            self.lookup_choices = [
+                choice for choice in self.lookup_choices 
+                if choice[0] in allowed_category_ids
+            ]
+
+
 @admin.register(MenuItem)
 class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
     list_display = ('name', 'restaurant', 'category', 'price', 'display_mode', 'is_available')
-    list_filter = ('restaurant', 'category', 'is_available', 'display_mode')
+    list_filter = ('restaurant', ('category', RestaurantCategoryFilter), 'is_available', 'display_mode')
     search_fields = ('name', 'description')
     inlines = [MenuItemPairingInline]
     fieldsets = (
