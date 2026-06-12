@@ -657,7 +657,10 @@
     <div class="wrapper">
         <!-- Header -->
         <header>
-            <div class="header-logo" id="logoText">bar-menu</div>
+            <div class="logo-container" style="display: flex; align-items: center; gap: 10px;">
+                <img src="{% static 'site_images/logo.png' %}" alt="bar-menu logo" style="height: 32px; width: 32px; object-fit: contain;">
+                <span class="header-logo" id="logoText">bar-menu</span>
+            </div>
             <div class="nav-links">
                 <a href="#demo" class="nav-btn nav-btn-primary" id="demoBtn">체험 매장 보기</a>
             </div>
