@@ -44,13 +44,23 @@ class RestaurantFilterMixin:
         # 일반 유저는 restaurant 필터 불필요 (어차피 하나만 보임)
         return [f for f in super().get_list_filter(request) if f != 'restaurant']
 
-    def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
+    def get_fields(self, request, obj=None):
+        fields = super().get_fields(request, obj)
         if not request.user.is_superuser:
-            # 일반 유저에게는 restaurant 필드를 숨김 (자동 할당되므로)
-            if 'restaurant' in form.base_fields:
-                del form.base_fields['restaurant']
-        return form
+            fields = [f for f in fields if f != 'restaurant']
+        return fields
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        if not request.user.is_superuser:
+            new_fieldsets = []
+            for name, options in fieldsets:
+                new_options = dict(options)
+                if 'fields' in new_options:
+                    new_options['fields'] = [f for f in new_options['fields'] if f != 'restaurant']
+                new_fieldsets.append((name, new_options))
+            return new_fieldsets
+        return fieldsets
 
 # Restaurant 모델 등록 (Superuser 전용)
 @admin.register(Restaurant)
