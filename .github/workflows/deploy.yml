@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy.yml'
 
 jobs:
   deploy:
@@ -23,10 +26,12 @@ jobs:
           cd ~/bar_menu
           git fetch origin main
           git reset --hard origin/main
+          cd backend
           source venv/bin/activate
           pip install -q -r requirements.txt
           cd menu_project
           python manage.py migrate --noinput
           python manage.py collectstatic --noinput
           sudo systemctl restart uwsgi
-          echo "✓ Deployment completed successfully!"
+          echo "✓ Backend Deployment completed successfully!"
+

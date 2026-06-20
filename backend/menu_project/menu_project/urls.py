@@ -12,13 +12,16 @@ urlpatterns = [
     # path('qr/', generate_qr_code, name='qr_code'),  <-- 제거됨 (앱 URL에서 처리)
     path('favicon.ico', RedirectView.as_view(url=settings.STATIC_URL + 'favicon.ico')),
     
-    # 메인 페이지 (매장 목록)
+    # REST API
+    path('api/v1/', include('menu.api.urls')),
+    
+    # 메인 페이지 (매장 목록) — 기존 SSR (점진적 전환 시 유지)
     path('', menu_views.index_view, name='index'),
     
-    # 제휴 문의 접수
+    # 제휴 문의 접수 — 기존 SSR
     path('contact-us/', menu_views.contact_us_view, name='contact_us'),
     
-    # 식당별 URL (예: /bid/..., /cafe/...)
+    # 식당별 URL (예: /bid/..., /cafe/...) — 기존 SSR
     path('<slug:restaurant_slug>/', include('menu.urls')),
 ]
 
