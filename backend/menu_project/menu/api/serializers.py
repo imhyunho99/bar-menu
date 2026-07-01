@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ..models import Restaurant, SiteSettings, Category, MenuItem, MenuItemPairing, ContactSubmission
+from ..models import Restaurant, SiteSettings, Category, MenuItem, MenuItemPairing, ContactSubmission, Order, OrderItem
 
 
 class MenuItemPairingSerializer(serializers.ModelSerializer):
@@ -126,6 +126,7 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
             'logo_image', 'intro_image', 'intro_video', 'loading_video_2',
             'show_manual_card', 'side_image',
             'background_color', 'category_card_color', 'menu_card_color',
+            'wifi_ssid', 'wifi_password', 'wifi_security', 'enable_wifi', 'enable_payhere', 'enable_cart', 'payhere_store_id', 'restrict_by_ip', 'restrict_by_wifi_ssid', 'disable_screenshots',
             # 메뉴명(한글)
             'menu_name_font_url', 'menu_name_color', 'menu_name_size',
             'menu_name_bold', 'menu_name_italic',
@@ -238,3 +239,24 @@ class ContactSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactSubmission
         fields = ['name', 'contact_info', 'plan']
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ['menu_item', 'name', 'price', 'quantity']
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True)
+
+    class Meta:
+        model = Order
+        fields = ['id', 'table_number', 'status', 'total_price', 'created_at', 'items']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+        order = Order.objects.create(**validated_data)
+        for item_data in items_data:
+            OrderItem.objects.create(order=order, **item_data)
+        return order

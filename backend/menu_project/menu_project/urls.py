@@ -6,6 +6,10 @@ from django.views.generic import RedirectView
 from menu.qr_views import generate_qr_code
 from menu import views as menu_views # 이 줄을 다시 추가합니다.
 
+admin.site.site_header = "bar-menu 통합 관리 시스템"
+admin.site.site_title = "bar-menu 관리 포탈"
+admin.site.index_title = "기본 DB 설정 관리"
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     # QR 코드 생성 등은 slug 없이 접근 가능하게 유지하거나 필요에 따라 slug 포함

@@ -1,0 +1,891 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    #menu-workspace-container {
+        display: flex;
+        gap: 24px;
+        margin-top: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .workspace-sidebar {
+        width: 320px;
+        min-width: 320px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .workspace-main {
+        flex: 1;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .workspace-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .workspace-title-section h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+    .workspace-title-section p {
+        margin: 4px 0 0 0;
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+    .category-tree-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #475569;
+        margin: 0 0 12px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 8px;
+    }
+    .category-tree-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .category-node {
+        margin-bottom: 6px;
+    }
+    .category-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 6px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        color: #334155;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+    }
+    .category-item:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+    .category-item.active {
+        background: #eff6ff;
+        border-color: #3b82f6;
+        color: #1d4ed8;
+    }
+    .category-item .node-actions {
+        margin-left: auto;
+        opacity: 0;
+        transition: opacity 0.2s;
+        display: flex;
+        gap: 6px;
+    }
+    .category-item:hover .node-actions {
+        opacity: 1;
+    }
+    .action-icon {
+        color: #64748b;
+        font-size: 0.8rem;
+        text-decoration: none;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+    }
+    .action-icon:hover {
+        color: #1e293b;
+        background: #e2e8f0;
+    }
+    .category-sub-list {
+        list-style: none;
+        padding-left: 20px;
+        margin: 4px 0 0 0;
+        border-left: 1px dashed #cbd5e1;
+    }
+    .menu-list-title-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 12px;
+        margin-bottom: 16px;
+    }
+    .menu-list-title-section h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+    
+    /* 일괄 작업 바 */
+    .bulk-action-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        padding: 8px 16px;
+        border-radius: 6px;
+        margin-bottom: 12px;
+        font-size: 0.85rem;
+    }
+    
+    .menu-item-row {
+        display: flex;
+        align-items: center;
+        padding: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        background: #ffffff;
+        transition: all 0.2s;
+    }
+    .menu-item-row:hover {
+        border-color: #cbd5e1;
+    }
+    .menu-item-row.drag-over {
+        background: #f0fdf4 !important;
+        border-color: #22c55e !important;
+    }
+    .menu-item-drag-handle {
+        cursor: grab;
+        color: #94a3b8;
+        font-size: 1.2rem;
+        margin-right: 12px;
+        user-select: none;
+    }
+    .menu-item-select-wrap {
+        margin-right: 12px;
+        display: flex;
+        align-items: center;
+    }
+    .menu-item-select-wrap input[type=checkbox] {
+        cursor: pointer;
+        width: 16px;
+        height: 16px;
+    }
+    .menu-item-thumb {
+        width: 48px;
+        height: 48px;
+        border-radius: 6px;
+        background: #f1f5f9;
+        object-fit: cover;
+        margin-right: 12px;
+        border: 1px solid #e2e8f0;
+    }
+    .menu-item-info {
+        flex: 1;
+    }
+    .menu-item-info .item-name {
+        font-weight: 700;
+        color: #1e293b;
+        font-size: 0.95rem;
+        text-decoration: none;
+    }
+    .menu-item-info .item-name:hover {
+        color: #3b82f6;
+        text-decoration: underline;
+    }
+    .menu-item-info .item-name-en {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 2px;
+    }
+    .menu-item-price {
+        font-weight: 700;
+        color: #475569;
+        font-size: 0.9rem;
+        margin-right: 24px;
+        width: 100px;
+        text-align: right;
+    }
+    .menu-item-status {
+        margin-right: 24px;
+    }
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 22px;
+    }
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #cbd5e1;
+        transition: .3s;
+        border-radius: 22px;
+    }
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px; width: 16px; left: 3px; bottom: 3px;
+        background-color: white;
+        transition: .3s;
+        border-radius: 50%;
+    }
+    input:checked + .slider {
+        background-color: #22c55e;
+    }
+    input:checked + .slider:before {
+        transform: translateX(22px);
+    }
+    .menu-item-actions {
+        display: flex;
+        gap: 8px;
+    }
+    .btn-workspace {
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+    }
+    .btn-workspace-primary {
+        background: #3b82f6;
+        color: #ffffff !important;
+    }
+    .btn-workspace-primary:hover {
+        background: #2563eb;
+    }
+    .btn-workspace-secondary {
+        background: #f1f5f9;
+        color: #475569 !important;
+        border-color: #cbd5e1;
+    }
+    .btn-workspace-secondary:hover {
+        background: #e2e8f0;
+        color: #1e293b !important;
+    }
+    .btn-workspace-danger {
+        background: #fee2e2;
+        color: #ef4444 !important;
+        border-color: #fca5a5;
+    }
+    .btn-workspace-danger:hover {
+        background: #fecaca;
+    }
+    .drawer-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 10000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+    .drawer-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .drawer-panel {
+        position: fixed;
+        top: 0; right: -600px; width: 600px; height: 100%;
+        background: #ffffff;
+        box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+        z-index: 10001;
+        transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        flex-direction: column;
+    }
+    .drawer-overlay.open .drawer-panel {
+        right: 0;
+    }
+    .drawer-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f8fafc;
+    }
+    .drawer-title {
+        font-weight: 700;
+        font-size: 1.05rem;
+        color: #1e293b;
+        margin: 0;
+    }
+    .drawer-close {
+        cursor: pointer;
+        font-size: 1.5rem;
+        color: #64748b;
+        background: none;
+        border: none;
+        padding: 0;
+        line-height: 1;
+    }
+    .drawer-close:hover {
+        color: #1e293b;
+    }
+    .drawer-body {
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+    }
+    .drawer-iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <div class="workspace-header">
+        <div class="workspace-title-section">
+            <h2>{{ selected_restaurant.name }} 통합 관리 워크스페이스</h2>
+            <p>가게 카테고리 계층 구조와 메뉴 항목을 한눈에 보고 실시간으로 편집 관리할 수 있습니다.</p>
+        </div>
+        <div>
+            {% if restaurants %}
+            <select id="restaurant-selector" onchange="switchRestaurant(this.value)" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 600; font-size: 0.9rem;">
+                {% for r in restaurants %}
+                <option value="{{ r.id }}" {% if r.id == selected_restaurant.id %}selected{% endif %}>{{ r.name }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="menu-workspace-container">
+        <!-- 2.1 왼쪽: 카테고리 트리 사이드바 -->
+        <div class="workspace-sidebar">
+            <div class="category-tree-title">
+                <span>📁 카테고리 트리</span>
+                <button type="button" class="btn-workspace btn-workspace-secondary" onclick="openDrawer('/admin/menu/category/add/?_popup=1', '카테고리 추가')" style="padding: 3px 8px; font-size: 0.75rem;">+ 추가</button>
+            </div>
+            
+            <ul class="category-tree-list">
+                <li class="category-node">
+                    <div class="category-item active" id="cat-all" onclick="filterCategory('all')">
+                        <span>전체 보기</span>
+                    </div>
+                </li>
+                
+                {% for cat in workspace_data.top_categories %}
+                <li class="category-node" data-id="{{ cat.id }}">
+                    <div class="category-item" id="cat-{{ cat.id }}" onclick="filterCategory('{{ cat.id }}')">
+                        <span>{{ cat.name }}</span>
+                        <div class="node-actions">
+                            <a href="#" class="action-icon" onclick="event.stopPropagation(); openDrawer('/admin/menu/category/{{ cat.id }}/change/?_popup=1', '카테고리 수정')">⚙</a>
+                        </div>
+                    </div>
+                    
+                    {% if cat.sub_categories %}
+                    <ul class="category-sub-list">
+                        {% for sub in cat.sub_categories %}
+                        <li class="category-node" data-id="{{ sub.id }}">
+                            <div class="category-item" id="cat-{{ sub.id }}" onclick="filterCategory('{{ sub.id }}')">
+                                <span>{{ sub.name }}</span>
+                                <div class="node-actions">
+                                    <a href="#" class="action-icon" onclick="event.stopPropagation(); openDrawer('/admin/menu/category/{{ sub.id }}/change/?_popup=1', '카테고리 수정')">⚙</a>
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </li>
+                {% endfor %}
+                
+                {% if workspace_data.no_category_items %}
+                <li class="category-node">
+                    <div class="category-item" id="cat-none" onclick="filterCategory('none')">
+                        <span>분류되지 않은 메뉴</span>
+                    </div>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        
+        <!-- 2.2 오른쪽: 메뉴 아이템 목록 -->
+        <div class="workspace-main">
+            <div class="menu-list-title-section">
+                <h3 id="current-category-title">전체 메뉴 목록</h3>
+                <button type="button" class="btn-workspace btn-workspace-primary" onclick="openAddMenuDrawer()">+ 메뉴 추가</button>
+            </div>
+            
+            <!-- 다중 선택 일괄 작업 바 -->
+            <div class="bulk-action-bar">
+                <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" style="cursor: pointer; width: 16px; height: 16px;">
+                <span style="font-weight: 600; color: #475569;">전체 선택</span>
+                <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+                    <!-- 카테고리 이동 드롭다운 -->
+                    <select id="bulk-category-selector" style="padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.75rem; font-weight: 600; cursor: pointer; background: #ffffff;">
+                        <option value="">-- 카테고리 이동 --</option>
+                        <option value="none">분류되지 않은 메뉴</option>
+                        {% for cat in workspace_data.top_categories %}
+                            <option value="{{ cat.id }}">{{ cat.name }}</option>
+                            {% for sub in cat.sub_categories %}
+                                <option value="{{ sub.id }}">&nbsp;&nbsp;↳ {{ sub.name }}</option>
+                            {% endfor %}
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="btn-workspace btn-workspace-secondary" onclick="bulkMoveCategory()" style="padding: 4px 10px; font-size: 0.75rem;">선택 이동</button>
+                    <button type="button" class="btn-workspace btn-workspace-secondary" onclick="bulkDuplicate()" style="padding: 4px 10px; font-size: 0.75rem;">선택 복제</button>
+                    <button type="button" class="btn-workspace btn-workspace-danger" onclick="bulkDelete()" style="padding: 4px 10px; font-size: 0.75rem;">선택 삭제</button>
+                </div>
+            </div>
+            
+            <div id="menu-items-list-container">
+                <!-- Top categories menu items -->
+                {% for cat in workspace_data.top_categories %}
+                    {% for item in cat.menu_items %}
+                    <div class="menu-item-row" data-id="{{ item.id }}" data-category-id="{{ cat.id }}">
+                        <span class="menu-item-drag-handle">⋮⋮</span>
+                        <div class="menu-item-select-wrap">
+                            <input type="checkbox" class="item-select-checkbox" data-id="{{ item.id }}" onchange="updateSelectState()">
+                        </div>
+                        
+                        {% if item.image_url %}
+                        <img src="{{ item.image_url }}" class="menu-item-thumb" alt="" />
+                        {% else %}
+                        <div class="menu-item-thumb" style="display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #94a3b8; font-weight: 700;">No Img</div>
+                        {% endif %}
+                        
+                        <div class="menu-item-info">
+                            <a href="#" class="item-name" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/change/?_popup=1', '메뉴 수정')">{{ item.name }}</a>
+                            <div class="item-name-en">{{ item.name_en|default:"-" }}</div>
+                        </div>
+                        <div class="menu-item-price">₩{{ item.price }}</div>
+                        <div class="menu-item-status">
+                            <label class="switch">
+                                <input type="checkbox" {% if item.is_available %}checked{% endif %} onchange="toggleAvailable('{{ item.id }}', this)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="menu-item-actions">
+                            <button type="button" class="btn-workspace btn-workspace-secondary" onclick="duplicateItem('{{ item.id }}')">복제</button>
+                            <button type="button" class="btn-workspace btn-workspace-danger" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/delete/?_popup=1', '메뉴 삭제')">삭제</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% for sub in cat.sub_categories %}
+                        {% for item in sub.menu_items %}
+                        <div class="menu-item-row" data-id="{{ item.id }}" data-category-id="{{ sub.id }}">
+                            <span class="menu-item-drag-handle">⋮⋮</span>
+                            <div class="menu-item-select-wrap">
+                                <input type="checkbox" class="item-select-checkbox" data-id="{{ item.id }}" onchange="updateSelectState()">
+                            </div>
+                            
+                            {% if item.image_url %}
+                            <img src="{{ item.image_url }}" class="menu-item-thumb" alt="" />
+                            {% else %}
+                            <div class="menu-item-thumb" style="display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #94a3b8; font-weight: 700;">No Img</div>
+                            {% endif %}
+                            
+                            <div class="menu-item-info">
+                                <a href="#" class="item-name" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/change/?_popup=1', '메뉴 수정')">{{ item.name }}</a>
+                                <div class="item-name-en">{{ item.name_en|default:"-" }}</div>
+                            </div>
+                            <div class="menu-item-price">₩{{ item.price }}</div>
+                            <div class="menu-item-status">
+                                <label class="switch">
+                                    <input type="checkbox" {% if item.is_available %}checked{% endif %} onchange="toggleAvailable('{{ item.id }}', this)">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="menu-item-actions">
+                                <button type="button" class="btn-workspace btn-workspace-secondary" onclick="duplicateItem('{{ item.id }}')">복제</button>
+                                <button type="button" class="btn-workspace btn-workspace-danger" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/delete/?_popup=1', '메뉴 삭제')">삭제</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endfor %}
+                {% endfor %}
+                
+                <!-- Uncategorized menu items -->
+                {% for item in workspace_data.no_category_items %}
+                <div class="menu-item-row" data-id="{{ item.id }}" data-category-id="none">
+                    <span class="menu-item-drag-handle">⋮⋮</span>
+                    <div class="menu-item-select-wrap">
+                        <input type="checkbox" class="item-select-checkbox" data-id="{{ item.id }}" onchange="updateSelectState()">
+                    </div>
+                    
+                    {% if item.image_url %}
+                    <img src="{{ item.image_url }}" class="menu-item-thumb" alt="" />
+                    {% else %}
+                    <div class="menu-item-thumb" style="display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #94a3b8; font-weight: 700;">No Img</div>
+                    {% endif %}
+                    
+                    <div class="menu-item-info">
+                        <a href="#" class="item-name" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/change/?_popup=1', '메뉴 수정')">{{ item.name }}</a>
+                        <div class="item-name-en">{{ item.name_en|default:"-" }}</div>
+                    </div>
+                    <div class="menu-item-price">₩{{ item.price }}</div>
+                    <div class="menu-item-status">
+                        <label class="switch">
+                            <input type="checkbox" {% if item.is_available %}checked{% endif %} onchange="toggleAvailable('{{ item.id }}', this)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="menu-item-actions">
+                        <button type="button" class="btn-workspace btn-workspace-secondary" onclick="duplicateItem('{{ item.id }}')">복제</button>
+                        <button type="button" class="btn-workspace btn-workspace-danger" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/delete/?_popup=1', '메뉴 삭제')">삭제</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="drawer-overlay" class="drawer-overlay" onclick="closeDrawer()">
+    <div class="drawer-panel" onclick="event.stopPropagation()">
+        <div class="drawer-header">
+            <h4 class="drawer-title" id="drawer-title-element">수정하기</h4>
+            <button type="button" class="drawer-close" onclick="closeDrawer()">&times;</button>
+        </div>
+        <div class="drawer-body">
+            <iframe id="drawer-iframe" class="drawer-iframe" src="about:blank"></iframe>
+        </div>
+    </div>
+</div>
+
+<div id="workspace-toast" style="
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    padding: 10px 24px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    color: #fff; z-index: 99999; opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+    background: #417690;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+">토스트</div>
+
+<script>
+    let activeCategory = 'all';
+    
+    function filterCategory(catId) {
+        activeCategory = catId;
+        document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
+        const activeNode = document.getElementById('cat-' + catId);
+        if (activeNode) activeNode.classList.add('active');
+        
+        const titleEl = document.getElementById('current-category-title');
+        if (catId === 'all') titleEl.textContent = '전체 메뉴 목록';
+        else if (catId === 'none') titleEl.textContent = '분류되지 않은 메뉴 목록';
+        else titleEl.textContent = activeNode.querySelector('span').textContent + ' 메뉴 목록';
+        
+        const rows = document.querySelectorAll('.menu-item-row');
+        rows.forEach(row => {
+            const itemCatId = row.dataset.categoryId;
+            row.style.display = (catId === 'all' || (catId === 'none' && itemCatId === 'none') || itemCatId === catId) ? 'flex' : 'none';
+            // 필터 변경 시 숨겨진 로우의 체크박스는 선택 해제
+            if (row.style.display === 'none') {
+                const cb = row.querySelector('.item-select-checkbox');
+                if (cb) cb.checked = false;
+            }
+        });
+        updateSelectState();
+    }
+
+    // ─────────────────────────────────────────────
+    // 다중 선택 기능 제어
+    // ─────────────────────────────────────────────
+    function toggleSelectAll(masterCb) {
+        const visibleRows = document.querySelectorAll('.menu-item-row');
+        visibleRows.forEach(row => {
+            if (row.style.display !== 'none') {
+                const cb = row.querySelector('.item-select-checkbox');
+                if (cb) cb.checked = masterCb.checked;
+            }
+        });
+    }
+    
+    function updateSelectState() {
+        const visibleCheckboxes = Array.from(document.querySelectorAll('.menu-item-row'))
+            .filter(row => row.style.display !== 'none')
+            .map(row => row.querySelector('.item-select-checkbox'))
+            .filter(cb => cb !== null);
+            
+        const checkedCount = visibleCheckboxes.filter(cb => cb.checked).length;
+        const selectAllCb = document.getElementById('select-all-checkbox');
+        
+        if (visibleCheckboxes.length === 0) {
+            selectAllCb.checked = false;
+            selectAllCb.disabled = true;
+        } else {
+            selectAllCb.disabled = false;
+            selectAllCb.checked = (checkedCount === visibleCheckboxes.length);
+        }
+    }
+    
+    function getSelectedIds() {
+        const checkedBoxes = document.querySelectorAll('.item-select-checkbox:checked');
+        const ids = [];
+        checkedBoxes.forEach(cb => {
+            ids.push(parseInt(cb.dataset.id));
+        });
+        return ids;
+    }
+    
+    function bulkDuplicate() {
+        const ids = getSelectedIds();
+        if (ids.length === 0) {
+            alert('복제할 메뉴를 먼저 선택해 주세요.');
+            return;
+        }
+        if (!confirm(`${ids.length}개의 메뉴를 일괄 복제하시겠습니까?`)) return;
+        
+        fetch('/admin/menu/menuitem/bulk-duplicate/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ ids: ids })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showToast(`${ids.length}개 메뉴가 복제되었습니다.`);
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                alert('복제 실패: ' + data.message);
+            }
+        });
+    }
+    
+    function bulkDelete() {
+        const ids = getSelectedIds();
+        if (ids.length === 0) {
+            alert('삭제할 메뉴를 먼저 선택해 주세요.');
+            return;
+        }
+        if (!confirm(`주의! 선택한 ${ids.length}개의 메뉴를 완전히 일괄 삭제하시겠습니까?`)) return;
+        
+        fetch('/admin/menu/menuitem/bulk-delete/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ ids: ids })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showToast(`${ids.length}개 메뉴가 일괄 삭제되었습니다.`);
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                alert('삭제 실패: ' + data.message);
+            }
+        });
+    }
+
+    function bulkMoveCategory() {
+        const ids = getSelectedIds();
+        if (ids.length === 0) {
+            alert('이동할 메뉴를 먼저 선택해 주세요.');
+            return;
+        }
+        const selector = document.getElementById('bulk-category-selector');
+        const categoryId = selector.value;
+        if (!categoryId) {
+            alert('이동할 대상 카테고리를 선택해 주세요.');
+            return;
+        }
+        
+        const catName = selector.options[selector.selectedIndex].text.trim().replace(/^↳\s*/, '');
+        if (!confirm(`선택한 ${ids.length}개의 메뉴를 [${catName}] 카테고리로 이동하시겠습니까?`)) return;
+        
+        fetch('/admin/menu/menuitem/bulk-move/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ ids: ids, category_id: categoryId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showToast(`${ids.length}개 메뉴가 카테고리 이동 완료되었습니다.`);
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                alert('이동 실패: ' + data.message);
+            }
+        });
+    }
+
+    // ─────────────────────────────────────────────
+    // 슬라이드 서랍식(Drawer) 모달 제어
+    // ─────────────────────────────────────────────
+    function openDrawer(url, title) {
+        document.getElementById('drawer-title-element').textContent = title;
+        document.getElementById('drawer-iframe').src = url;
+        document.getElementById('drawer-overlay').classList.add('open');
+    }
+    
+    function closeDrawer() {
+        document.getElementById('drawer-overlay').classList.remove('open');
+        document.getElementById('drawer-iframe').src = 'about:blank';
+    }
+    
+    function openAddMenuDrawer() {
+        let url = '/admin/menu/menuitem/add/?_popup=1';
+        if (activeCategory !== 'all' && activeCategory !== 'none') {
+            url += '&category=' + activeCategory;
+        }
+        openDrawer(url, '새 메뉴 추가');
+    }
+    
+    window.dismissAddAnotherPopup = function(win, newId, newRepr) {
+        closeDrawer();
+        showToast('추가 완료되었습니다.');
+        setTimeout(() => window.location.reload(), 800);
+    };
+    window.dismissChangeRelatedObjectPopup = function(win, objId, newRepr, newId) {
+        closeDrawer();
+        showToast('저장 완료되었습니다.');
+        setTimeout(() => window.location.reload(), 800);
+    };
+    window.dismissDeleteRelatedObjectPopup = function(win, objId) {
+        closeDrawer();
+        showToast('삭제되었습니다.');
+        setTimeout(() => window.location.reload(), 800);
+    };
+
+    function toggleAvailable(itemId, checkbox) {
+        fetch('/admin/menu/menuitem/' + itemId + '/toggle-available/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showToast(data.is_available ? '판매 중 변경 완료.' : '품절 처리 완료.');
+            } else {
+                checkbox.checked = !checkbox.checked;
+                alert('실패: ' + data.message);
+            }
+        });
+    }
+
+    function duplicateItem(itemId) {
+        if (!confirm('이 메뉴를 복제하시겠습니까?')) return;
+        fetch('/admin/menu/menuitem/' + itemId + '/duplicate/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showToast('메뉴 복제 완료.');
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                alert('복제 실패: ' + data.message);
+            }
+        });
+    }
+
+    // ─────────────────────────────────────────────
+    // 드래그 앤 드롭 정렬
+    // ─────────────────────────────────────────────
+    let dragSrcRow = null;
+    function initDragAndDrop() {
+        const listContainer = document.getElementById('menu-items-list-container');
+        const rows = listContainer.querySelectorAll('.menu-item-row');
+        
+        rows.forEach(row => {
+            row.addEventListener('dragstart', function(e) {
+                dragSrcRow = this;
+                this.style.opacity = '0.4';
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', '');
+            });
+            row.addEventListener('dragover', function(e) { e.preventDefault(); });
+            row.addEventListener('dragenter', function() {
+                if (dragSrcRow && dragSrcRow.dataset.categoryId === this.dataset.categoryId) {
+                    this.classList.add('drag-over');
+                }
+            });
+            row.addEventListener('dragleave', function() { this.classList.remove('drag-over'); });
+            row.addEventListener('drop', function(e) {
+                e.stopPropagation();
+                this.classList.remove('drag-over');
+                if (dragSrcRow && dragSrcRow !== this) {
+                    if (dragSrcRow.dataset.categoryId !== this.dataset.categoryId) {
+                        showToast('동일 카테고리 내에서만 정렬할 수 있습니다.', true);
+                        return;
+                    }
+                    const allRows = Array.from(listContainer.querySelectorAll('.menu-item-row'));
+                    const srcIdx = allRows.indexOf(dragSrcRow);
+                    const dstIdx = allRows.indexOf(this);
+                    if (srcIdx < dstIdx) listContainer.insertBefore(dragSrcRow, this.nextSibling);
+                    else listContainer.insertBefore(dragSrcRow, this);
+                    saveOrder();
+                }
+            });
+            row.addEventListener('dragend', function() {
+                this.style.opacity = '1';
+                rows.forEach(r => r.classList.remove('drag-over'));
+            });
+        });
+    }
+    
+    function saveOrder() {
+        const listContainer = document.getElementById('menu-items-list-container');
+        const currentRows = listContainer.querySelectorAll('.menu-item-row');
+        const ids = [];
+        currentRows.forEach(row => { ids.push(parseInt(row.dataset.id)); });
+        
+        fetch('/admin/menu/menuitem/reorder/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({ ids: ids })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') showToast('순서가 저장되었습니다.');
+        });
+    }
+
+    function showToast(msg, isError = false) {
+        const toast = document.getElementById('workspace-toast');
+        toast.textContent = msg;
+        toast.style.background = isError ? '#ef4444' : '#417690';
+        toast.style.opacity = '1';
+        setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+    }
+    
+    function switchRestaurant(restaurantId) {
+        window.location.search = '?restaurant=' + restaurantId;
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        initDragAndDrop();
+        filterCategory('all');
+    });
+</script>
+{% endblock %}

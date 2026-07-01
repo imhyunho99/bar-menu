@@ -78,6 +78,30 @@ class SiteSettings(models.Model):
         verbose_name="사이드 이미지",
         help_text="사이드 메뉴 등에 사용될 이미지"
     )
+    
+    # WiFi 및 결제 설정
+    wifi_ssid = models.CharField(max_length=100, blank=True, null=True, verbose_name="WiFi SSID")
+    wifi_password = models.CharField(max_length=100, blank=True, null=True, verbose_name="WiFi 비밀번호")
+    wifi_security = models.CharField(
+        max_length=20, 
+        default='WPA', 
+        choices=[('WPA', 'WPA/WPA2'), ('WEP', 'WEP'), ('nopass', 'Open')],
+        verbose_name="WiFi 보안 설정"
+    )
+    enable_wifi = models.BooleanField(default=False, verbose_name="WiFi 안내 활성화")
+    enable_payhere = models.BooleanField(default=False, verbose_name="페이히어 결제 활성화")
+    enable_cart = models.BooleanField(
+        default=False, 
+        verbose_name="장바구니 활성화", 
+        help_text="체크 시 고객 메뉴판 사이트에서 장바구니 추가 버튼 및 장바구니 버튼이 표시됩니다."
+    )
+    payhere_store_id = models.CharField(max_length=100, blank=True, null=True, verbose_name="페이히어 상점 ID")
+    payhere_api_key = models.CharField(max_length=200, blank=True, null=True, verbose_name="페이히어 API Key", help_text="페이히어 POS 연동 API Key")
+    store_public_ip = models.CharField(max_length=100, blank=True, null=True, verbose_name="매장 공인 IP 주소", help_text="매장의 공인 IP 주소 (예: 123.45.67.89)")
+    restrict_by_ip = models.BooleanField(default=False, verbose_name="매장 WiFi(IP) 접속 제한 활성화", help_text="체크 시 설정된 매장 공인 IP에서 접속하지 않은 고객의 접속을 제한합니다.")
+    restrict_by_wifi_ssid = models.BooleanField(default=False, verbose_name="매장 WiFi SSID 접속 제한 활성화", help_text="체크 시 테이블 QR 코드로 접속하지 않았거나 매장 와이파이 SSID 정보가 다르면 접속을 제한합니다.")
+    disable_screenshots = models.BooleanField(default=False, verbose_name="스크린샷 금지 활성화", help_text="활성화 시 고객 메뉴판 사이트에서 스크린샷 및 화면 캡쳐(프린트 등)를 방지합니다.")
+
     background_color = models.CharField(
         max_length=20, 
         default='#000000', 
@@ -415,6 +439,43 @@ class ContactSubmission(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.contact_info}) - {self.plan}"
+
+
+class Order(models.Model):
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='orders', verbose_name="가게")
+    table_number = models.CharField(max_length=50, default='테이블', verbose_name="테이블 번호")
+    status = models.CharField(
+        max_length=20, 
+        choices=[('pending', '대기 중'), ('completed', '완료됨'), ('cancelled', '취소됨')], 
+        default='pending',
+        verbose_name="주문 상태"
+    )
+    total_price = models.IntegerField(default=0, verbose_name="총 결제금액")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="주문 시간")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="변경 시간")
+
+    class Meta:
+        verbose_name = "주문"
+        verbose_name_plural = "주문 목록"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"주문 #{self.id} - 테이블 {self.table_number} ({self.get_status_display()})"
+
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items', verbose_name="주문")
+    menu_item = models.ForeignKey(MenuItem, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="메뉴")
+    name = models.CharField(max_length=200, verbose_name="메뉴명")
+    price = models.IntegerField(default=0, verbose_name="가격")
+    quantity = models.IntegerField(default=1, verbose_name="수량")
+
+    class Meta:
+        verbose_name = "주문 상세 항목"
+        verbose_name_plural = "주문 상세 항목 목록"
+
+    def __str__(self):
+        return f"{self.name} x {self.quantity}"
 
 
     

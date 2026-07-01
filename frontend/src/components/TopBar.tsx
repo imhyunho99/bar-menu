@@ -48,7 +48,29 @@ export default function TopBar() {
     if (result.type === 'category') {
       router.push(`/${slug}/category/${result.id}`);
     } else if (result.category_id) {
-      router.push(`/${slug}/category/${result.category_id}#menu-${result.id}`);
+      const targetPath = `/${slug}/category/${result.category_id}`;
+      const currentPath = window.location.pathname;
+
+      if (currentPath === targetPath) {
+        const targetHash = `#menu-${result.id}`;
+        if (window.location.hash === targetHash) {
+          // If hash is already the target, hashchange won't fire. Scroll and highlight directly.
+          const element = document.getElementById(`menu-${result.id}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.classList.add('highlight-pulse');
+            setTimeout(() => {
+              element.classList.remove('highlight-pulse');
+            }, 2000);
+          }
+        } else {
+          // eslint-disable-next-line react-hooks/immutability
+          window.location.hash = `menu-${result.id}`;
+        }
+      } else {
+        // Different page: use Next.js router.push with scroll: false to prevent Next.js overriding scroll position
+        router.push(`${targetPath}#menu-${result.id}`, { scroll: false });
+      }
     }
   };
 

@@ -73,3 +73,20 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+.vercel
+.env*
+
+# Database dumps & seed scripts
+db_dump*.json
+seed_*.py
+
+# Scratch/test scripts
+scratch/
+
+# Next.js
+.next/
+node_modules/
+
+# AI agent config
+.claude/
+.gemini/

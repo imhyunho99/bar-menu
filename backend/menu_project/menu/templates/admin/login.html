@@ -4,13 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>관리자 로그인 - {{ request.restaurant.name|default:"BidBar" }}</title>
+    <title>관리자 로그인 - {{ request.restaurant.name|default:"bar-menu" }}</title>
     <link rel="stylesheet" href="{% static 'css/admin.css' %}">
 </head>
 <body>
     <div class="admin-login-container">
         <div class="admin-login-form">
-            <h2>{{ request.restaurant.name|default:"BidBar" }} Admin Login</h2>
+            <h2>{{ request.restaurant.name|default:"bar-menu" }} Admin Login</h2>
             
             {% if messages %}
                 {% for message in messages %}

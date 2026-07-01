@@ -22,16 +22,21 @@ def generate_qr_code(request, restaurant_slug=None):
     else:
         # fallback (혹시 slug 없이 호출된 경우)
         menu_url = f"{protocol}://{host}/"
-    
-    # 1. 사이트 설정에서 로고 이미지 가져오기
+        
+    # 사이트 설정 가져오기 및 wifi 파라미터 조건부 추가
+    site_settings = None
     logo_img = None
     if restaurant_slug:
         site_settings = SiteSettings.objects.filter(restaurant__slug=restaurant_slug).first()
-        if site_settings and site_settings.logo_image:
-            try:
-                logo_img = Image.open(site_settings.logo_image.path)
-            except Exception:
-                logo_img = None
+        if site_settings:
+            if site_settings.restrict_by_wifi_ssid and site_settings.wifi_ssid:
+                import urllib.parse
+                menu_url = f"{menu_url}?wifi={urllib.parse.quote(site_settings.wifi_ssid)}"
+            if site_settings.logo_image:
+                try:
+                    logo_img = Image.open(site_settings.logo_image.path)
+                except Exception:
+                    logo_img = None
 
     # 2. QR 코드 설정 (로고 삽입을 위해 Error Correction H 사용)
     box_size = 10
@@ -88,7 +93,7 @@ def generate_qr_code(request, restaurant_slug=None):
     buffer = BytesIO()
     img_pil.save(buffer, format='PNG')
     img_str = base64.b64encode(buffer.getvalue()).decode()
-    
+
     return render(request, 'menu/qr_code.html', {
         'qr_image': img_str,
         'menu_url': menu_url

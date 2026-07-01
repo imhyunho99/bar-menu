@@ -20,6 +20,7 @@ from .serializers import (
     CategoryTreeSerializer,
     MenuItemSerializer,
     ContactSubmissionSerializer,
+    OrderSerializer,
 )
 
 
@@ -188,13 +189,16 @@ class QRCodeView(APIView):
         # 로고 이미지
         logo_img = None
         site_settings = SiteSettings.objects.filter(restaurant=restaurant).first()
-        if site_settings and site_settings.logo_image:
-            try:
-                logo_img = Image.open(site_settings.logo_image.path)
-            except Exception:
-                logo_img = None
-
-        # QR 코드 생성
+        if site_settings:
+            if site_settings.restrict_by_wifi_ssid and site_settings.wifi_ssid:
+                import urllib.parse
+                menu_url = f"{menu_url}?wifi={urllib.parse.quote(site_settings.wifi_ssid)}"
+            if site_settings.logo_image:
+                try:
+                    logo_img = Image.open(site_settings.logo_image.path)
+                except Exception:
+                    logo_img = None
+            # QR 코드 생성
         box_size = 10
         border = 4
         qr = qrcode.QRCode(
@@ -258,3 +262,68 @@ class ContactSubmitView(APIView):
             {'status': 'error', 'message': '모든 필드를 입력해 주세요.'},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+
+class OrderCreateView(APIView):
+    """POST /api/v1/restaurants/<slug>/orders/ — 주문 접수"""
+
+    def post(self, request, slug):
+        restaurant = get_object_or_404(Restaurant, slug=slug)
+        data = request.data.copy()
+        
+        # Calculate total price on backend
+        total_price = 0
+        items_data = data.get('items', [])
+        for item in items_data:
+            try:
+                menu_item = MenuItem.objects.get(id=item.get('menu_item'), restaurant=restaurant)
+                item['name'] = menu_item.name
+                
+                # Strip currency and formatting symbols, convert to numeric value
+                price_str = str(menu_item.price).replace('₩', '').replace(',', '').strip()
+                try:
+                    price_val = int(float(price_str))
+                except ValueError:
+                    price_val = 0
+                
+                item['price'] = price_val
+                quantity = int(item.get('quantity', 1))
+                if quantity > 99:
+                    return Response(
+                        {'status': 'error', 'message': '수량은 1~99 사이여야 합니다.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                if quantity < 1:
+                    quantity = 1
+                item['quantity'] = quantity
+                total_price += price_val * quantity
+            except MenuItem.DoesNotExist:
+                return Response(
+                    {'status': 'error', 'message': f"메뉴 ID {item.get('menu_item')} 존재하지 않습니다."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        data['total_price'] = total_price
+        
+        serializer = OrderSerializer(data=data, context={'request': request})
+        if serializer.is_valid():
+            order = serializer.save(restaurant=restaurant)
+            
+            # Payhere POS 주문 전송 연동 (실제 오류가 주문 플로우에 영향을 주지 않도록 예외 처리)
+            try:
+                from ..payhere_api import send_order_to_payhere
+                send_order_to_payhere(order)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Error in send_order_to_payhere: {e}")
+
+            return Response(
+                {
+                    'status': 'success',
+                    'message': '주문이 성공적으로 접수되었습니다.',
+                    'order_id': order.id,
+                    'total_price': order.total_price
+                },
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

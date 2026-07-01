@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { MenuItem as MenuItemType } from '@/lib/types';
+import { useRestaurant } from '@/app/[restaurantSlug]/context';
 
 /** nl2br: 줄바꿈을 <br>로 변환 */
 function Nl2br({ text }: { text: string | null | undefined }) {
@@ -88,21 +89,54 @@ function DetailModal({ item, opacity, onClose }: {
 
 // ===== MenuCard =====
 export default function MenuCard({ item }: { item: MenuItemType }) {
+  const { restaurant } = useRestaurant();
+  const enableCart = restaurant.site_settings?.enable_cart ?? false;
+
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const itemRef = useRef<HTMLDivElement>(null);
 
-  // target=ID로 스크롤
+  // hashchange 이벤트 리스너 추가 및 스크롤 연동
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return;
+
+    const handleScrollAndHighlight = () => {
+      const isTargetHash = window.location.hash === `#menu-${item.id}`;
       const params = new URLSearchParams(window.location.search);
-      if (params.get('target') === String(item.id)) {
-        setTimeout(() => itemRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+      const isTargetParam = params.get('target') === String(item.id);
+
+      if (isTargetHash || isTargetParam) {
+        // 1차 스크롤 및 하이라이트 (빠른 피드백)
+        setTimeout(() => {
+          if (itemRef.current) {
+            itemRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            itemRef.current.classList.add('highlight-pulse');
+            setTimeout(() => {
+              itemRef.current?.classList.remove('highlight-pulse');
+            }, 2500);
+          }
+        }, 150);
+
+        // 2차 레이아웃 안정화 후 보정 스크롤 (이미지 로딩 등으로 위치 밀림 방지)
+        setTimeout(() => {
+          if (itemRef.current) {
+            const rect = itemRef.current.getBoundingClientRect();
+            // 화면 중앙 근처에 위치하는지 검증
+            const isCentered = rect.top >= 50 && rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) - 50;
+            if (!isCentered) {
+              itemRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
+        }, 750);
       }
-      if (window.location.hash === `#menu-${item.id}`) {
-        setTimeout(() => itemRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
-      }
-    }
+    };
+
+    handleScrollAndHighlight();
+
+    window.addEventListener('hashchange', handleScrollAndHighlight);
+    return () => {
+      window.removeEventListener('hashchange', handleScrollAndHighlight);
+    };
   }, [item.id]);
 
   const handleItemClick = () => {
@@ -143,22 +177,38 @@ export default function MenuCard({ item }: { item: MenuItemType }) {
                 <span className="menu-name-ko"><Nl2br text={item.name} /></span>
               </div>
               {item.description && <div className="menu-description"><Nl2br text={item.description} /></div>}
-              <div className="menu-notes-price-wrapper" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <div className="menu-notes-price-wrapper" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 {item.notes ? <span className="menu-notes"><Nl2br text={item.notes} /></span> : <span />}
-                <div className="menu-price"><Nl2br text={item.price} /></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="menu-price"><Nl2br text={item.price} /></div>
+                  {enableCart && (
+                    <button className="add-cart-btn" onClick={(e) => {
+                      e.stopPropagation();
+                      window.dispatchEvent(new CustomEvent('add-to-cart', { detail: item }));
+                    }}>+</button>
+                  )}
+                </div>
               </div>
             </div>
           </>
         ) : (mode === 'image_only' || (mode === 'auto' && item.menu_image)) && item.menu_image ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={item.menu_image}
-            alt={item.name}
-            className="menu-only-image"
-            loading="lazy"
-            data-expand={item.click_expand || undefined}
-            onClick={handleExpandClick}
-          />
+          <div style={{ position: 'relative', width: '100%', height: '100%', display: 'block' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={item.menu_image}
+              alt={item.name}
+              className="menu-only-image"
+              loading="lazy"
+              data-expand={item.click_expand || undefined}
+              onClick={handleExpandClick}
+            />
+            {enableCart && (
+              <button className="add-cart-btn overlay-btn" onClick={(e) => {
+                e.stopPropagation();
+                window.dispatchEvent(new CustomEvent('add-to-cart', { detail: item }));
+              }}>+</button>
+            )}
+          </div>
         ) : (
           <div className="menu-content">
             <div className="menu-info">
@@ -169,9 +219,17 @@ export default function MenuCard({ item }: { item: MenuItemType }) {
                 </div>
               </div>
               {item.description && <div className="menu-description"><Nl2br text={item.description} /></div>}
-              <div className="menu-notes-price-wrapper" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <div className="menu-notes-price-wrapper" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 {item.notes ? <span className="menu-notes"><Nl2br text={item.notes} /></span> : <span />}
-                <div className="menu-price"><Nl2br text={item.price} /></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="menu-price"><Nl2br text={item.price} /></div>
+                  {enableCart && (
+                    <button className="add-cart-btn" onClick={(e) => {
+                      e.stopPropagation();
+                      window.dispatchEvent(new CustomEvent('add-to-cart', { detail: item }));
+                    }}>+</button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

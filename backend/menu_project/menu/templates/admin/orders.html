@@ -1,0 +1,326 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주문 관리 - {{ request.restaurant.name|default:"bar-menu" }}</title>
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+    <style>
+        .order-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+        .order-card {
+            background-color: var(--admin-card-bg);
+            border: 1px solid var(--admin-border-color);
+            border-radius: var(--admin-radius);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--admin-shadow);
+            transition: var(--admin-transition);
+            position: relative;
+        }
+        .order-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--admin-primary);
+        }
+        .order-card.status-pending {
+            border-left: 5px solid var(--admin-primary);
+        }
+        .order-card.status-completed {
+            border-left: 5px solid var(--admin-success);
+            opacity: 0.7;
+        }
+        .order-card.status-cancelled {
+            border-left: 5px solid var(--admin-danger);
+            opacity: 0.5;
+        }
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--admin-border-color);
+            padding-bottom: 10px;
+            margin-bottom: 12px;
+        }
+        .order-table {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+            background: rgba(59, 130, 246, 0.15);
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+        .order-time {
+            font-size: 0.85rem;
+            color: var(--admin-text-secondary);
+        }
+        .order-items {
+            flex-grow: 1;
+            margin-bottom: 15px;
+        }
+        .order-item-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px dashed rgba(255,255,255,0.05);
+            font-size: 0.95rem;
+        }
+        .order-item-name {
+            color: #f8fafc;
+            font-weight: 500;
+        }
+        .order-item-qty {
+            color: var(--admin-primary);
+            font-weight: 700;
+        }
+        .order-footer {
+            border-top: 1px solid var(--admin-border-color);
+            padding-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .order-total-label {
+            font-size: 0.9rem;
+            color: var(--admin-text-secondary);
+        }
+        .order-total-price {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--admin-success);
+        }
+        .order-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .order-actions button {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 4px;
+            border: none;
+            transition: var(--admin-transition);
+        }
+        .btn-status-complete {
+            background-color: var(--admin-success);
+            color: white;
+        }
+        .btn-status-complete:hover {
+            opacity: 0.9;
+        }
+        .btn-status-cancel {
+            background-color: transparent;
+            color: var(--admin-danger);
+            border: 1px solid var(--admin-danger) !important;
+        }
+        .btn-status-cancel:hover {
+            background-color: var(--admin-danger);
+            color: white;
+        }
+        .badge-status {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .badge-pending { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .badge-completed { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .badge-cancelled { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        
+        .alarm-banner {
+            background: linear-gradient(90deg, #1e3a8a 0%, #1e40af 100%);
+            border: 1px solid #3b82f6;
+            border-radius: var(--admin-radius);
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .alarm-banner span {
+            font-size: 0.95rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <h1 class="admin-title">주문 관리</h1>
+                <span class="badge-status badge-pending">실시간 모니터링 중</span>
+            </div>
+            <div class="admin-header-actions" style="display: flex; gap: 10px;">
+                <a href="{% url 'menu:admin_dashboard' request.restaurant.slug %}" class="admin-btn admin-btn-secondary">대시보드로 돌아가기</a>
+                <button onclick="playBeepTest()" class="admin-btn admin-btn-secondary">소리 테스트</button>
+            </div>
+        </div>
+
+        <div class="alarm-banner">
+            <span>🔊 <strong>알림 설정</strong>: 새 주문이 접수되면 신호음이 울립니다. 브라우저 소리 재생이 차단된 경우 화면을 한 번 클릭해 주세요.</span>
+            <button onclick="this.parentElement.style.display='none';" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:1.2rem;">&times;</button>
+        </div>
+
+        <div class="admin-section">
+            <h2>주문 내역</h2>
+            
+            <div class="order-grid">
+                {% for order in orders %}
+                <div class="order-card status-{{ order.status }}" id="order-card-{{ order.id }}">
+                    <div class="order-header">
+                        <span class="order-table">{{ order.table_number }}</span>
+                        <span class="order-time">{{ order.created_at|date:"H:i:s" }} ({{ order.created_at|timesince }} 전)</span>
+                    </div>
+                    
+                    <div class="order-items">
+                        {% for item in order.items.all %}
+                        <div class="order-item-row">
+                            <span class="order-item-name">{{ item.name }}</span>
+                            <span class="order-item-qty">x {{ item.quantity }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="order-footer">
+                        <span class="order-total-label">합계 금액</span>
+                        <span class="order-total-price">₩{{ order.total_price }}</span>
+                    </div>
+
+                    <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.85rem; color: var(--admin-text-secondary);">상태</span>
+                        <span class="badge-status badge-{{ order.status }}">
+                            {{ order.get_status_display }}
+                        </span>
+                    </div>
+                    
+                    {% if order.status == 'pending' %}
+                    <div class="order-actions">
+                        <button class="btn-status-complete" onclick="updateStatus({{ order.id }}, 'completed')">완료</button>
+                        <button class="btn-status-cancel" onclick="updateStatus({{ order.id }}, 'cancelled')">취소</button>
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--admin-text-secondary); background: var(--admin-card-bg); border-radius: var(--admin-radius); border: 1px solid var(--admin-border-color);">
+                    접수된 주문이 없습니다.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const latestOrderId = {{ latest_order_id }};
+        
+        // CSRF 토큰 헬퍼
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        // 상태 변경 함수
+        function updateStatus(orderId, newStatus) {
+            if (!confirm(`주문 상태를 '${newStatus === 'completed' ? '완료' : '취소'}'로 변경하시겠습니까?`)) return;
+            
+            fetch(`./${orderId}/update-status/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ status: newStatus })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    window.location.reload();
+                } else {
+                    alert('에러 발생: ' + data.message);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('네트워크 오류가 발생했습니다.');
+            });
+        }
+
+        // 알림음 재생기 (Web Audio API 활용 - 별도 오디오 에셋 다운로드 불필요)
+        function playChime() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.type = 'sine';
+                
+                // 도톤 사운드 (D5 -> A5)
+                oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+                
+                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.45);
+                
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.45);
+            } catch (err) {
+                console.warn("Audio Context 재생이 제한되었습니다. 사용자가 화면을 터치해야 소리가 재생됩니다.");
+            }
+        }
+
+        function playBeepTest() {
+            playChime();
+        }
+
+        // 실시간 새 주문 폴링 (5초마다 실행)
+        setInterval(function() {
+            fetch('./?latest_id=' + latestOrderId, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.new_orders) {
+                    // 세션 스토리지에 플래그를 저장하여 페이지가 리로드된 후에 소리를 나게 함
+                    sessionStorage.setItem('play_new_order_sound', 'true');
+                    window.location.reload();
+                }
+            })
+            .catch(err => console.error("Polling error:", err));
+        }, 5000);
+
+        // 페이지 로드 시 알림음 재생 플래그 확인
+        window.addEventListener('load', function() {
+            if (sessionStorage.getItem('play_new_order_sound') === 'true') {
+                sessionStorage.removeItem('play_new_order_sound');
+                playChime();
+            }
+        });
+    </script>
+</body>
+</html>

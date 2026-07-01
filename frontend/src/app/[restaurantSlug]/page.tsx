@@ -5,6 +5,8 @@ import IntroManager from '@/components/IntroManager';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Metadata } from 'next';
+import Cart from '@/components/Cart';
+import WifiHelper from '@/components/WifiHelper';
 
 export const revalidate = 60; // 60초마다 ISR 재생성
 
@@ -107,6 +109,9 @@ export default async function MenuMainPage({
           </div>
         </div>
       </main>
+      
+      <Cart />
+      <WifiHelper />
     </>
   );
 }

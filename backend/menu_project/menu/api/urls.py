@@ -19,6 +19,9 @@ urlpatterns = [
     # QR 코드
     path('restaurants/<slug:slug>/qr/', views.QRCodeView.as_view(), name='qr-code'),
 
+    # 주문 접수
+    path('restaurants/<slug:slug>/orders/', views.OrderCreateView.as_view(), name='order-create'),
+
     # 제휴 문의
     path('contact/', views.ContactSubmitView.as_view(), name='contact-submit'),
 ]

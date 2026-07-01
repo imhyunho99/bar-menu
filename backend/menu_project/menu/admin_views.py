@@ -2,8 +2,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
-from django.http import HttpResponseForbidden
-from .models import Category, MenuItem, UserProfile, Restaurant
+from django.http import HttpResponseForbidden, JsonResponse
+from django.views.decorators.http import require_POST
+import json
+from .models import Category, MenuItem, UserProfile, Restaurant, Order, OrderItem, MenuItemPairing
 
 def check_restaurant_permission(user, restaurant_slug):
     """
@@ -65,12 +67,33 @@ def add_category(request, restaurant_slug=None):
 
     if request.method == 'POST':
         name = request.POST['name']
+        name_en = request.POST.get('name_en', '')
         parent_id = request.POST.get('parent')
-        parent = Category.objects.get(id=parent_id, restaurant=request.restaurant) if parent_id else None
-        Category.objects.create(name=name, parent=parent, restaurant=request.restaurant)
-        return redirect('admin_dashboard', restaurant_slug=request.restaurant.slug)
-    categories = Category.objects.filter(parent=None, restaurant=request.restaurant)
-    return render(request, 'admin/add_category.html', {'categories': categories})
+        parent = Category.objects.filter(id=parent_id, restaurant=request.restaurant).first() if parent_id else None
+        
+        priority = request.POST.get('priority')
+        priority_val = float(priority) if priority else 0.0
+        
+        hide_side_image = request.POST.get('hide_side_image') == 'on'
+        category_image = request.FILES.get('category_image')
+        
+        Category.objects.create(
+            name=name,
+            name_en=name_en,
+            parent=parent,
+            priority=priority_val,
+            hide_side_image=hide_side_image,
+            category_image=category_image,
+            restaurant=request.restaurant
+        )
+        messages.success(request, f"카테고리 '{name}' 추가 완료되었습니다.")
+        return redirect('menu:admin_dashboard', restaurant_slug=request.restaurant.slug)
+        
+    categories = Category.objects.filter(restaurant=request.restaurant)
+    return render(request, 'admin/category_form.html', {
+        'categories': categories,
+        'category': None
+    })
 
 @login_required
 def add_menu(request, restaurant_slug=None):
@@ -157,4 +180,148 @@ def delete_category(request, category_id, restaurant_slug=None):
         return HttpResponseForbidden("권한이 없습니다.")
 
     Category.objects.filter(id=category_id, restaurant=request.restaurant).delete()
-    return redirect('admin_dashboard', restaurant_slug=request.restaurant.slug)
+    return redirect('menu:admin_dashboard', restaurant_slug=request.restaurant.slug)
+
+
+@login_required
+def edit_category(request, category_id, restaurant_slug=None):
+    if not check_restaurant_permission(request.user, restaurant_slug):
+        return HttpResponseForbidden("권한이 없습니다.")
+
+    category = get_object_or_404(Category, id=category_id, restaurant=request.restaurant)
+    if request.method == 'POST':
+        category.name = request.POST['name']
+        category.name_en = request.POST.get('name_en', '')
+        parent_id = request.POST.get('parent')
+        category.parent = Category.objects.filter(id=parent_id, restaurant=request.restaurant).first() if parent_id else None
+        
+        priority = request.POST.get('priority')
+        if priority:
+            category.priority = float(priority)
+            
+        category.hide_side_image = request.POST.get('hide_side_image') == 'on'
+        
+        if request.FILES.get('category_image'):
+            category.category_image = request.FILES['category_image']
+            
+        category.save()
+        messages.success(request, f"카테고리 '{category.name}' 수정 완료되었습니다.")
+        return redirect('menu:admin_dashboard', restaurant_slug=request.restaurant.slug)
+
+    categories = Category.objects.filter(restaurant=request.restaurant).exclude(id=category.id)
+    return render(request, 'admin/category_form.html', {
+        'category': category,
+        'categories': categories
+    })
+
+
+@login_required
+def duplicate_menu(request, menu_id, restaurant_slug=None):
+    if not check_restaurant_permission(request.user, restaurant_slug):
+        return HttpResponseForbidden("권한이 없습니다.")
+
+    menu = get_object_or_404(MenuItem, id=menu_id, restaurant=request.restaurant)
+    
+    # 메뉴 복제
+    new_menu = MenuItem.objects.get(id=menu_id)
+    new_menu.id = None
+    new_menu.pk = None
+    new_menu.name = f"{new_menu.name} (복사본)"
+    new_menu.priority = new_menu.priority + 0.1
+    new_menu.save()
+
+    # 페어링 복제
+    for pairing in menu.pairings.all():
+        new_pairing = MenuItemPairing.objects.get(id=pairing.id)
+        new_pairing.id = None
+        new_pairing.pk = None
+        new_pairing.menu_item = new_menu
+        new_pairing.save()
+
+    messages.success(request, f"'{menu.name}' 메뉴 및 관련 주류 페어링이 복제되었습니다.")
+    return redirect('menu:admin_dashboard', restaurant_slug=request.restaurant.slug)
+
+
+@login_required
+@require_POST
+def reorder_categories(request, restaurant_slug=None):
+    if not check_restaurant_permission(request.user, restaurant_slug):
+        return JsonResponse({'status': 'error', 'message': '권한이 없습니다.'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        ids = data.get('ids', [])
+        for index, cat_id in enumerate(ids):
+            Category.objects.filter(id=cat_id, restaurant=request.restaurant).update(priority=float(index))
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@login_required
+@require_POST
+def reorder_menus(request, restaurant_slug=None):
+    if not check_restaurant_permission(request.user, restaurant_slug):
+        return JsonResponse({'status': 'error', 'message': '권한이 없습니다.'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        ids = data.get('ids', [])
+        for index, menu_id in enumerate(ids):
+            MenuItem.objects.filter(id=menu_id, restaurant=request.restaurant).update(priority=float(index))
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@login_required
+def admin_orders(request, restaurant_slug=None):
+    if not check_restaurant_permission(request.user, restaurant_slug):
+        return HttpResponseForbidden("권한이 없습니다.")
+
+    # 어드민 접속 IP를 감지하여 매장 설정의 공인 IP(store_public_ip)를 백그라운드 자동 갱신 (입력 제로 자동화)
+    settings = request.restaurant.site_settings.first()
+    if settings:
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        client_ip = x_forwarded_for.split(',')[0].strip() if x_forwarded_for else request.META.get('REMOTE_ADDR')
+        
+        if client_ip not in ['127.0.0.1', '::1', 'localhost'] and not client_ip.startswith('::ffff:127.0.0.1'):
+            if settings.store_public_ip != client_ip:
+                settings.store_public_ip = client_ip
+                settings.save(update_fields=['store_public_ip'])
+
+    orders = Order.objects.filter(restaurant=request.restaurant).prefetch_related('items').order_by('-created_at')
+    
+    # AJAX로 새 주문 확인하는 요청 처리
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        latest_id = request.GET.get('latest_id')
+        if latest_id:
+            new_orders_count = Order.objects.filter(
+                restaurant=request.restaurant, 
+                id__gt=int(latest_id)
+            ).count()
+            return JsonResponse({'new_orders': new_orders_count > 0})
+
+    return render(request, 'admin/orders.html', {
+        'orders': orders,
+        'latest_order_id': orders.first().id if orders.exists() else 0
+    })
+
+
+@login_required
+@require_POST
+def update_order_status(request, order_id, restaurant_slug=None):
+    if not check_restaurant_permission(request.user, restaurant_slug):
+        return JsonResponse({'status': 'error', 'message': '권한이 없습니다.'}, status=403)
+
+    order = get_object_or_404(Order, id=order_id, restaurant=request.restaurant)
+    try:
+        data = json.loads(request.body)
+        new_status = data.get('status')
+        if new_status in ['pending', 'completed', 'cancelled']:
+            order.status = new_status
+            order.save()
+            return JsonResponse({'status': 'success'})
+        return JsonResponse({'status': 'error', 'message': '유효하지 않은 상태값입니다.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)

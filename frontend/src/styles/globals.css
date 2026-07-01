@@ -60,16 +60,16 @@
 .menu-item { background-color: var(--menu-card-color); border-color: var(--menu-card-color); }
 
 /* Custom font families (set dynamically via @font-face) */
-.menu-name-ko[data-has-font] { font-family: 'MenuNameFont', sans-serif; }
-.menu-name-en[data-has-font] { font-family: 'MenuNameEnFont', sans-serif; }
-.menu-price[data-has-font] { font-family: 'MenuPriceFont', sans-serif; }
-.menu-description[data-has-font] { font-family: 'MenuDescFont', sans-serif; }
-.menu-notes[data-has-font] { font-family: 'MenuNotesFont', sans-serif; }
-.category-name-ko[data-has-font] { font-family: 'CategoryNameFont', sans-serif; }
-.category-name-en[data-has-font] { font-family: 'CategoryNameEnFont', sans-serif; }
-.pairing-item-name[data-has-font] { font-family: 'PairingNameFont', sans-serif; }
-.pairing-item-desc[data-has-font] { font-family: 'PairingDescFont', sans-serif; }
-.pairing-item-price[data-has-font] { font-family: 'PairingPriceFont', sans-serif; }
+.menu-name-ko { font-family: 'MenuNameFont', sans-serif; }
+.menu-name-en { font-family: 'MenuNameEnFont', sans-serif; }
+.menu-price { font-family: 'MenuPriceFont', sans-serif; }
+.menu-description { font-family: 'MenuDescFont', sans-serif; }
+.menu-notes { font-family: 'MenuNotesFont', sans-serif; }
+.category-name-ko { font-family: 'CategoryNameFont', sans-serif; }
+.category-name-en { font-family: 'CategoryNameEnFont', sans-serif; }
+.pairing-item-name { font-family: 'PairingNameFont', sans-serif; }
+.pairing-item-desc { font-family: 'PairingDescFont', sans-serif; }
+.pairing-item-price { font-family: 'PairingPriceFont', sans-serif; }
 
 /* Top Bar */
 .top-bar {
@@ -491,25 +491,26 @@
 }
 
 .category-card h3 {
-    font-size: 1.2rem;
-    font-weight: 600;
     margin: 0;
 }
 
 .category-name-en {
-    font-size: 0.9rem;
-    color: #ccc;
+    font-size: var(--category-name-en-size, 0.9rem);
+    color: var(--category-name-en-color, #ccc);
+    font-weight: var(--category-name-en-weight, normal);
+    font-style: var(--category-name-en-style, normal);
     margin: 0;
     padding: 0;
     line-height: 1;
 }
 
 .category-name-ko {
-    font-size: 1.2rem;
-    font-weight: 600;
+    font-size: var(--category-name-size, 1.2rem);
+    font-weight: var(--category-name-weight, 600);
+    color: var(--category-name-color, #fff);
+    font-style: var(--category-name-style, normal);
     margin: 0;
     padding: 0;
-    color: #fff;
     line-height: 1;
 }
 
@@ -1068,9 +1069,7 @@ body {
         padding: 1.5rem 1rem;
     }
 
-    .category-card h3 {
-        font-size: 1.1rem;
-    }
+
 
     .section-title {
         font-size: 1.3rem;
@@ -1206,9 +1205,7 @@ body {
         padding: 1.2rem 0.8rem;
     }
 
-    .category-card h3 {
-        font-size: 1rem;
-    }
+
 
     .search-container {
         left: 0px;
@@ -1730,6 +1727,8 @@ body {
     align-items: center;
     justify-content: center;
     padding: 0;
+    width: 100%;
+    height: 50px;
     /* Remove any padding */
     transition: transform 0.2s ease;
     /* New responsive sizing */
@@ -1745,8 +1744,8 @@ body {
 }
 
 .remote-btn img {
-    width: 100%;
-    height: 100%;
+    height: 35px;
+    width: auto;
     object-fit: contain;
 }
 
@@ -2174,4 +2173,818 @@ body {
 .detail-modal.has-pairings .detail-modal-pairings {
     margin-top: 1rem !important;
     padding-top: 0.8rem !important;
+}
+
+/* ==========================================================================
+   Premium Features: Cart, WifiHelper, Payhere Simulator, Highlight Scroll
+   ========================================================================== */
+
+/* 1. Highlight Pulse Animation on Search Scroll */
+@keyframes highlightPulse {
+    0% {
+        box-shadow: 0 0 0 0px rgba(138, 43, 226, 0.8);
+        border-color: rgba(138, 43, 226, 1);
+    }
+    50% {
+        box-shadow: 0 0 20px 8px rgba(138, 43, 226, 0.4);
+        border-color: #00f2fe;
+    }
+    100% {
+        box-shadow: 0 0 0 0px rgba(138, 43, 226, 0);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+}
+.menu-item.highlight-pulse {
+    animation: highlightPulse 2s ease-out;
+}
+
+/* 2. Add to Cart Button */
+.add-cart-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8a2be2 0%, #00f2fe 100%);
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 242, 254, 0.3);
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.add-cart-btn:hover {
+    transform: scale(1.15) rotate(90deg);
+    box-shadow: 0 4px 12px rgba(138, 43, 226, 0.5);
+}
+.add-cart-btn:active {
+    transform: scale(0.95);
+}
+.add-cart-btn.overlay-btn {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    z-index: 10;
+    width: 38px;
+    height: 38px;
+    font-size: 1.4rem;
+}
+
+/* 3. Floating Cart Badge Button */
+.cart-badge-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 20px;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(8, 7, 16, 0.7);
+    border: 1.5px solid rgba(0, 242, 254, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 12px 20px;
+    border-radius: 30px;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 8px 32px rgba(0, 242, 254, 0.25);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.cart-badge-btn:hover {
+    transform: translateY(-3px);
+    border-color: #8a2be2;
+    box-shadow: 0 12px 36px rgba(138, 43, 226, 0.4);
+}
+.cart-icon {
+    font-size: 1.25rem;
+}
+.cart-count-badge {
+    background: #ff4757;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: bold;
+    padding: 2px 7px;
+    border-radius: 10px;
+    min-width: 14px;
+    text-align: center;
+}
+.cart-label {
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+/* 4. Cart Overlay and Drawer */
+.cart-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+.cart-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+.cart-drawer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 80%;
+    background: #080710;
+    border-top: 2px solid rgba(255, 255, 255, 0.08);
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    z-index: 1001;
+    padding: 24px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.6);
+}
+.cart-drawer.active {
+    transform: translateY(0);
+}
+@media (min-width: 768px) {
+    .cart-drawer {
+        max-width: 480px;
+        left: 50%;
+        transform: translate(-50%, 100%);
+        border-radius: 24px;
+        bottom: 20px;
+    }
+    .cart-drawer.active {
+        transform: translate(-50%, 0);
+    }
+}
+.cart-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+}
+.cart-drawer-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    color: white;
+}
+.cart-close-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 1.8rem;
+    cursor: pointer;
+    line-height: 1;
+}
+.cart-empty-message {
+    padding: 40px 0;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.95rem;
+}
+.cart-items-list {
+    overflow-y: auto;
+    max-height: 240px;
+    margin-bottom: 20px;
+    padding-right: 4px;
+}
+.cart-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.cart-item-name {
+    font-size: 0.95rem;
+    color: white;
+    font-weight: bold;
+    margin-bottom: 2px;
+}
+.cart-item-price {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+.cart-item-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 20px;
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.cart-item-controls button {
+    background: none;
+    border: none;
+    color: white;
+    width: 24px;
+    height: 24px;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cart-item-controls span {
+    font-size: 0.95rem;
+    font-weight: bold;
+    color: #00f2fe;
+}
+.cart-form-section {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.cart-form-section label {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    font-weight: bold;
+}
+.cart-form-section input {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 12px;
+    color: white;
+    border-radius: 8px;
+    outline: none;
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+}
+.cart-form-section input:focus {
+    border-color: #00f2fe;
+}
+.cart-drawer-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 16px;
+}
+.cart-total-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.cart-total-section span {
+    color: #94a3b8;
+    font-size: 0.95rem;
+}
+.cart-total-price {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #00f2fe !important;
+}
+.cart-checkout-btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #8a2be2 0%, #4facfe 100%);
+    color: white;
+    font-size: 1.05rem;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);
+    transition: all 0.2s;
+}
+.cart-checkout-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0, 242, 254, 0.4);
+}
+
+/* 5. Floating WiFi Button */
+.wifi-floating-btn {
+    position: fixed;
+    bottom: 24px;
+    left: 20px;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(8, 7, 16, 0.7);
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 12px 18px;
+    border-radius: 30px;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.wifi-floating-btn:hover {
+    transform: translateY(-3px);
+    border-color: #00f2fe;
+    box-shadow: 0 10px 30px rgba(0, 242, 254, 0.2);
+}
+.wifi-btn-icon {
+    font-size: 1.15rem;
+}
+.wifi-btn-text {
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+/* 6. WiFi & Payhere Custom Modals */
+.wifi-modal-overlay,
+.payhere-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.wifi-card-modal,
+.payhere-card-modal {
+    width: 90%;
+    max-width: 400px;
+    background: #0d0c18;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 24px;
+    box-sizing: border-box;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+    animation: modalFadeIn 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: fixed;
+    z-index: 2001;
+}
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.wifi-modal-header,
+.payhere-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+}
+.wifi-modal-header h3 {
+    margin: 0;
+    font-size: 1.15rem;
+    color: white;
+}
+.wifi-close-btn,
+.payhere-close {
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 1.6rem;
+    cursor: pointer;
+    line-height: 1;
+}
+.wifi-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.wifi-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    padding: 12px 16px;
+    border-radius: 8px;
+}
+.wifi-detail-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.wifi-label {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+.wifi-value {
+    font-size: 1rem;
+    color: white;
+}
+.wifi-copy-btn {
+    background: rgba(0, 242, 254, 0.1);
+    border: 1px solid rgba(0, 242, 254, 0.3);
+    color: #00f2fe;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.wifi-copy-btn.copied {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+.wifi-qr-section {
+    text-align: center;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
+    padding-top: 16px;
+    margin-top: 4px;
+}
+.wifi-qr-section p {
+    font-size: 0.75rem;
+    color: #64748b;
+    line-height: 1.4;
+    margin-bottom: 12px;
+}
+.wifi-qr-wrapper {
+    background: white;
+    padding: 12px;
+    border-radius: 12px;
+    display: inline-block;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+.wifi-qr-wrapper img {
+    display: block;
+    width: 140px;
+    height: 140px;
+}
+.wifi-confirm-btn {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.wifi-confirm-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Payhere Simulator Styling */
+.payhere-logo {
+    font-weight: 900;
+    color: #ff4757;
+    font-size: 1.4rem;
+    letter-spacing: -1px;
+}
+.payhere-title {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin-left: 8px;
+    padding-left: 8px;
+    border-left: 1px solid rgba(255,255,255,0.15);
+}
+.payhere-merchant-box,
+.payhere-amount-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.03);
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+.merchant-label,
+.amount-label {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+.merchant-name {
+    font-weight: bold;
+    color: white;
+    font-size: 0.95rem;
+}
+.amount-val {
+    font-weight: 800;
+    color: #ff4757;
+    font-size: 1.1rem;
+}
+.payhere-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.payhere-form-group label {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: bold;
+}
+.payhere-card-inputs {
+    display: flex;
+    gap: 8px;
+}
+.payhere-card-inputs input {
+    flex: 1;
+    background: #171622;
+    border: 1px solid rgba(255,255,255,0.08);
+    color: white;
+    padding: 10px;
+    text-align: center;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    outline: none;
+}
+.payhere-form-row {
+    display: flex;
+    gap: 12px;
+}
+.payhere-form-row input {
+    background: #171622;
+    border: 1px solid rgba(255,255,255,0.08);
+    color: white;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    outline: none;
+}
+.payhere-guide-text {
+    font-size: 0.7rem;
+    color: #64748b;
+    line-height: 1.4;
+    margin-top: 14px;
+}
+.payhere-modal-footer {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding-top: 16px;
+}
+.payhere-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    border: none;
+}
+.payhere-btn-cancel {
+    background: rgba(255, 255, 255, 0.05);
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.payhere-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+.payhere-btn-submit {
+    background: #ff4757;
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+}
+.payhere-btn-submit:hover {
+    background: #ff6b81;
+}
+
+/* Payhere Processing state */
+.payhere-loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 10px;
+    text-align: center;
+}
+.payhere-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3.5px solid rgba(255, 71, 87, 0.15);
+    border-top-color: #ff4757;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 24px;
+}
+.payhere-loading-state h3 {
+    margin: 0 0 10px 0;
+    color: white;
+    font-size: 1.2rem;
+}
+.payhere-loading-state p {
+    color: #64748b;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Payhere Success State */
+.payhere-success-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+    text-align: center;
+}
+.success-icon {
+    width: 54px;
+    height: 54px;
+    background: #10b981;
+    border-radius: 50%;
+    color: white;
+    font-size: 2rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+    margin-bottom: 20px;
+}
+.payhere-success-state h3 {
+    margin: 0 0 8px 0;
+    color: white;
+    font-size: 1.25rem;
+}
+.success-msg {
+    color: #10b981;
+    font-size: 0.9rem;
+    margin: 0 0 20px 0;
+}
+.success-receipt {
+    width: 100%;
+    background: #141322;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+    box-sizing: border-box;
+}
+.receipt-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+}
+.receipt-row span {
+    color: #64748b;
+}
+.receipt-row strong {
+    color: white;
+}
+.receipt-row strong.receipt-total {
+    color: #10b981;
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+.receipt-footer {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+/* 7. WiFi Block Screen */
+.wifi-block-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #080710;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.wifi-block-card {
+    width: 100%;
+    max-width: 420px;
+    background: #0d0c18;
+    border: 1.5px solid rgba(0, 242, 254, 0.2);
+    box-shadow: 0 15px 40px rgba(0, 242, 254, 0.15);
+    border-radius: 24px;
+    padding: 30px;
+    box-sizing: border-box;
+    text-align: center;
+}
+.wifi-block-logo img {
+    height: 50px;
+    margin-bottom: 20px;
+    object-fit: contain;
+}
+.wifi-block-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 12px;
+}
+.wifi-block-desc {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+.wifi-block-info-box {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+.wifi-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    padding: 14px 18px;
+    border-radius: 12px;
+    text-align: left;
+}
+.wifi-info-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 4px;
+}
+.wifi-info-value {
+    font-size: 1rem;
+    color: white;
+    font-weight: bold;
+}
+.wifi-info-copy {
+    background: rgba(0, 242, 254, 0.1);
+    border: 1px solid rgba(0, 242, 254, 0.3);
+    color: #00f2fe;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.wifi-info-copy.copied {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+.wifi-block-qr-section {
+    border-top: 1px dashed rgba(255,255,255,0.1);
+    padding-top: 20px;
+    margin-bottom: 24px;
+}
+.qr-guide {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+.wifi-block-qr {
+    background: white;
+    padding: 12px;
+    border-radius: 16px;
+    display: inline-block;
+}
+.wifi-block-qr img {
+    width: 130px;
+    height: 130px;
+    display: block;
+}
+.wifi-refresh-btn {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+    color: white;
+    font-size: 1.05rem;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
+    transition: all 0.2s;
+}
+.wifi-refresh-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0, 242, 254, 0.5);
+}
+.wifi-block-footer {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: #475569;
 }

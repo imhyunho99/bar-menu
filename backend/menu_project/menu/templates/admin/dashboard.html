@@ -4,28 +4,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>관리자 페이지 - {{ request.restaurant.name|default:"BidBar" }}</title>
+    <title>관리자 페이지 - {{ request.restaurant.name|default:"bar-menu" }}</title>
     <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+    <style>
+        .drag-row {
+            cursor: move;
+            transition: var(--admin-transition);
+        }
+        .drag-row.dragging {
+            opacity: 0.4;
+            background-color: rgba(59, 130, 246, 0.1) !important;
+        }
+        .drag-handle {
+            cursor: grab;
+            user-select: none;
+            font-size: 1.2rem;
+            color: var(--admin-text-secondary);
+        }
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+        .admin-header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .toast-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--admin-success);
+            color: white;
+            padding: 12px 24px;
+            border-radius: var(--admin-radius);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+        }
+        .toast-notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
 </head>
 <body>
     <div class="admin-container">
+        <!-- Toast Notification for Reorder Success -->
+        <div id="toast" class="toast-notification">
+            <span>✓ 순서가 저장되었습니다.</span>
+        </div>
+
         <div class="admin-header">
-            <h1 class="admin-title">{{ request.restaurant.name|default:"BidBar" }} 관리자 대시보드</h1>
+            <h1 class="admin-title">{{ request.restaurant.name|default:"bar-menu" }} 관리자 대시보드</h1>
             <div class="admin-header-actions">
+                <a href="{% url 'menu:admin_orders' request.restaurant.slug %}" class="admin-btn admin-btn-primary" style="background-color: var(--admin-success);">🔔 주문 관리</a>
                 <a href="{% url 'menu:menu_main' request.restaurant.slug %}" target="_blank" class="admin-btn admin-btn-secondary">사이트 보기</a>
             </div>
         </div>
 
+        {% if messages %}
+            <div style="margin-bottom: 20px;">
+                {% for message in messages %}
+                    <div style="background-color: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--admin-success); padding: 12px; border-radius: var(--admin-radius); margin-bottom: 10px;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
         <div class="admin-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2>카테고리 <span style="font-size: 0.9em; color: var(--admin-text-secondary); font-weight: normal;">({{ categories|length }})</span></h2>
+                <div>
+                    <h2>카테고리 <span style="font-size: 0.9em; color: var(--admin-text-secondary); font-weight: normal;">({{ categories|length }})</span></h2>
+                    <p style="font-size: 0.85rem; color: var(--admin-text-secondary); margin-top: 4px;">* 행 좌측의 ⋮⋮ 핸들을 잡고 드래그하면 순서를 변경할 수 있습니다.</p>
+                </div>
                 <a href="{% url 'menu:add_category' request.restaurant.slug %}" class="admin-btn admin-btn-primary">카테고리 추가</a>
             </div>
             
             <div class="admin-table-container">
-                <table class="admin-table">
+                <table class="admin-table" id="categoryTable">
                     <thead>
                         <tr>
+                            <th style="width: 40px; text-align: center;"></th>
                             <th style="width: 50px;">ID</th>
                             <th>카테고리명</th>
                             <th>영문명</th>
@@ -37,7 +101,8 @@
                     </thead>
                     <tbody>
                         {% for category in categories %}
-                        <tr>
+                        <tr class="drag-row" data-id="{{ category.id }}" draggable="true">
+                            <td class="drag-handle" style="text-align: center;">⋮⋮</td>
                             <td>{{ category.id }}</td>
                             <td style="font-weight: 500; color: white;">{{ category.name|default:"-" }}</td>
                             <td>{{ category.name_en|default:"-" }}</td>
@@ -48,9 +113,10 @@
                                     <span style="color: var(--admin-text-secondary);">최상위</span>
                                 {% endif %}
                             </td>
-                            <td>{{ category.priority }}</td>
+                            <td class="priority-cell">{{ category.priority }}</td>
                             <td>{{ category.menu_items.count }}</td>
                             <td style="text-align: right;">
+                                <a href="{% url 'menu:edit_category' request.restaurant.slug category.id %}" class="admin-btn admin-btn-secondary" style="margin-right: 5px;">수정</a>
                                 <a href="{% url 'menu:delete_category' request.restaurant.slug category.id %}" 
                                    class="admin-btn admin-btn-danger"
                                    onclick="return confirm('정말 삭제하시겠습니까? 하위 카테고리와 메뉴도 영향을 받을 수 있습니다.')">삭제</a>
@@ -58,7 +124,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" style="text-align: center; padding: 40px; color: var(--admin-text-secondary);">
+                            <td colspan="8" style="text-align: center; padding: 40px; color: var(--admin-text-secondary);">
                                 등록된 카테고리가 없습니다.
                             </td>
                         </tr>
@@ -70,14 +136,18 @@
 
         <div class="admin-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2>메뉴 아이템 <span style="font-size: 0.9em; color: var(--admin-text-secondary); font-weight: normal;">({{ menu_items|length }})</span></h2>
+                <div>
+                    <h2>메뉴 아이템 <span style="font-size: 0.9em; color: var(--admin-text-secondary); font-weight: normal;">({{ menu_items|length }})</span></h2>
+                    <p style="font-size: 0.85rem; color: var(--admin-text-secondary); margin-top: 4px;">* 행 좌측의 ⋮⋮ 핸들을 잡고 드래그하면 순서를 변경할 수 있습니다.</p>
+                </div>
                 <a href="{% url 'menu:add_menu' request.restaurant.slug %}" class="admin-btn admin-btn-primary">메뉴 추가</a>
             </div>
             
             <div class="admin-table-container">
-                <table class="admin-table">
+                <table class="admin-table" id="menuTable">
                     <thead>
                         <tr>
+                            <th style="width: 40px; text-align: center;"></th>
                             <th style="width: 50px;">ID</th>
                             <th>이미지</th>
                             <th>메뉴명</th>
@@ -90,7 +160,8 @@
                     </thead>
                     <tbody>
                         {% for menu in menu_items %}
-                        <tr>
+                        <tr class="drag-row" data-id="{{ menu.id }}" draggable="true">
+                            <td class="drag-handle" style="text-align: center;">⋮⋮</td>
                             <td>{{ menu.id }}</td>
                             <td>
                                 {% if menu.menu_image %}
@@ -119,7 +190,7 @@
                                     <span style="color: var(--admin-text-secondary);">미분류</span>
                                 {% endif %}
                             </td>
-                            <td>{{ menu.priority }}</td>
+                            <td class="priority-cell">{{ menu.priority }}</td>
                             <td>
                                 {% if menu.is_available %}
                                     <span style="color: var(--admin-success);">● 판매중</span>
@@ -129,6 +200,7 @@
                             </td>
                             <td style="text-align: right;">
                                 <a href="{% url 'menu:edit_menu' request.restaurant.slug menu.id %}" class="admin-btn admin-btn-secondary" style="margin-right: 5px;">수정</a>
+                                <a href="{% url 'menu:duplicate_menu' request.restaurant.slug menu.id %}" class="admin-btn admin-btn-secondary" style="margin-right: 5px;">복제</a>
                                 <a href="{% url 'menu:delete_menu' request.restaurant.slug menu.id %}" 
                                    class="admin-btn admin-btn-danger"
                                    onclick="return confirm('정말 삭제하시겠습니까?')">삭제</a>
@@ -136,7 +208,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" style="text-align: center; padding: 40px; color: var(--admin-text-secondary);">
+                            <td colspan="9" style="text-align: center; padding: 40px; color: var(--admin-text-secondary);">
                                 등록된 메뉴가 없습니다.
                             </td>
                         </tr>
@@ -146,5 +218,104 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // CSRF 토큰 헬퍼
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        // Toast 알림 함수
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // 드래그 앤 드롭 정렬 헬퍼
+        function initSortableTable(tableId, endpointUrl) {
+            const tbody = document.querySelector(`#${tableId} tbody`);
+            if (!tbody) return;
+
+            let dragEl = null;
+
+            tbody.querySelectorAll('tr.drag-row').forEach(row => {
+                row.addEventListener('dragstart', function(e) {
+                    dragEl = this;
+                    this.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                row.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    
+                    const target = e.target.closest('tr.drag-row');
+                    if (target && target !== dragEl && target.parentNode === tbody) {
+                        const rect = target.getBoundingClientRect();
+                        const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+                        tbody.insertBefore(dragEl, next ? target.nextSibling : target);
+                    }
+                });
+
+                row.addEventListener('dragend', function() {
+                    this.classList.remove('dragging');
+                    
+                    // 정렬 후의 ID 목록
+                    const rows = Array.from(tbody.querySelectorAll('tr.drag-row'));
+                    const ids = rows.map(tr => tr.getAttribute('data-id'));
+                    
+                    // 백엔드로 정렬 요청 전송
+                    fetch(endpointUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrftoken
+                        },
+                        body: JSON.stringify({ ids: ids })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            showToast();
+                            // 화면상의 우선순위 값 텍스트 동적 업데이트
+                            rows.forEach((tr, index) => {
+                                const priorityCell = tr.querySelector('.priority-cell');
+                                if (priorityCell) {
+                                    priorityCell.textContent = parseFloat(index).toFixed(1);
+                                }
+                            });
+                        } else {
+                            alert('정렬 순서 업데이트에 실패했습니다: ' + data.message);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Reorder error:', err);
+                        alert('네트워크 오류가 발생했습니다.');
+                    });
+                });
+            });
+        }
+
+        // 테이블 초기화 실행
+        window.addEventListener('load', function() {
+            initSortableTable('categoryTable', "{% url 'menu:reorder_categories' request.restaurant.slug %}");
+            initSortableTable('menuTable', "{% url 'menu:reorder_menus' request.restaurant.slug %}");
+        });
+    </script>
 </body>
 </html>

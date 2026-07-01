@@ -24,9 +24,17 @@ urlpatterns = [
     path('admin/dashboard/', admin_views.admin_dashboard, name='admin_dashboard'),
     
     path('admin/category/add/', admin_views.add_category, name='add_category'),
+    path('admin/category/edit/<int:category_id>/', admin_views.edit_category, name='edit_category'),
     path('admin/category/delete/<int:category_id>/', admin_views.delete_category, name='delete_category'),
+    path('admin/category/reorder/', admin_views.reorder_categories, name='reorder_categories'),
     
     path('admin/menu/add/', admin_views.add_menu, name='add_menu'),
     path('admin/menu/edit/<int:menu_id>/', admin_views.edit_menu, name='edit_menu'),
+    path('admin/menu/duplicate/<int:menu_id>/', admin_views.duplicate_menu, name='duplicate_menu'),
     path('admin/menu/delete/<int:menu_id>/', admin_views.delete_menu, name='delete_menu'),
+    path('admin/menu/reorder/', admin_views.reorder_menus, name='reorder_menus'),
+
+    # Real-time Order Dashboard
+    path('admin/orders/', admin_views.admin_orders, name='admin_orders'),
+    path('admin/orders/<int:order_id>/update-status/', admin_views.update_order_status, name='update_order_status'),
 ]

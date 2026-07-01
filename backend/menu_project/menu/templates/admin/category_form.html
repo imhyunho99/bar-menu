@@ -1,0 +1,79 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if category %}카테고리 수정{% else %}카테고리 추가{% endif %} - bar-menu</title>
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-form">
+            <h2>{% if category %}카테고리 수정{% else %}카테고리 추가{% endif %}</h2>
+            
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="admin-form-group">
+                    <label for="name">카테고리명 (필수)</label>
+                    <input type="text" id="name" name="name" value="{{ category.name|default:'' }}" placeholder="예: 커피, 디저트, 메인요리" required>
+                </div>
+
+                <div class="admin-form-group">
+                    <label for="name_en">카테고리명 (영문)</label>
+                    <input type="text" id="name_en" name="name_en" value="{{ category.name_en|default:'' }}" placeholder="예: COFFEE, DESSERT, MAIN DISHES">
+                </div>
+                
+                <div class="admin-form-group">
+                    <label for="parent">상위 카테고리</label>
+                    <select id="parent" name="parent">
+                        <option value="">최상위 카테고리 (없음)</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat.id }}" {% if category.parent.id == cat.id %}selected{% endif %}>
+                                {{ cat.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <p style="margin-top: 8px; font-size: 0.85em; color: var(--admin-text-secondary);">
+                        * 선택 시 해당 카테고리의 하위 메뉴로 이동/생성됩니다.
+                    </p>
+                </div>
+
+                <div class="admin-form-group">
+                    <label for="priority">우선순위</label>
+                    <input type="number" step="any" id="priority" name="priority" value="{{ category.priority|default:'0' }}" placeholder="예: 0, 1, 2 (낮은 순 선표시)">
+                </div>
+
+                <div class="admin-form-group">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="hide_side_image" name="hide_side_image" {% if category.hide_side_image %}checked{% endif %} style="width: auto; margin: 0;">
+                        <span>사이드 이미지 숨기기</span>
+                    </label>
+                    <p style="margin-top: 5px; font-size: 0.85em; color: var(--admin-text-secondary);">
+                        체크하면 이 카테고리 화면에서 사이드 배경 이미지가 숨겨집니다.
+                    </p>
+                </div>
+
+                <div class="admin-form-group">
+                    <label for="category_image">카테고리 이미지 (선택)</label>
+                    <div style="margin-bottom: 10px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: var(--admin-radius); border: 1px solid var(--admin-border-color);">
+                        <input type="file" id="category_image" name="category_image" accept="image/*" style="border: none; padding: 0;">
+                        {% if category.category_image %}
+                            <div class="admin-current-image" style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                                <img src="{{ category.category_image.url }}" alt="Current" style="height: 60px; border-radius: 4px;">
+                                <span style="color: var(--admin-text-secondary); font-size: 0.9em;">현재 등록된 이미지</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="admin-actions">
+                    <a href="{% url 'menu:admin_dashboard' request.restaurant.slug %}" class="admin-btn admin-btn-secondary">취소</a>
+                    <button type="submit" class="admin-btn admin-btn-primary">{% if category %}수정 저장{% else %}카테고리 추가{% endif %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 interface NavigationRemoteProps {
@@ -44,16 +43,19 @@ export default function NavigationRemote({ slug, prevCategory, nextCategory }: N
           onClick={() => router.push(`/${slug}/category/${prevCategory.id}`)}
           title={prevCategory.name}
         >
-          <Image src="/left.png" alt="Prev Category" width={60} height={60} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/left.png" alt="Prev Category" />
         </button>
       ) : (
         <div className="remote-btn remote-btn-prev" style={{ opacity: 0, pointerEvents: 'none' }}>
-          <Image src="/left.png" alt="Prev Category" width={60} height={60} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/left.png" alt="Prev Category" />
         </div>
       )}
 
       <button className="remote-btn remote-btn-top" onClick={scrollToTop} id="remoteTop">
-        <Image src="/up.png" alt="Scroll Top" width={60} height={60} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/up.png" alt="Scroll Top" />
       </button>
 
       {nextCategory ? (
@@ -62,11 +64,13 @@ export default function NavigationRemote({ slug, prevCategory, nextCategory }: N
           onClick={() => router.push(`/${slug}/category/${nextCategory.id}`)}
           title={nextCategory.name}
         >
-          <Image src="/right.png" alt="Next Category" width={60} height={60} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/right.png" alt="Next Category" />
         </button>
       ) : (
         <div className="remote-btn remote-btn-next" style={{ opacity: 0, pointerEvents: 'none' }}>
-          <Image src="/right.png" alt="Next Category" width={60} height={60} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/right.png" alt="Next Category" />
         </div>
       )}
     </div>

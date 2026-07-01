@@ -6,6 +6,8 @@ import NavigationRemote from '@/components/NavigationRemote';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import type { CategoryTree } from '@/lib/types';
+import Cart from '@/components/Cart';
+import WifiHelper from '@/components/WifiHelper';
 
 export const revalidate = 60; // 60초마다 ISR 재생성
 
@@ -170,6 +172,9 @@ export default async function CategoryDetailPage({
           nextCategory={nextCategory}
         />
       )}
+
+      <Cart />
+      <WifiHelper />
     </>
   );
 }
