@@ -75,6 +75,8 @@ export default async function LandingPage() {
             font-family: var(--font-ko);
             overflow-x: hidden;
             line-height: 1.6;
+            word-break: keep-all;
+            overflow-wrap: break-word;
         }
 
         .glow-orb {
@@ -700,7 +702,7 @@ export default async function LandingPage() {
             <span className="geo-tag">#성수동 와인바</span>
             <span className="geo-tag">#강남역 이자카야</span>
             <span className="geo-tag">#홍대 힙한 요리주점</span>
-            <span className="geo-tag">#을지로 을지로 감성 펍</span>
+            <span className="geo-tag">#을지로 감성 펍</span>
             <span className="geo-tag">#한남동 다이닝바</span>
             <span className="geo-tag">#부산 해운대 테라스 펍</span>
           </div>
