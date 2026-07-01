@@ -83,8 +83,15 @@ export default async function CategoryDetailPage({
   const flatCats = getFlatCategories(tree);
   
   const currentIndex = flatCats.findIndex((c) => c.id === currentCatId);
-  const prevCategory = currentIndex > 0 ? flatCats[currentIndex - 1] : null;
-  const nextCategory = currentIndex !== -1 && currentIndex < flatCats.length - 1 ? flatCats[currentIndex + 1] : null;
+  let prevCategory = null;
+  let nextCategory = null;
+  
+  if (currentIndex !== -1 && flatCats.length > 1) {
+    const prevIdx = (currentIndex - 1 + flatCats.length) % flatCats.length;
+    const nextIdx = (currentIndex + 1) % flatCats.length;
+    prevCategory = flatCats[prevIdx];
+    nextCategory = flatCats[nextIdx];
+  }
 
   const isSubcategoryView = category.sub_categories && category.sub_categories.length > 0;
   const hasMenuItems = category.menu_items && category.menu_items.length > 0;
