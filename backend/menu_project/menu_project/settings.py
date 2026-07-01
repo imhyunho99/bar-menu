@@ -14,11 +14,17 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-# .env 파일 로드 (로컬 개발용 우선)
-if os.path.exists(Path(__file__).resolve().parent.parent.parent / '.env.local'):
-    load_dotenv(Path(__file__).resolve().parent.parent.parent / '.env.local')
+# .env 파일 로드 (루트 폴더 .env 또는 백엔드 폴더 .env 순서로 확인)
+root_env = Path(__file__).resolve().parent.parent.parent.parent / '.env'
+backend_env_local = Path(__file__).resolve().parent.parent.parent / '.env.local'
+backend_env = Path(__file__).resolve().parent.parent.parent / '.env'
+
+if os.path.exists(root_env):
+    load_dotenv(root_env)
+elif os.path.exists(backend_env_local):
+    load_dotenv(backend_env_local)
 else:
-    load_dotenv(Path(__file__).resolve().parent.parent.parent / '.env')
+    load_dotenv(backend_env)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

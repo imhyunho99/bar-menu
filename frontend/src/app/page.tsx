@@ -638,6 +638,22 @@ export default async function LandingPage() {
                 gap: 10px;
             }
         }
+
+        .hero-title br {
+            display: none;
+        }
+        .hidden-mobile {
+            display: none;
+        }
+
+        @media (min-width: 769px) {
+            .hero-title br {
+                display: inline;
+            }
+            .hidden-mobile {
+                display: inline;
+            }
+        }
       ` }} />
 
       <div className="glow-orb orb-top-right"></div>
