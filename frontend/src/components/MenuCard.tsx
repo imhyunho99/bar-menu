@@ -177,7 +177,7 @@ export default function MenuCard({ item }: { item: MenuItemType }) {
                 <span className="menu-name-ko"><Nl2br text={item.name} /></span>
               </div>
               {item.description && <div className="menu-description"><Nl2br text={item.description} /></div>}
-              <div className="menu-notes-price-wrapper" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="menu-notes-price-wrapper" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 {item.notes ? <span className="menu-notes"><Nl2br text={item.notes} /></span> : <span />}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div className="menu-price"><Nl2br text={item.price} /></div>
@@ -219,7 +219,7 @@ export default function MenuCard({ item }: { item: MenuItemType }) {
                 </div>
               </div>
               {item.description && <div className="menu-description"><Nl2br text={item.description} /></div>}
-              <div className="menu-notes-price-wrapper" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="menu-notes-price-wrapper" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 {item.notes ? <span className="menu-notes"><Nl2br text={item.notes} /></span> : <span />}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div className="menu-price"><Nl2br text={item.price} /></div>
