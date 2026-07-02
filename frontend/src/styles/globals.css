@@ -7,19 +7,19 @@
   --menu-name-size: inherit;
   --menu-name-weight: inherit;
   --menu-name-style: normal;
-  --menu-name-en-color: #ccc;
+  --menu-name-en-color: #4c4c4c;
   --menu-name-en-size: 0.9rem;
   --menu-name-en-weight: 400;
   --menu-name-en-style: normal;
-  --menu-price-color: #fff;
+  --menu-price-color: #aaaaaa;
   --menu-price-size: 1.1rem;
   --menu-price-weight: 600;
   --menu-price-style: normal;
-  --menu-desc-color: #aaa;
+  --menu-desc-color: #898484;
   --menu-desc-size: inherit;
   --menu-desc-weight: inherit;
   --menu-desc-style: normal;
-  --menu-notes-color: #888;
+  --menu-notes-color: #575757;
   --menu-notes-size: 0.8rem;
   --menu-notes-weight: inherit;
   --menu-notes-style: normal;
@@ -1744,7 +1744,7 @@ body {
 }
 
 .remote-btn img {
-    height: 35px;
+    height: 28px;
     width: auto;
     object-fit: contain;
 }

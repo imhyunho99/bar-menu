@@ -786,7 +786,7 @@ body {
 
 .menu-title .menu-name-en {
     font-size: 0.9rem;
-    color: #ccc;
+    color: #4c4c4c;
     font-weight: 400;
     font-style: normal;
     display: block;
@@ -795,14 +795,14 @@ body {
 }
 
 .menu-description {
-    color: #aaa;
+    color: #898484;
     padding: 0;
     line-height: 1.4;
     margin-bottom: -0.5rem;
 }
 
 .menu-notes {
-    color: #888;
+    color: #575757;
     font-size: 0.8rem;
     margin: 0.3rem 0 0 0;
     padding: 0;
@@ -811,7 +811,7 @@ body {
 .menu-price {
     font-size: 1.1rem;
     font-weight: 600;
-    color: #fff;
+    color: #aaaaaa;
     margin-left: 2rem;
     white-space: nowrap;
 }
