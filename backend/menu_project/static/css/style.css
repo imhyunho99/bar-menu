@@ -735,7 +735,7 @@ body {
     overflow: hidden;
     border: 1px solid rgba(0, 0, 0);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     padding-bottom: 2.5rem;
 }
 
@@ -1738,7 +1738,7 @@ body {
     padding: 1.2rem 1.5rem;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     min-width: 0; /* prevent flex overflow */
 }
 
