@@ -448,11 +448,29 @@
                         {% for sub in cat.sub_categories %}
                         <li class="category-node" data-id="{{ sub.id }}">
                             <div class="category-item" id="cat-{{ sub.id }}" onclick="filterCategory('{{ sub.id }}')">
+                                {% if sub.sub_categories %}
+                                <button type="button" class="category-toggle-btn" onclick="event.stopPropagation(); toggleSubCategory(this, '{{ sub.id }}')" title="하위 카테고리 펼치기/접기">▶</button>
+                                {% endif %}
                                 <span>{{ sub.name }}</span>
                                 <div class="node-actions">
                                     <a href="#" class="action-icon" onclick="event.stopPropagation(); openDrawer('/admin/menu/category/{{ sub.id }}/change/?_popup=1', '카테고리 수정')">⚙</a>
                                 </div>
                             </div>
+
+                            {% if sub.sub_categories %}
+                            <ul class="category-sub-list" id="sub-list-{{ sub.id }}">
+                                {% for subsub in sub.sub_categories %}
+                                <li class="category-node" data-id="{{ subsub.id }}">
+                                    <div class="category-item" id="cat-{{ subsub.id }}" onclick="filterCategory('{{ subsub.id }}')">
+                                        <span>{{ subsub.name }}</span>
+                                        <div class="node-actions">
+                                            <a href="#" class="action-icon" onclick="event.stopPropagation(); openDrawer('/admin/menu/category/{{ subsub.id }}/change/?_popup=1', '카테고리 수정')">⚙</a>
+                                        </div>
+                                    </div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
                         </li>
                         {% endfor %}
                     </ul>
@@ -496,6 +514,9 @@
                             <option value="{{ cat.id }}">{{ cat.name }}</option>
                             {% for sub in cat.sub_categories %}
                                 <option value="{{ sub.id }}">&nbsp;&nbsp;↳ {{ sub.name }}</option>
+                                {% for subsub in sub.sub_categories %}
+                                    <option value="{{ subsub.id }}">&nbsp;&nbsp;&nbsp;&nbsp;↳ {{ subsub.name }}</option>
+                                {% endfor %}
                             {% endfor %}
                         {% endfor %}
                     </select>
@@ -569,6 +590,39 @@
                                 <button type="button" class="btn-workspace btn-workspace-danger" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/delete/?_popup=1', '메뉴 삭제')">삭제</button>
                             </div>
                         </div>
+                        {% endfor %}
+                        
+                        {% for subsub in sub.sub_categories %}
+                            {% for item in subsub.menu_items %}
+                            <div class="menu-item-row" data-id="{{ item.id }}" data-category-id="{{ subsub.id }}" draggable="true">
+                                <span class="menu-item-drag-handle">⋮⋮</span>
+                                <div class="menu-item-select-wrap">
+                                    <input type="checkbox" class="item-select-checkbox" data-id="{{ item.id }}" onchange="updateSelectState()">
+                                </div>
+                                
+                                {% if item.image_url %}
+                                <img src="{{ item.image_url }}" class="menu-item-thumb" alt="" />
+                                {% else %}
+                                <div class="menu-item-thumb" style="display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #94a3b8; font-weight: 700;">No Img</div>
+                                {% endif %}
+                                
+                                <div class="menu-item-info">
+                                    <a href="#" class="item-name" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/change/?_popup=1', '메뉴 수정')">{{ item.name }}</a>
+                                    <div class="item-name-en">{{ item.name_en|default:"-" }}</div>
+                                </div>
+                                <div class="menu-item-price">₩{{ item.price }}</div>
+                                <div class="menu-item-status">
+                                    <label class="switch">
+                                        <input type="checkbox" {% if item.is_available %}checked{% endif %} onchange="toggleAvailable('{{ item.id }}', this)">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="menu-item-actions">
+                                    <button type="button" class="btn-workspace btn-workspace-secondary" onclick="duplicateItem('{{ item.id }}')">복제</button>
+                                    <button type="button" class="btn-workspace btn-workspace-danger" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/delete/?_popup=1', '메뉴 삭제')">삭제</button>
+                                </div>
+                            </div>
+                            {% endfor %}
                         {% endfor %}
                     {% endfor %}
                 {% endfor %}
