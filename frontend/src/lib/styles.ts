@@ -96,7 +96,9 @@ export function buildCSSVariables(s: SiteSettings | null): string {
             if (prop === 'font-style') lines.push('font-style: italic !important;');
           }
         } else {
-          lines.push(`${prop}: ${val}${unit} !important;`);
+          // font-size일 때만 unit(px)을 붙이고, color 등에는 붙이지 않음
+          const finalUnit = prop === 'font-size' ? unit : '';
+          lines.push(`${prop}: ${val}${finalUnit} !important;`);
         }
       }
     }
