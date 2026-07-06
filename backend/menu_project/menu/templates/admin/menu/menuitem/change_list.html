@@ -119,6 +119,48 @@
         padding-left: 20px;
         margin: 4px 0 0 0;
         border-left: 1px dashed #cbd5e1;
+        display: none;
+    }
+    .category-sub-list.expanded {
+        display: block;
+    }
+    .category-toggle-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 0.7rem;
+        color: #94a3b8;
+        padding: 2px 4px;
+        margin-right: 6px;
+        transition: transform 0.2s;
+        line-height: 1;
+    }
+    .category-toggle-btn.open {
+        transform: rotate(90deg);
+    }
+    .search-bar-container {
+        margin-bottom: 16px;
+    }
+    .search-bar-container input {
+        width: 100%;
+        padding: 8px 12px 8px 32px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        outline: none;
+        background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 10px center;
+        box-sizing: border-box;
+        transition: border-color 0.2s;
+    }
+    .search-bar-container input:focus {
+        border-color: #3b82f6;
+    }
+    .search-no-result {
+        text-align: center;
+        padding: 20px 0;
+        color: #94a3b8;
+        font-size: 0.85rem;
+        display: none;
     }
     .menu-list-title-section {
         display: flex;
@@ -392,6 +434,9 @@
                 {% for cat in workspace_data.top_categories %}
                 <li class="category-node" data-id="{{ cat.id }}">
                     <div class="category-item" id="cat-{{ cat.id }}" onclick="filterCategory('{{ cat.id }}')">
+                        {% if cat.sub_categories %}
+                        <button type="button" class="category-toggle-btn" onclick="event.stopPropagation(); toggleSubCategory(this, '{{ cat.id }}')" title="하위 카테고리 펼치기/접기">▶</button>
+                        {% endif %}
                         <span>{{ cat.name }}</span>
                         <div class="node-actions">
                             <a href="#" class="action-icon" onclick="event.stopPropagation(); openDrawer('/admin/menu/category/{{ cat.id }}/change/?_popup=1', '카테고리 수정')">⚙</a>
@@ -399,7 +444,7 @@
                     </div>
                     
                     {% if cat.sub_categories %}
-                    <ul class="category-sub-list">
+                    <ul class="category-sub-list" id="sub-list-{{ cat.id }}">
                         {% for sub in cat.sub_categories %}
                         <li class="category-node" data-id="{{ sub.id }}">
                             <div class="category-item" id="cat-{{ sub.id }}" onclick="filterCategory('{{ sub.id }}')">
@@ -432,6 +477,12 @@
                 <button type="button" class="btn-workspace btn-workspace-primary" onclick="openAddMenuDrawer()">+ 메뉴 추가</button>
             </div>
             
+            <!-- 검색 바 -->
+            <div class="search-bar-container">
+                <input type="text" id="menu-search-input" placeholder="메뉴 이름으로 검색..." oninput="searchMenuItems(this.value)">
+            </div>
+            <div class="search-no-result" id="search-no-result">검색 결과가 없습니다.</div>
+            
             <!-- 다중 선택 일괄 작업 바 -->
             <div class="bulk-action-bar">
                 <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" style="cursor: pointer; width: 16px; height: 16px;">
@@ -458,7 +509,7 @@
                 <!-- Top categories menu items -->
                 {% for cat in workspace_data.top_categories %}
                     {% for item in cat.menu_items %}
-                    <div class="menu-item-row" data-id="{{ item.id }}" data-category-id="{{ cat.id }}">
+                    <div class="menu-item-row" data-id="{{ item.id }}" data-category-id="{{ cat.id }}" draggable="true">
                         <span class="menu-item-drag-handle">⋮⋮</span>
                         <div class="menu-item-select-wrap">
                             <input type="checkbox" class="item-select-checkbox" data-id="{{ item.id }}" onchange="updateSelectState()">
@@ -490,7 +541,7 @@
                     
                     {% for sub in cat.sub_categories %}
                         {% for item in sub.menu_items %}
-                        <div class="menu-item-row" data-id="{{ item.id }}" data-category-id="{{ sub.id }}">
+                        <div class="menu-item-row" data-id="{{ item.id }}" data-category-id="{{ sub.id }}" draggable="true">
                             <span class="menu-item-drag-handle">⋮⋮</span>
                             <div class="menu-item-select-wrap">
                                 <input type="checkbox" class="item-select-checkbox" data-id="{{ item.id }}" onchange="updateSelectState()">
@@ -524,7 +575,7 @@
                 
                 <!-- Uncategorized menu items -->
                 {% for item in workspace_data.no_category_items %}
-                <div class="menu-item-row" data-id="{{ item.id }}" data-category-id="none">
+                <div class="menu-item-row" data-id="{{ item.id }}" data-category-id="none" draggable="true">
                     <span class="menu-item-drag-handle">⋮⋮</span>
                     <div class="menu-item-select-wrap">
                         <input type="checkbox" class="item-select-checkbox" data-id="{{ item.id }}" onchange="updateSelectState()">
@@ -582,16 +633,50 @@
 <script>
     let activeCategory = 'all';
     
+    // ─────────────────────────────────────────────
+    // 카테고리 하위 목록 토글 (펼치기/접기)
+    // ─────────────────────────────────────────────
+    function toggleSubCategory(btn, catId) {
+        const subList = document.getElementById('sub-list-' + catId);
+        if (!subList) return;
+        const isExpanded = subList.classList.contains('expanded');
+        if (isExpanded) {
+            subList.classList.remove('expanded');
+            btn.classList.remove('open');
+        } else {
+            subList.classList.add('expanded');
+            btn.classList.add('open');
+        }
+    }
+
     function filterCategory(catId) {
         activeCategory = catId;
         document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
         const activeNode = document.getElementById('cat-' + catId);
         if (activeNode) activeNode.classList.add('active');
         
+        // 하위 카테고리를 선택한 경우 부모 카테고리의 sub-list를 자동으로 펼침
+        if (activeNode) {
+            const parentSubList = activeNode.closest('.category-sub-list');
+            if (parentSubList) {
+                parentSubList.classList.add('expanded');
+                const parentToggle = parentSubList.previousElementSibling;
+                if (parentToggle) {
+                    const toggleBtn = parentToggle.querySelector('.category-toggle-btn');
+                    if (toggleBtn) toggleBtn.classList.add('open');
+                }
+            }
+        }
+        
         const titleEl = document.getElementById('current-category-title');
         if (catId === 'all') titleEl.textContent = '전체 메뉴 목록';
         else if (catId === 'none') titleEl.textContent = '분류되지 않은 메뉴 목록';
         else titleEl.textContent = activeNode.querySelector('span').textContent + ' 메뉴 목록';
+        
+        // 검색 초기화
+        const searchInput = document.getElementById('menu-search-input');
+        if (searchInput) searchInput.value = '';
+        document.getElementById('search-no-result').style.display = 'none';
         
         const rows = document.querySelectorAll('.menu-item-row');
         rows.forEach(row => {
@@ -604,6 +689,50 @@
             }
         });
         updateSelectState();
+    }
+
+    // ─────────────────────────────────────────────
+    // 메뉴 아이템 검색
+    // ─────────────────────────────────────────────
+    function searchMenuItems(query) {
+        const normalizedQuery = query.trim().toLowerCase();
+        const rows = document.querySelectorAll('.menu-item-row');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            // 현재 필터링된 카테고리 조건 먼저 확인
+            const itemCatId = row.dataset.categoryId;
+            const categoryMatch = (activeCategory === 'all' || 
+                (activeCategory === 'none' && itemCatId === 'none') || 
+                itemCatId === activeCategory);
+            
+            if (!categoryMatch) {
+                row.style.display = 'none';
+                return;
+            }
+            
+            if (!normalizedQuery) {
+                row.style.display = 'flex';
+                visibleCount++;
+                return;
+            }
+            
+            // 메뉴 이름과 영문 이름에서 검색
+            const nameEl = row.querySelector('.item-name');
+            const nameEnEl = row.querySelector('.item-name-en');
+            const name = (nameEl ? nameEl.textContent : '').toLowerCase();
+            const nameEn = (nameEnEl ? nameEnEl.textContent : '').toLowerCase();
+            
+            if (name.includes(normalizedQuery) || nameEn.includes(normalizedQuery)) {
+                row.style.display = 'flex';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // 검색 결과 없음 표시
+        document.getElementById('search-no-result').style.display = (normalizedQuery && visibleCount === 0) ? 'block' : 'none';
     }
 
     // ─────────────────────────────────────────────
