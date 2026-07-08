@@ -654,6 +654,15 @@ export default async function LandingPage() {
                 display: inline;
             }
         }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        .footer-links a:hover {
+            color: var(--secondary) !important;
+        }
       ` }} />
 
       <div className="glow-orb orb-top-right"></div>
@@ -814,7 +823,7 @@ export default async function LandingPage() {
             <span>사업자등록번호: 102-13-82292</span>
           </div>
           <div className="footer-links" style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '10px', marginBottom: '15px', fontSize: '0.8rem' }}>
-            <Link href="/terms" style={{ color: 'var(--text-secondary)', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = 'var(--secondary)'} onMouseOut={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}>서비스 이용약관 및 요금정책</Link>
+            <Link href="/terms">서비스 이용약관 및 요금정책</Link>
           </div>
           <p>&copy; 2026 bar-menu. All Rights Reserved. 디자인 및 실시간 편집에 특화된 스마트 QR 메뉴판 서비스.</p>
         </footer>
