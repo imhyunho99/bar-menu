@@ -726,35 +726,38 @@ export default async function LandingPage() {
 
         <section className="pricing-section" id="pricing">
           <h2 className="section-title">합리적인 도입 요금제</h2>
-          <p className="section-subtitle">매장 규모와 브랜딩 니즈에 맞춘 세 가지 옵션을 제공합니다.</p>
+          <p className="section-subtitle">태블릿 렌탈 기기 비용 0원. 매장 규모와 요구 사항에 맞춘 유연한 무약정 구독 요금제입니다.</p>
 
           <div className="pricing-grid">
             <div className="pricing-card">
-              <h3 className="plan-name">Standard</h3>
+              <h3 className="plan-name">Entry</h3>
               <div className="plan-price-box">
-                <div className="price-setup">구축비 50만원</div>
-                <div className="price-maintenance">유지비 월 3만원 또는 연 30만원 (택 1)</div>
+                <div className="price-setup" style={{ fontSize: '1.4rem' }}>가입비/도입비 무료</div>
+                <div className="price-setup" style={{ color: 'var(--secondary)', fontSize: '2.2rem', marginTop: '10px' }}>월 9,900원</div>
+                <div className="price-maintenance" style={{ marginTop: '5px' }}>무약정 월간 구독 (인쇄 스티커 기본 제공)</div>
               </div>
               <ul className="plan-features-list">
-                <li className="plan-feature-item">초기 메뉴판 데이터 구축 (기존 지면/이미지 기준)</li>
-                <li className="plan-feature-item">기본 테마 및 레이아웃 제공</li>
-                <li className="plan-feature-item">초경량 WebP 최적화 기본 적용</li>
-                <li className="plan-feature-item">주류 페어링 연동 기본 적용</li>
+                <li className="plan-feature-item">실시간 모바일 QR 메뉴판 제공</li>
+                <li className="plan-feature-item">실시간 메뉴 및 카테고리 정보 수정</li>
+                <li className="plan-feature-item">초경량 WebP 고속 이미지 변환 엔진</li>
+                <li className="plan-feature-item">스마트 주류 페어링 연동 기본 적용</li>
               </ul>
-              <Link href="#contact" className="plan-cta-btn">Standard 도입 문의</Link>
+              <Link href="#contact" className="plan-cta-btn">Entry 도입 문의</Link>
             </div>
 
             <div className="pricing-card featured">
               <h3 className="plan-name">Pro</h3>
               <div className="plan-price-box">
-                <div className="price-setup">구축비 80만원</div>
-                <div className="price-maintenance">유지비 월 5만원 또는 연 50만원 (택 1)</div>
+                <div className="price-setup" style={{ fontSize: '1.4rem' }}>초기 세팅비 무료</div>
+                <div className="price-setup" style={{ color: 'var(--secondary)', fontSize: '2.2rem', marginTop: '10px' }}>월 19,900원</div>
+                <div className="price-maintenance" style={{ marginTop: '5px' }}>무약정 월간 구독 (고급 아크릴 거치대 제공)</div>
               </div>
               <ul className="plan-features-list">
-                <li className="plan-feature-item"><strong>Standard의 모든 혜택 포함</strong></li>
-                <li className="plan-feature-item">매장 맞춤형 프리미엄 디자인 고도화</li>
-                <li className="plan-feature-item">인트로/로딩용 랜딩 비디오 제작 및 삽입</li>
-                <li className="plan-feature-item">관리자 최적화 전용 서체 및 스타일 패키지</li>
+                <li className="plan-feature-item"><strong>Entry의 모든 기능 포함</strong></li>
+                <li className="plan-feature-item"><strong>페이히어 결제 연동 및 장바구니 활성화</strong></li>
+                <li className="plan-feature-item">와이파이 원클릭 간편 연결 지원</li>
+                <li className="plan-feature-item">매장 구역 내 보안 접속 제한 (IP/SSID 매칭)</li>
+                <li className="plan-feature-item">메뉴 유출 방지용 스크린샷 캡처 차단</li>
               </ul>
               <Link href="#contact" className="plan-cta-btn">Pro 도입 문의</Link>
             </div>
@@ -762,13 +765,15 @@ export default async function LandingPage() {
             <div className="pricing-card">
               <h3 className="plan-name">Premium</h3>
               <div className="plan-price-box">
-                <div className="price-setup">가격 상담 문의</div>
-                <div className="price-maintenance">요구사항에 맞춰 견적 산정</div>
+                <div className="price-setup" style={{ fontSize: '1.4rem' }}>초기 디자인비 20만원</div>
+                <div className="price-setup" style={{ color: 'var(--secondary)', fontSize: '2.2rem', marginTop: '10px' }}>월 39,900원</div>
+                <div className="price-maintenance" style={{ marginTop: '5px' }}>1:1 맞춤 제작 솔루션 패키지</div>
               </div>
               <ul className="plan-features-list">
-                <li className="plan-feature-item">커스텀 추가 기능 및 비즈니스 로직 개발</li>
-                <li className="plan-feature-item">프랜차이즈 다지점 통합 관리자 계정 구성</li>
-                <li className="plan-feature-item">전문 디자이너 1:1 전담 브랜딩 컨설팅</li>
+                <li className="plan-feature-item"><strong>Pro의 모든 기능 포함</strong></li>
+                <li className="plan-feature-item"><strong>매장 전용 카드 레이아웃 빌더 세팅</strong></li>
+                <li className="plan-feature-item">인트로/로딩용 프리미엄 숏비디오 제작</li>
+                <li className="plan-feature-item">프랜차이즈 다지점 통합 어드민 계정 구성</li>
                 <li className="plan-feature-item">24/7 우선 기술 지원 서비스</li>
               </ul>
               <Link href="#contact" className="plan-cta-btn">Premium 도입 문의</Link>
@@ -807,6 +812,9 @@ export default async function LandingPage() {
             <span>상호명: bar-menu</span>
             <span>대표자 성명: 나현호</span>
             <span>사업자등록번호: 102-13-82292</span>
+          </div>
+          <div className="footer-links" style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '10px', marginBottom: '15px', fontSize: '0.8rem' }}>
+            <Link href="/terms" style={{ color: 'var(--text-secondary)', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = 'var(--secondary)'} onMouseOut={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}>서비스 이용약관 및 요금정책</Link>
           </div>
           <p>&copy; 2026 bar-menu. All Rights Reserved. 디자인 및 실시간 편집에 특화된 스마트 QR 메뉴판 서비스.</p>
         </footer>
