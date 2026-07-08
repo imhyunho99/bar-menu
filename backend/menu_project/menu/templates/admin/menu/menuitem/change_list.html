@@ -439,7 +439,7 @@
                         {% endif %}
                         <span>{{ cat.name }}</span>
                         <div class="node-actions">
-                            <a href="#" class="action-icon" onclick="event.stopPropagation(); openDrawer('/admin/menu/category/{{ cat.id }}/change/?_popup=1', '카테고리 수정')">⚙</a>
+                            <a href="javascript:void(0);" class="action-icon" onclick="event.stopPropagation(); openDrawer('/admin/menu/category/{{ cat.id }}/change/?_popup=1', '카테고리 수정')">⚙</a>
                         </div>
                     </div>
                     
@@ -453,7 +453,7 @@
                                 {% endif %}
                                 <span>{{ sub.name }}</span>
                                 <div class="node-actions">
-                                    <a href="#" class="action-icon" onclick="event.stopPropagation(); openDrawer('/admin/menu/category/{{ sub.id }}/change/?_popup=1', '카테고리 수정')">⚙</a>
+                                    <a href="javascript:void(0);" class="action-icon" onclick="event.stopPropagation(); openDrawer('/admin/menu/category/{{ sub.id }}/change/?_popup=1', '카테고리 수정')">⚙</a>
                                 </div>
                             </div>
 
@@ -464,7 +464,7 @@
                                     <div class="category-item" id="cat-{{ subsub.id }}" onclick="filterCategory('{{ subsub.id }}')">
                                         <span>{{ subsub.name }}</span>
                                         <div class="node-actions">
-                                            <a href="#" class="action-icon" onclick="event.stopPropagation(); openDrawer('/admin/menu/category/{{ subsub.id }}/change/?_popup=1', '카테고리 수정')">⚙</a>
+                                            <a href="javascript:void(0);" class="action-icon" onclick="event.stopPropagation(); openDrawer('/admin/menu/category/{{ subsub.id }}/change/?_popup=1', '카테고리 수정')">⚙</a>
                                         </div>
                                     </div>
                                 </li>
@@ -543,7 +543,7 @@
                         {% endif %}
                         
                         <div class="menu-item-info">
-                            <a href="#" class="item-name" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/change/?_popup=1', '메뉴 수정')">{{ item.name }}</a>
+                            <a href="javascript:void(0);" class="item-name" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/change/?_popup=1', '메뉴 수정')">{{ item.name }}</a>
                             <div class="item-name-en">{{ item.name_en|default:"-" }}</div>
                         </div>
                         <div class="menu-item-price">₩{{ item.price }}</div>
@@ -575,7 +575,7 @@
                             {% endif %}
                             
                             <div class="menu-item-info">
-                                <a href="#" class="item-name" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/change/?_popup=1', '메뉴 수정')">{{ item.name }}</a>
+                                <a href="javascript:void(0);" class="item-name" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/change/?_popup=1', '메뉴 수정')">{{ item.name }}</a>
                                 <div class="item-name-en">{{ item.name_en|default:"-" }}</div>
                             </div>
                             <div class="menu-item-price">₩{{ item.price }}</div>
@@ -607,7 +607,7 @@
                                 {% endif %}
                                 
                                 <div class="menu-item-info">
-                                    <a href="#" class="item-name" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/change/?_popup=1', '메뉴 수정')">{{ item.name }}</a>
+                                    <a href="javascript:void(0);" class="item-name" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/change/?_popup=1', '메뉴 수정')">{{ item.name }}</a>
                                     <div class="item-name-en">{{ item.name_en|default:"-" }}</div>
                                 </div>
                                 <div class="menu-item-price">₩{{ item.price }}</div>
@@ -642,7 +642,7 @@
                     {% endif %}
                     
                     <div class="menu-item-info">
-                        <a href="#" class="item-name" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/change/?_popup=1', '메뉴 수정')">{{ item.name }}</a>
+                        <a href="javascript:void(0);" class="item-name" onclick="openDrawer('/admin/menu/menuitem/{{ item.id }}/change/?_popup=1', '메뉴 수정')">{{ item.name }}</a>
                         <div class="item-name-en">{{ item.name_en|default:"-" }}</div>
                     </div>
                     <div class="menu-item-price">₩{{ item.price }}</div>
@@ -940,19 +940,26 @@
         openDrawer(url, '새 메뉴 추가');
     }
     
+    function saveScrollPosition() {
+        sessionStorage.setItem('workspace_scroll_y', window.scrollY);
+    }
+
     window.dismissAddAnotherPopup = function(win, newId, newRepr) {
         closeDrawer();
         showToast('추가 완료되었습니다.');
+        saveScrollPosition();
         setTimeout(() => window.location.reload(), 800);
     };
     window.dismissChangeRelatedObjectPopup = function(win, objId, newRepr, newId) {
         closeDrawer();
         showToast('저장 완료되었습니다.');
+        saveScrollPosition();
         setTimeout(() => window.location.reload(), 800);
     };
     window.dismissDeleteRelatedObjectPopup = function(win, objId) {
         closeDrawer();
         showToast('삭제되었습니다.');
+        saveScrollPosition();
         setTimeout(() => window.location.reload(), 800);
     };
 
@@ -982,6 +989,7 @@
         .then(data => {
             if (data.status === 'success') {
                 showToast('메뉴 복제 완료.');
+                saveScrollPosition();
                 setTimeout(() => window.location.reload(), 800);
             } else {
                 alert('복제 실패: ' + data.message);
@@ -1069,6 +1077,15 @@
     document.addEventListener('DOMContentLoaded', () => {
         initDragAndDrop();
         filterCategory('all');
+        
+        // 스크롤 위치 복구
+        setTimeout(() => {
+            const scrollY = sessionStorage.getItem('workspace_scroll_y');
+            if (scrollY !== null) {
+                window.scrollTo({ top: parseInt(scrollY), behavior: 'instant' });
+                sessionStorage.removeItem('workspace_scroll_y');
+            }
+        }, 100);
     });
 </script>
 {% endblock %}

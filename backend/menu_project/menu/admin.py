@@ -1,4 +1,5 @@
 import json
+from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
@@ -6,6 +7,9 @@ from django.http import JsonResponse
 from django.urls import path
 from django.views.decorators.http import require_POST
 from .models import Restaurant, UserProfile, Category, MenuItem, SiteSettings, MenuItemPairing, ContactSubmission
+
+class LayoutBuilderWidget(forms.Textarea):
+    template_name = 'admin/widgets/layout_builder_widget.html'
 
 class MenuItemPairingInline(admin.TabularInline):
     model = MenuItemPairing
@@ -387,6 +391,9 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
 class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
     list_display = ('restaurant', 'created_at')
     fieldsets = (
+        ('카드 레이아웃 커스터마이징 설정', {
+            'fields': ('category_card_layout_json', 'menu_card_layout_json'),
+        }),
         ('기본 설정', {
             'fields': ('restaurant', 'logo_image', 'intro_image', 'intro_video', 'loading_video_2', 'show_manual_card', 'side_image')
         }),
@@ -439,6 +446,11 @@ class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         }),
     )
     
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        if db_field.name in ['category_card_layout_json', 'menu_card_layout_json']:
+            kwargs['widget'] = LayoutBuilderWidget
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
+
     def has_add_permission(self, request):
         # 이미 설정이 있다면 추가 불가능하게 (1:1 관계처럼 유지)
         if not request.user.is_superuser:

@@ -33,6 +33,28 @@ def create_restaurant_settings(sender, instance, created, **kwargs):
     if created:
         SiteSettings.objects.create(restaurant=instance)
 
+def default_category_layout():
+    return {
+        "layout_type": "default",
+        "components": [
+            {"id": "category_image", "name": "카테고리 이미지", "visible": True, "x": 0, "y": 0, "w": 100, "h": 65},
+            {"id": "category_name", "name": "카테고리명 (한글)", "visible": True, "x": 5, "y": 70, "w": 90, "h": 15},
+            {"id": "category_name_en", "name": "카테고리명 (영문)", "visible": True, "x": 5, "y": 85, "w": 90, "h": 10}
+        ]
+    }
+
+def default_menu_layout():
+    return {
+        "layout_type": "default",
+        "components": [
+            {"id": "menu_image", "name": "메뉴 이미지", "visible": True, "x": 0, "y": 0, "w": 100, "h": 50},
+            {"id": "menu_name", "name": "메뉴명 (한글)", "visible": True, "x": 5, "y": 55, "w": 90, "h": 12},
+            {"id": "menu_name_en", "name": "메뉴명 (영문)", "visible": True, "x": 5, "y": 68, "w": 90, "h": 8},
+            {"id": "menu_price", "name": "가격", "visible": True, "x": 5, "y": 78, "w": 90, "h": 10},
+            {"id": "menu_description", "name": "메뉴 설명", "visible": True, "x": 5, "y": 89, "w": 90, "h": 10}
+        ]
+    }
+
 class SiteSettings(models.Model):
     """
     사이트 설정 모델 - 인트로 이미지 등을 관리
@@ -192,6 +214,19 @@ class SiteSettings(models.Model):
     pairing_price_size = models.IntegerField(blank=True, null=True, verbose_name="페어링 가격 크기", help_text="픽셀 단위 (예: 12)")
     pairing_price_bold = models.BooleanField(default=False, verbose_name="페어링 가격 볼드")
     pairing_price_italic = models.BooleanField(default=False, verbose_name="페어링 가격 이탤릭")
+    
+    category_card_layout_json = models.JSONField(
+        default=default_category_layout,
+        blank=True,
+        verbose_name="카테고리 카드 레이아웃 JSON",
+        help_text="카테고리 카드의 컴포넌트 배치 및 보임 설정 JSON"
+    )
+    menu_card_layout_json = models.JSONField(
+        default=default_menu_layout,
+        blank=True,
+        verbose_name="메뉴 카드 레이아웃 JSON",
+        help_text="메뉴 카드의 컴포넌트 배치 및 보임 설정 JSON"
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

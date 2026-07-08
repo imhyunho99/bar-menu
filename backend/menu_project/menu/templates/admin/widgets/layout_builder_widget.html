@@ -1,0 +1,666 @@
+{% include "django/forms/widgets/textarea.html" %}
+
+<div class="layout-widget-wrapper" id="widget_wrapper_{{ widget.name }}" style="margin-top: 10px; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+    <style>
+        .layout-widget-wrapper .builder-canvas-area {
+            display: flex;
+            gap: 20px;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            flex-wrap: wrap;
+        }
+
+        .layout-widget-wrapper .preview-container {
+            flex: 1;
+            min-width: 340px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 24px;
+        }
+
+        .layout-widget-wrapper .card-preview-canvas {
+            position: relative;
+            width: 320px;
+            background: #000000;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+
+        /* Height based on card type */
+        .layout-widget-wrapper .card-preview-canvas.category-type {
+            height: 240px;
+        }
+        .layout-widget-wrapper .card-preview-canvas.menu-type {
+            height: 440px;
+        }
+
+        /* Draggable Box */
+        .layout-widget-wrapper .comp-box {
+            position: absolute;
+            border: 1px solid #3b82f6;
+            background: rgba(59, 130, 246, 0.2);
+            color: #ffffff;
+            font-size: 9px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: move;
+            user-select: none;
+            box-sizing: border-box;
+            border-radius: 4px;
+            text-align: center;
+            padding: 2px;
+            overflow: hidden;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .layout-widget-wrapper .comp-box.selected {
+            background: rgba(16, 185, 129, 0.3);
+            border: 2px solid #10b981;
+            z-index: 10;
+        }
+
+        .layout-widget-wrapper .comp-box:hover {
+            border-color: #60a5fa;
+            background: rgba(59, 130, 246, 0.35);
+        }
+
+        .layout-widget-wrapper .resize-grip {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            right: 0;
+            bottom: 0;
+            cursor: se-resize;
+            border-top-left-radius: 2px;
+        }
+
+        /* Inspector sidebar inside widget */
+        .layout-widget-wrapper .inspector-sidebar {
+            width: 340px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .layout-widget-wrapper .inspector-sidebar * {
+            box-sizing: border-box !important;
+        }
+
+        .layout-widget-wrapper .inspector-box {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .layout-widget-wrapper .inspector-hdr {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0 0 10px 0;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 6px;
+        }
+
+        .layout-widget-wrapper .inp-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .layout-widget-wrapper .inp-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .layout-widget-wrapper .inp-col label {
+            font-size: 10px;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .layout-widget-wrapper input[type="number"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            padding: 6px 8px !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 4px !important;
+            font-size: 11px !important;
+            box-sizing: border-box !important;
+            background: #ffffff !important;
+            height: auto !important;
+        }
+
+        .layout-widget-wrapper .comp-item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            border: 1px solid #f1f5f9;
+            border-radius: 4px;
+            background: #ffffff;
+            cursor: pointer;
+            font-size: 11px;
+            margin-bottom: 4px;
+            transition: all 0.15s;
+        }
+
+        .layout-widget-wrapper .comp-item-row:hover {
+            border-color: #cbd5e1;
+        }
+
+        .layout-widget-wrapper .comp-item-row.active {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+
+        /* Styling inspector layout adjustments to match native inputs in sidebar */
+        .layout-widget-wrapper .style-container .form-row {
+            padding: 8px 0 !important;
+            border-bottom: 1px dashed #e2e8f0 !important;
+            display: none;
+            float: none !important;
+            width: 100% !important;
+            clear: both !important;
+        }
+        .layout-widget-wrapper .style-container .form-row.visible-row {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 4px !important;
+        }
+        .layout-widget-wrapper .style-container .form-row.hidden-row {
+            display: none !important;
+        }
+        .layout-widget-wrapper .style-container .form-row > div {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 4px !important;
+            width: 100% !important;
+            float: none !important;
+        }
+        .layout-widget-wrapper .style-container label {
+            font-size: 10px !important;
+            font-weight: 700 !important;
+            color: #475569 !important;
+            width: auto !important;
+            float: none !important;
+        }
+        .layout-widget-wrapper .style-container input[type="text"],
+        .layout-widget-wrapper .style-container input[type="number"],
+        .layout-widget-wrapper .style-container select {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            padding: 6px 8px !important;
+            box-sizing: border-box !important;
+            font-size: 11px !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 4px !important;
+            background: #ffffff !important;
+            height: auto !important;
+        }
+        .layout-widget-wrapper .style-container input[type="file"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            font-size: 11px !important;
+        }
+        .layout-widget-wrapper .style-container .help {
+            display: none !important; /* Hide long help text for clean UI */
+        }
+        .layout-widget-wrapper .style-container .clear {
+            display: none !important; /* Hide django clear floats */
+        }
+    </style>
+
+    <div class="builder-canvas-area">
+        <!-- Canvas Preview -->
+        <div class="preview-container">
+            <div class="card-preview-canvas" id="canvas_{{ widget.name }}">
+                <!-- Dynamic Elements inside -->
+            </div>
+        </div>
+
+        <!-- Element Control Inspector -->
+        <div class="inspector-sidebar">
+            <div class="inspector-box">
+                <h4 class="inspector-hdr" id="inspect_title_{{ widget.name }}">선택된 요소 없음</h4>
+                
+                <div id="inspect_form_{{ widget.name }}" style="display: none; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #334155; cursor: pointer;">
+                        <input type="checkbox" id="inspect_visible_{{ widget.name }}"> 화면에 표시
+                    </label>
+
+                    <div class="inp-row">
+                        <div class="inp-col">
+                            <label>좌측 위치 (X %)</label>
+                            <input type="number" id="inspect_x_{{ widget.name }}" min="0" max="100">
+                        </div>
+                        <div class="inp-col">
+                            <label>상단 위치 (Y %)</label>
+                            <input type="number" id="inspect_y_{{ widget.name }}" min="0" max="100">
+                        </div>
+                    </div>
+
+                    <div class="inp-row">
+                        <div class="inp-col">
+                            <label>너비 (W %)</label>
+                            <input type="number" id="inspect_w_{{ widget.name }}" min="0" max="100">
+                        </div>
+                        <div class="inp-col">
+                            <label>높이 (H %)</label>
+                            <input type="number" id="inspect_h_{{ widget.name }}" min="0" max="100">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="inspect_fallback_{{ widget.name }}" style="font-size: 11px; color: #64748b; text-align: center; padding: 10px 0;">
+                    화면의 박스를 마우스로 조절하거나 아래 리스트에서 요소를 클릭해 선택해 주세요.
+                </div>
+            </div>
+
+            <!-- Integrated Stylings Inspector -->
+            <div class="inspector-box" id="style_inspector_{{ widget.name }}" style="display: flex; flex-direction: column; height: 260px; min-height: 260px; max-height: 260px; overflow-y: auto; box-sizing: border-box;">
+                <h4 class="inspector-hdr" style="margin-bottom: 8px;">스타일 설정</h4>
+                <div class="style-container" id="style_fields_container_{{ widget.name }}" style="display: none; flex: 1;">
+                    <!-- Grabbed django style rows will go here -->
+                </div>
+                <div id="style_fallback_{{ widget.name }}" style="font-size: 11px; color: #94a3b8; text-align: center; padding: 20px 10px; margin: auto 0; flex: 1; display: flex; align-items: center; justify-content: center; line-height: 1.4;">
+                    편집할 요소를 선택해 주세요.
+                </div>
+            </div>
+
+            <div class="inspector-box" style="height: 160px; min-height: 160px; max-height: 160px; overflow-y: auto; box-sizing: border-box;">
+                <h4 class="inspector-hdr">구성 요소 목록</h4>
+                <div id="comp_list_{{ widget.name }}"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const textareaId = "{{ widget.attrs.id }}";
+    const textarea = document.getElementById(textareaId);
+    if (!textarea) return;
+
+    // Hide original textarea
+    textarea.style.display = 'none';
+
+    const widgetName = "{{ widget.name }}";
+    const isCategory = widgetName.includes('category');
+
+    // Define style fields mappings based on component ID
+    const styleFieldMapping = isCategory ? {
+        'category_name': [
+            'category_name_font', 'category_name_color', 'category_name_size', 
+            'category_name_bold', 'category_name_italic'
+        ],
+        'category_name_en': [
+            'category_name_en_font', 'category_name_en_color', 'category_name_en_size', 
+            'category_name_en_bold', 'category_name_en_italic'
+        ]
+    } : {
+        'menu_name': [
+            'menu_name_font', 'menu_name_color', 'menu_name_size', 
+            'menu_name_bold', 'menu_name_italic'
+        ],
+        'menu_name_en': [
+            'menu_name_en_font', 'menu_name_en_color', 'menu_name_en_size', 
+            'menu_name_en_bold', 'menu_name_en_italic'
+        ],
+        'menu_price': [
+            'menu_price_font', 'menu_price_color', 'menu_price_size', 
+            'menu_price_bold', 'menu_price_italic'
+        ],
+        'menu_description': [
+            'menu_description_font', 'menu_description_color', 'menu_description_size', 
+            'menu_description_bold', 'menu_description_italic'
+        ],
+        'menu_notes': [
+            'menu_notes_font', 'menu_notes_color', 'menu_notes_size', 
+            'menu_notes_bold', 'menu_notes_italic'
+        ]
+    };
+
+    // Parse value
+    let layout = { components: [] };
+    try {
+        const val = textarea.value.trim();
+        if (val) {
+            layout = JSON.parse(val);
+        }
+    } catch(e) {
+        console.error("Failed to parse widget layout value", e);
+    }
+
+    // Default Fallbacks if empty or invalid
+    if (!layout.components || layout.components.length === 0) {
+        if (isCategory) {
+            layout = {
+                layout_type: "default",
+                components: [
+                    {id: "category_image", name: "카테고리 이미지", visible: true, x: 0, y: 0, w: 100, h: 65},
+                    {id: "category_name", name: "카테고리명 (한글)", visible: true, x: 5, y: 70, w: 90, h: 15},
+                    {id: "category_name_en", name: "카테고리명 (영문)", visible: true, x: 5, y: 85, w: 90, h: 10}
+                ]
+            };
+        } else {
+            layout = {
+                layout_type: "default",
+                components: [
+                    {id: "menu_image", name: "메뉴 이미지", visible: true, x: 0, y: 0, w: 100, h: 50},
+                    {id: "menu_name", name: "메뉴명 (한글)", visible: true, x: 5, y: 55, w: 90, h: 12},
+                    {id: "menu_name_en", name: "메뉴명 (영문)", visible: true, x: 5, y: 68, w: 90, h: 8},
+                    {id: "menu_price", name: "가격", visible: true, x: 5, y: 78, w: 90, h: 10},
+                    {id: "menu_description", name: "메뉴 설명", visible: true, x: 5, y: 89, w: 90, h: 10}
+                ]
+            };
+        }
+        // Write defaults back to textarea
+        textarea.value = JSON.stringify(layout);
+    }
+
+    let activeCompId = null;
+    let isDragging = false;
+    let isResizing = false;
+    let startX, startY;
+    let originalX, originalY, originalW, originalH;
+
+    const canvas = document.getElementById(`canvas_${widgetName}`);
+    const inspectTitle = document.getElementById(`inspect_title_${widgetName}`);
+    const inspectForm = document.getElementById(`inspect_form_${widgetName}`);
+    const inspectFallback = document.getElementById(`inspect_fallback_${widgetName}`);
+    const compList = document.getElementById(`comp_list_${widgetName}`);
+    const styleInspector = document.getElementById(`style_inspector_${widgetName}`);
+    const styleFieldsContainer = document.getElementById(`style_fields_container_${widgetName}`);
+    const styleFallback = document.getElementById(`style_fallback_${widgetName}`);
+
+    // UI Styles Setup
+    canvas.classList.add(isCategory ? 'category-type' : 'menu-type');
+
+    // DOM Relocation: grab django style rows and put them inside style fields container
+    setTimeout(() => {
+        Object.keys(styleFieldMapping).forEach(compId => {
+            const fields = styleFieldMapping[compId];
+            fields.forEach(fieldName => {
+                // Find Django admin form row by field name
+                const row = document.querySelector(`.form-row.field-${fieldName}`);
+                if (row) {
+                    // Hide initially
+                    row.classList.add('hidden-row');
+                    // Move inside our container
+                    styleFieldsContainer.appendChild(row);
+
+                    // Add live styling event listener
+                    const inputElement = row.querySelector('input, select');
+                    if (inputElement) {
+                        inputElement.addEventListener('input', () => updateBoxStyleFeedback(compId));
+                        inputElement.addEventListener('change', () => updateBoxStyleFeedback(compId));
+                    }
+                }
+            });
+        });
+
+        // Hide native style fieldsets to prevent empty duplicates below the form
+        document.querySelectorAll('fieldset.module').forEach(fieldset => {
+            const h2 = fieldset.querySelector('h2');
+            if (h2 && h2.innerText.includes('스타일')) {
+                fieldset.style.display = 'none';
+            }
+        });
+
+        // Initial render to apply any loaded styling from form fields
+        render();
+    }, 150);
+
+    // Apply Live Style Feedback to a single canvas box
+    function updateBoxStyleFeedback(compId) {
+        const box = document.getElementById(`${widgetName}_box_${compId}`);
+        if (!box) return;
+
+        const fields = styleFieldMapping[compId];
+        if (!fields) return;
+
+        fields.forEach(fieldName => {
+            const row = styleFieldsContainer.querySelector(`.form-row.field-${fieldName}`);
+            if (!row) return;
+
+            const input = row.querySelector('input, select');
+            if (!input) return;
+
+            if (fieldName.includes('_color')) {
+                // Apply hex color. Fallback if empty
+                box.style.color = input.value || '#ffffff';
+            } else if (fieldName.includes('_size')) {
+                // Map sizes (scaled down slightly for preview scaling)
+                const val = parseFloat(input.value) || 12;
+                box.style.fontSize = `${Math.round(val * 0.9)}px`;
+            } else if (fieldName.includes('_bold')) {
+                box.style.fontWeight = input.checked ? 'bold' : 'normal';
+            } else if (fieldName.includes('_italic')) {
+                box.style.fontStyle = input.checked ? 'italic' : 'normal';
+            }
+        });
+    }
+
+    function syncValue() {
+        textarea.value = JSON.stringify(layout);
+    }
+
+    function render() {
+        canvas.innerHTML = '';
+        compList.innerHTML = '';
+
+        layout.components.forEach(comp => {
+            // Render inside Canvas
+            if (comp.visible) {
+                const box = document.createElement('div');
+                box.className = 'comp-box';
+                box.id = `${widgetName}_box_${comp.id}`;
+                box.innerText = comp.name;
+                box.style.left = `${comp.x}%`;
+                box.style.top = `${comp.y}%`;
+                box.style.width = `${comp.w}%`;
+                box.style.height = `${comp.h}%`;
+
+                if (activeCompId === comp.id) {
+                    box.classList.add('selected');
+                }
+
+                // Resize grip
+                const grip = document.createElement('div');
+                grip.className = 'resize-grip';
+                box.appendChild(grip);
+
+                // Mouse interaction binding
+                box.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    if (e.target.className === 'resize-grip') {
+                        startResize(e, comp);
+                    } else {
+                        startDrag(e, comp);
+                    }
+                });
+
+                canvas.appendChild(box);
+                
+                // Apply current custom font styles to this box
+                updateBoxStyleFeedback(comp.id);
+            }
+
+            // Render in component list
+            const row = document.createElement('div');
+            row.className = 'comp-item-row';
+            if (activeCompId === comp.id) {
+                row.classList.add('active');
+            }
+            row.innerHTML = `
+                <span>${comp.name}</span>
+                <span style="font-size: 9px; color: ${comp.visible ? '#10b981' : '#ef4444'};">
+                    ${comp.visible ? '보기' : '숨김'}
+                </span>
+            `;
+            row.addEventListener('click', () => {
+                selectComponent(comp.id);
+            });
+            compList.appendChild(row);
+        });
+    }
+
+    function selectComponent(id) {
+        activeCompId = id;
+        render();
+
+        const comp = layout.components.find(c => c.id === id);
+        if (!comp) return;
+
+        // Visual controls update
+        inspectTitle.innerText = comp.name;
+        inspectFallback.style.display = 'none';
+        inspectForm.style.display = 'flex';
+
+        document.getElementById(`inspect_visible_${widgetName}`).checked = comp.visible;
+        document.getElementById(`inspect_x_${widgetName}`).value = Math.round(comp.x);
+        document.getElementById(`inspect_y_${widgetName}`).value = Math.round(comp.y);
+        document.getElementById(`inspect_w_${widgetName}`).value = Math.round(comp.w);
+        document.getElementById(`inspect_h_${widgetName}`).value = Math.round(comp.h);
+
+        // Hide all style fields first within this widget's container
+        Object.keys(styleFieldMapping).forEach(compId => {
+            const fields = styleFieldMapping[compId];
+            fields.forEach(fieldName => {
+                const row = styleFieldsContainer.querySelector(`.form-row.field-${fieldName}`);
+                if (row) {
+                    row.classList.remove('visible-row');
+                    row.classList.add('hidden-row');
+                }
+            });
+        });
+
+        // Show style settings for active component only if mapping exists
+        const activeStyleFields = styleFieldMapping[id];
+        if (activeStyleFields && activeStyleFields.length > 0) {
+            styleFieldsContainer.style.display = 'block';
+            styleFallback.style.display = 'none';
+            activeStyleFields.forEach(fieldName => {
+                const row = styleFieldsContainer.querySelector(`.form-row.field-${fieldName}`);
+                if (row) {
+                    row.classList.remove('hidden-row');
+                    row.classList.add('visible-row');
+                }
+            });
+        } else {
+            styleFieldsContainer.style.display = 'none';
+            styleFallback.style.display = 'flex';
+            styleFallback.innerText = '해당 요소는 스타일 설정을 지원하지 않습니다.';
+        }
+    }
+
+    // Inspector Position/Visibility Events
+    document.getElementById(`inspect_visible_${widgetName}`).addEventListener('change', (e) => {
+        if (!activeCompId) return;
+        const comp = layout.components.find(c => c.id === activeCompId);
+        comp.visible = e.target.checked;
+        syncValue();
+        render();
+    });
+
+    [`inspect_x_${widgetName}`, `inspect_y_${widgetName}`, `inspect_w_${widgetName}`, `inspect_h_${widgetName}`].forEach(id => {
+        document.getElementById(id).addEventListener('input', (e) => {
+            if (!activeCompId) return;
+            const comp = layout.components.find(c => c.id === activeCompId);
+            const val = parseFloat(e.target.value) || 0;
+            const clamped = Math.min(100, Math.max(0, val));
+
+            if (id.includes('_x_')) comp.x = clamped;
+            if (id.includes('_y_')) comp.y = clamped;
+            if (id.includes('_w_')) comp.w = clamped;
+            if (id.includes('_h_')) comp.h = clamped;
+
+            syncValue();
+            render();
+        });
+    });
+
+    // DRAG / RESIZE Mechanics
+    function startDrag(e, comp) {
+        selectComponent(comp.id);
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        originalX = comp.x;
+        originalY = comp.y;
+
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', stopInteraction);
+    }
+
+    function drag(e) {
+        if (!isDragging) return;
+        const rect = canvas.getBoundingClientRect();
+        const dx = ((e.clientX - startX) / rect.width) * 100;
+        const dy = ((e.clientY - startY) / rect.height) * 100;
+
+        const comp = layout.components.find(c => c.id === activeCompId);
+        comp.x = Math.min(100 - comp.w, Math.max(0, originalX + dx));
+        comp.y = Math.min(100 - comp.h, Math.max(0, originalY + dy));
+
+        document.getElementById(`inspect_x_${widgetName}`).value = Math.round(comp.x);
+        document.getElementById(`inspect_y_${widgetName}`).value = Math.round(comp.y);
+
+        syncValue();
+        render();
+    }
+
+    function startResize(e, comp) {
+        e.stopPropagation();
+        selectComponent(comp.id);
+        isResizing = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        originalW = comp.w;
+        originalH = comp.h;
+
+        document.addEventListener('mousemove', resize);
+        document.addEventListener('mouseup', stopInteraction);
+    }
+
+    function resize(e) {
+        if (!isResizing) return;
+        const rect = canvas.getBoundingClientRect();
+        const dw = ((e.clientX - startX) / rect.width) * 100;
+        const dh = ((e.clientY - startY) / rect.height) * 100;
+
+        const comp = layout.components.find(c => c.id === activeCompId);
+        comp.w = Math.min(100 - comp.x, Math.max(5, originalW + dw));
+        comp.h = Math.min(100 - comp.y, Math.max(5, originalH + dh));
+
+        document.getElementById(`inspect_w_${widgetName}`).value = Math.round(comp.w);
+        document.getElementById(`inspect_h_${widgetName}`).value = Math.round(comp.h);
+
+        syncValue();
+        render();
+    }
+
+    // Initialize on load
+    render();
+})();
+</script>

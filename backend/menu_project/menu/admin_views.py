@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.http import HttpResponseForbidden, JsonResponse
 from django.views.decorators.http import require_POST
 import json
-from .models import Category, MenuItem, UserProfile, Restaurant, Order, OrderItem, MenuItemPairing
+from .models import Category, MenuItem, UserProfile, Restaurant, Order, OrderItem, MenuItemPairing, SiteSettings
 
 def check_restaurant_permission(user, restaurant_slug):
     """
