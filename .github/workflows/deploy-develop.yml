@@ -1,0 +1,35 @@
+name: Deploy to Develop (staging)
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-develop.yml'
+
+jobs:
+  deploy-develop:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Deploy backend to develop instance
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd ~/bar_menu_dev
+          git fetch origin develop
+          git reset --hard origin/develop
+          source ~/bar_menu/venv/bin/activate
+          pip install -q -r backend/requirements.txt
+          cd backend/menu_project
+          python manage.py migrate --noinput
+          python manage.py collectstatic --noinput
+          sudo systemctl restart bar_menu_dev
+          echo "✓ Develop backend deployment completed!"
