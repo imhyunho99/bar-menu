@@ -1,6 +1,4 @@
-> 🇬🇧 **English summary** — An install-free QR ordering & payment platform running **in production** at a real dining pub (Bidbar). Next.js 16 frontend + Django REST Framework backend unified under a single domain via an Nginx reverse proxy, with Wi-Fi-scoped ordering, Payhere POS integration, and a real-time WebSocket order dashboard.
->
-> 🇰🇷 한국어 상세 설명은 아래에 있습니다.
+> An install-free QR ordering and payment platform, running in production at a real dining pub (Bidbar). A Next.js 16 frontend and a Django REST Framework backend unified under one domain via an Nginx reverse proxy, with Wi-Fi-scoped ordering, Payhere POS integration, and a real-time order dashboard.
 
 ---
 
