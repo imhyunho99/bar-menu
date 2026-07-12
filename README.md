@@ -1,3 +1,9 @@
+> 🇬🇧 **English summary** — An install-free QR ordering & payment platform running **in production** at a real dining pub (Bidbar). Next.js 16 frontend + Django REST Framework backend unified under a single domain via an Nginx reverse proxy, with Wi-Fi-scoped ordering, Payhere POS integration, and a real-time WebSocket order dashboard.
+>
+> 🇰🇷 한국어 상세 설명은 아래에 있습니다.
+
+---
+
 # bar-menu
 
 매장 내 테이블에 비치된 QR 코드를 스캔하여, 별도의 앱 설치 없이 메뉴를 확인할 수 있는 프리미엄 웹 메뉴판 서비스입니다.
