@@ -22,16 +22,15 @@ jobs:
         host: ${{ secrets.SSH_HOST }}
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script_stop: true
         script: |
           cd ~/bar_menu
           git fetch origin main
           git reset --hard origin/main
-          cd backend
-          source venv/bin/activate
-          pip install -q -r requirements.txt
-          cd menu_project
+          source ~/bar_menu/venv/bin/activate
+          pip install -q -r backend/requirements.txt
+          cd backend/menu_project
           python manage.py migrate --noinput
           python manage.py collectstatic --noinput
-          sudo systemctl restart uwsgi
-          echo "✓ Backend Deployment completed successfully!"
+          sudo systemctl restart bidbar
 
