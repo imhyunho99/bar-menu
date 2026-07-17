@@ -22,14 +22,14 @@ jobs:
         host: ${{ secrets.SSH_HOST }}
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script_stop: true
         script: |
           cd ~/bar_menu_dev
           git fetch origin develop
           git reset --hard origin/develop
-          source ~/bar_menu/venv/bin/activate
+          source ~/bar_menu_dev/venv/bin/activate
           pip install -q -r backend/requirements.txt
           cd backend/menu_project
           python manage.py migrate --noinput
           python manage.py collectstatic --noinput
           sudo systemctl restart bar_menu_dev
-          echo "✓ Develop backend deployment completed!"
