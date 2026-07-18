@@ -12,6 +12,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
 from ..models import Restaurant, SiteSettings, Category, MenuItem
+from ..notifications import send_contact_notification
 from .serializers import (
     RestaurantSerializer,
     RestaurantDetailSerializer,
@@ -253,7 +254,8 @@ class ContactSubmitView(APIView):
     def post(self, request):
         serializer = ContactSubmissionSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            submission = serializer.save()
+            send_contact_notification(submission)
             return Response(
                 {'status': 'success', 'message': '문의가 정상적으로 접수되었습니다. 확인 후 연락드리겠습니다.'},
                 status=status.HTTP_201_CREATED
