@@ -53,6 +53,51 @@ class ContactNotificationTest(TestCase):
         # 예외가 여기까지 전파되지 않으면 통과 — 문의 저장·응답이 알림 실패에 영향받지 않는다.
 
 
+class ErrorAlertTest(TestCase):
+    def _event(self):
+        return {
+            "level": "error",
+            "environment": "production",
+            "transaction": "GET /api/v1/restaurants/bid/",
+            "exception": {"values": [{"type": "ValueError", "value": "boom happened"}]},
+        }
+
+    def setUp(self):
+        notifications._error_last_sent.clear()
+
+    def test_error_payload_includes_type_and_value(self):
+        payload = notifications.build_error_payload(self._event(), {})
+        blob = json.dumps(payload, ensure_ascii=False)
+        self.assertIn("ValueError", blob)
+        self.assertIn("boom happened", blob)
+
+    def test_error_skips_when_url_unset(self):
+        with mock.patch.dict(os.environ):
+            os.environ.pop("DISCORD_ERROR_WEBHOOK_URL", None)
+            with mock.patch.object(notifications, "_post") as posted:
+                result = notifications.send_error_alert(self._event())
+        self.assertIsNone(result)
+        posted.assert_not_called()
+
+    def test_error_posts_when_url_set(self):
+        with mock.patch.dict(os.environ, {"DISCORD_ERROR_WEBHOOK_URL": "https://discord.test/err"}):
+            with mock.patch.object(notifications, "_post") as posted:
+                thread = notifications.send_error_alert(self._event())
+                self.assertIsNotNone(thread)
+                thread.join(timeout=3)
+        posted.assert_called_once()
+
+    def test_error_deduplicates_within_window(self):
+        with mock.patch.dict(os.environ, {"DISCORD_ERROR_WEBHOOK_URL": "https://discord.test/err"}):
+            with mock.patch.object(notifications, "_post") as posted:
+                first = notifications.send_error_alert(self._event())
+                first.join(timeout=3)
+                second = notifications.send_error_alert(self._event())
+        self.assertIsNotNone(first)
+        self.assertIsNone(second)  # 같은 에러 → 창 안에서는 재발송 안 함
+        posted.assert_called_once()
+
+
 class ContactViewNotificationTest(TestCase):
     def test_view_saves_and_triggers_notification(self):
         with mock.patch("menu.api.views.send_contact_notification") as notify:

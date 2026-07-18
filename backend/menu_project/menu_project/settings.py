@@ -80,6 +80,14 @@ if SENTRY_DSN:
             exc_info = hint.get('exc_info')
             if exc_info and exc_info[0].__name__ == 'DisallowedHost':
                 return None
+            # error/fatal 이벤트는 Discord 에러 웹훅으로도 알린다(best-effort).
+            # 알림 발송 실패 로그(menu.notifications)는 제외해 무한루프를 막는다.
+            if event.get('level') in ('error', 'fatal') and event.get('logger') != 'menu.notifications':
+                try:
+                    from menu.notifications import send_error_alert
+                    send_error_alert(event, hint)
+                except Exception:
+                    pass
             return event
 
         sentry_sdk.init(
