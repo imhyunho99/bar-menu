@@ -68,6 +68,41 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
 
 
+# Sentry (프로덕션 에러/성능 모니터링)
+# SENTRY_DSN이 없으면 init을 건너뛴다 → 로컬/스테이징은 자동 비활성.
+SENTRY_DSN = os.environ.get('SENTRY_DSN')
+if SENTRY_DSN:
+    try:
+        import sentry_sdk
+
+        def _sentry_before_send(event, hint):
+            # 봇이 잘못된 Host 헤더로 접근할 때 나는 DisallowedHost는 무시한다.
+            exc_info = hint.get('exc_info')
+            if exc_info and exc_info[0].__name__ == 'DisallowedHost':
+                return None
+            # error/fatal 이벤트는 Discord 에러 웹훅으로도 알린다(best-effort).
+            # 알림 발송 실패 로그(menu.notifications)는 제외해 무한루프를 막는다.
+            if event.get('level') in ('error', 'fatal') and event.get('logger') != 'menu.notifications':
+                try:
+                    from menu.notifications import send_error_alert
+                    send_error_alert(event, hint)
+                except Exception:
+                    pass
+            return event
+
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            environment=os.environ.get('SENTRY_ENVIRONMENT', 'production'),
+            traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
+            profiles_sample_rate=float(os.environ.get('SENTRY_PROFILES_SAMPLE_RATE', '0.0')),
+            send_default_pii=False,
+            before_send=_sentry_before_send,
+        )
+    except Exception:
+        # Sentry 초기화 실패가 앱 기동을 막지 않도록 한다.
+        pass
+
+
 # Application definition
 
 INSTALLED_APPS = [

@@ -8,11 +8,17 @@ import json
 import logging
 import os
 import threading
+import time
 import urllib.request
 
 logger = logging.getLogger(__name__)
 
 _TIMEOUT_SECONDS = 5
+
+# 같은 에러가 짧은 시간에 반복될 때 Discord 알림이 폭탄이 되지 않도록,
+# (에러종류, 메시지) 단위로 이 창(초) 안에는 한 번만 보낸다. 워커 프로세스별로 관리한다.
+_ERROR_DEDUP_WINDOW = 60
+_error_last_sent = {}
 
 
 def build_contact_payload(submission):
@@ -69,6 +75,56 @@ def send_contact_notification(submission):
     if not url:
         return None
     payload = build_contact_payload(submission)
+    thread = threading.Thread(target=_deliver, args=(url, payload), daemon=True)
+    thread.start()
+    return thread
+
+
+def build_error_payload(event, hint):
+    """Sentry 이벤트를 Discord 에러 알림 페이로드로 변환한다."""
+    values = (event.get("exception") or {}).get("values") or [{}]
+    last = values[-1]
+    error_type = last.get("type") or event.get("level", "error")
+    error_value = last.get("value") or event.get("message") or "(메시지 없음)"
+    return {
+        "embeds": [
+            {
+                "title": f"🚨 서버 에러: {error_type}"[:250],
+                "description": str(error_value)[:1500],
+                "color": 15158332,
+                "fields": [
+                    {"name": "위치", "value": (event.get("transaction") or "-")[:200], "inline": True},
+                    {"name": "환경", "value": (event.get("environment") or "-")[:100], "inline": True},
+                ],
+            }
+        ]
+    }
+
+
+def _error_is_throttled(event):
+    """같은 에러가 dedup 창 안에 이미 보내졌으면 True."""
+    values = (event.get("exception") or {}).get("values") or [{}]
+    last = values[-1]
+    key = (last.get("type"), last.get("value") or event.get("message"))
+    now = time.monotonic()
+    last_sent = _error_last_sent.get(key)
+    if last_sent is not None and now - last_sent < _ERROR_DEDUP_WINDOW:
+        return True
+    _error_last_sent[key] = now
+    return False
+
+
+def send_error_alert(event, hint=None):
+    """Sentry error/fatal 이벤트를 Discord 에러 웹훅으로 비동기 발송한다.
+
+    `DISCORD_ERROR_WEBHOOK_URL`이 없거나 dedup 창에 걸리면 None을 반환한다.
+    """
+    url = os.environ.get("DISCORD_ERROR_WEBHOOK_URL")
+    if not url:
+        return None
+    if _error_is_throttled(event):
+        return None
+    payload = build_error_payload(event, hint)
     thread = threading.Thread(target=_deliver, args=(url, payload), daemon=True)
     thread.start()
     return thread
