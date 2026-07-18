@@ -33,13 +33,23 @@ def build_contact_payload(submission):
     }
 
 
+def _build_request(url, payload):
+    data = json.dumps(payload).encode("utf-8")
+    return urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            # Discord 앞단 Cloudflare는 기본 "Python-urllib/x" User-Agent를
+            # 봇으로 보고 403을 반환한다. 커스텀 UA로 우회한다.
+            "User-Agent": "bar-menu-contact-webhook/1.0",
+        },
+    )
+
+
 def _post(url, payload):
     """웹훅 URL로 페이로드를 POST한다. 실패 시 예외를 던진다(호출부에서 처리)."""
-    data = json.dumps(payload).encode("utf-8")
-    request = urllib.request.Request(
-        url, data=data, headers={"Content-Type": "application/json"}
-    )
-    urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS)
+    urllib.request.urlopen(_build_request(url, payload), timeout=_TIMEOUT_SECONDS)
 
 
 def _deliver(url, payload):

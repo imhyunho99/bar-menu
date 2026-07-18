@@ -21,6 +21,14 @@ class ContactNotificationTest(TestCase):
         self.assertIn("010-1234-5678", blob)
         self.assertIn("premium", blob)
 
+    def test_request_avoids_default_urllib_user_agent(self):
+        # Discord/Cloudflare는 기본 "Python-urllib/x" UA를 403으로 막는다.
+        payload = notifications.build_contact_payload(self.submission)
+        request = notifications._build_request("https://discord.test/hook", payload)
+        user_agent = request.get_header("User-agent")
+        self.assertIsNotNone(user_agent)
+        self.assertNotIn("urllib", user_agent.lower())
+
     def test_skips_when_webhook_url_unset(self):
         with mock.patch.dict(os.environ):
             os.environ.pop("DISCORD_WEBHOOK_URL", None)
