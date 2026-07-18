@@ -128,16 +128,38 @@ if os.environ.get('USE_SQLITE') == 'True':
         }
     }
 else:
+    # 안전장치: DB_NAME 미설정 시 기동 실패시킨다.
+    # (미설정 시 다른 프로젝트의 운영 DB로 오연결되어 손상시킬 수 있으므로 기본값을 두지 않는다)
+    _db_name = os.environ.get('DB_NAME')
+    if not _db_name:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured(
+            'DB_NAME 환경변수가 설정되지 않았습니다. 운영/개발 DB 오연결 방지를 위해 '
+            'DB_NAME을 명시적으로 지정해야 합니다.'
+        )
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB_NAME', 'bidbar_menu'),
+            'NAME': _db_name,
             'USER': os.environ.get('DB_USER', 'bidbar_user'),
             'PASSWORD': os.environ.get('DB_PASSWORD', ''),
             'HOST': os.environ.get('DB_HOST', 'localhost'),
             'PORT': os.environ.get('DB_PORT', '5432'),
         }
     }
+
+    # 개발 환경 전용: seed_from_prod 명령이 운영 DB를 읽기 위한 보조 연결.
+    # PROD_DB_NAME 이 설정된 경우에만 추가된다(운영 서버에는 설정하지 않는다).
+    _prod_db_name = os.environ.get('PROD_DB_NAME')
+    if _prod_db_name:
+        DATABASES['prod'] = {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': _prod_db_name,
+            'USER': os.environ.get('PROD_DB_USER', 'bar_user'),
+            'PASSWORD': os.environ.get('PROD_DB_PASSWORD', ''),
+            'HOST': os.environ.get('PROD_DB_HOST', 'localhost'),
+            'PORT': os.environ.get('PROD_DB_PORT', '5432'),
+        }
 
 
 # Password validation

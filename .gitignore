@@ -79,6 +79,8 @@ coverage.xml
 # Database dumps & seed scripts
 db_dump*.json
 seed_*.py
+# 예외: 정식 Django 관리 명령은 추적한다
+!backend/menu_project/menu/management/commands/seed_*.py
 
 # Scratch/test scripts
 scratch/
