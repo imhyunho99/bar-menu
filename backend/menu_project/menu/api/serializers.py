@@ -127,7 +127,7 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
             'show_manual_card', 'side_image',
             'category_card_layout_json', 'menu_card_layout_json',
             'background_color', 'category_card_color', 'menu_card_color',
-            'wifi_ssid', 'wifi_password', 'wifi_security', 'enable_wifi', 'enable_payhere', 'enable_cart', 'payhere_store_id', 'restrict_by_ip', 'restrict_by_wifi_ssid', 'disable_screenshots',
+            'wifi_ssid', 'wifi_password', 'wifi_security', 'enable_wifi', 'enable_payhere', 'enable_cart', 'payhere_store_id', 'restrict_by_ip', 'store_public_ip', 'restrict_by_wifi_ssid', 'disable_screenshots',
             # 메뉴명(한글)
             'menu_name_font_url', 'menu_name_color', 'menu_name_size',
             'menu_name_bold', 'menu_name_italic',

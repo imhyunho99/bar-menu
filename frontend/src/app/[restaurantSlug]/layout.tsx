@@ -63,6 +63,13 @@ export default async function RestaurantLayout({
       return <WifiRestrictionBlock settings={settings} clientIp={clientIp} />;
     }
   }
+
+  // 매장 공인 IP는 서버 사이드 대조에만 필요. 클라이언트 컨텍스트로 넘기기 전에 제거해
+  // (1) 페이지 소스에 매장 IP가 노출되지 않게 하고 (2) X-Forwarded-For 위조 우회를 어렵게 한다.
+  if (settings) {
+    settings.store_public_ip = null;
+  }
+
   const cssVars = buildCSSVariables(settings);
   const fontFaces = buildFontFaces(settings);
 
