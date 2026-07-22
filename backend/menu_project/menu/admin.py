@@ -1,10 +1,13 @@
 import json
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
-from django.urls import path
+from django.shortcuts import redirect
+from django.urls import path, reverse
+from django.utils.html import format_html
 from django.views.decorators.http import require_POST
 from .models import Restaurant, UserProfile, Category, MenuItem, SiteSettings, MenuItemPairing, ContactSubmission
 
@@ -390,6 +393,7 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
     list_display = ('restaurant', 'created_at')
+    readonly_fields = ('sync_ip_button',)
     fieldsets = (
         ('카드 레이아웃 커스터마이징 설정', {
             'fields': ('category_card_layout_json', 'menu_card_layout_json'),
@@ -398,7 +402,7 @@ class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
             'fields': ('restaurant', 'logo_image', 'intro_image', 'intro_video', 'loading_video_2', 'show_manual_card', 'side_image')
         }),
         ('와이파이 및 결제 연동 설정', {
-            'fields': ('enable_wifi', 'wifi_ssid', 'wifi_password', 'wifi_security', 'restrict_by_ip', 'store_public_ip', 'restrict_by_wifi_ssid', 'disable_screenshots', 'enable_payhere', 'enable_cart', 'payhere_store_id', 'payhere_api_key'),
+            'fields': ('enable_wifi', 'wifi_ssid', 'wifi_password', 'wifi_security', 'restrict_by_ip', 'store_public_ip', 'sync_ip_button', 'restrict_by_wifi_ssid', 'disable_screenshots', 'enable_payhere', 'enable_cart', 'payhere_store_id', 'payhere_api_key'),
         }),
         ('색상 설정', {
             'fields': ('background_color', 'category_card_color', 'menu_card_color'),
@@ -458,6 +462,63 @@ class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
                 if SiteSettings.objects.filter(restaurant=request.user.profile.restaurant).exists():
                     return False
         return super().has_add_permission(request)
+
+    def get_urls(self):
+        # 매장 공인 IP를 현재 접속 IP로 동기화하는 커스텀 admin URL
+        custom = [
+            path(
+                '<path:object_id>/sync-store-ip/',
+                self.admin_site.admin_view(self.sync_store_ip),
+                name='menu_sitesettings_sync_store_ip',
+            ),
+        ]
+        return custom + super().get_urls()
+
+    def sync_store_ip(self, request, object_id, *args, **kwargs):
+        # 버튼을 누른 관리자의 현재 공인 IP를 store_public_ip에 저장한다.
+        obj = self.get_object(request, object_id)  # get_queryset 스코핑 → 타 매장 접근 차단
+        if obj is None:
+            self.message_user(request, '설정을 찾을 수 없습니다.', level=messages.ERROR)
+            return redirect('admin:menu_sitesettings_changelist')
+        if not self.has_change_permission(request, obj):
+            raise PermissionDenied
+
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        client_ip = x_forwarded_for.split(',')[0].strip() if x_forwarded_for else request.META.get('REMOTE_ADDR', '')
+        # ::ffff: IPv4-mapped IPv6 접두사 제거 (프론트 게이트 layout.tsx와 값 형식 일치)
+        if client_ip.startswith('::ffff:'):
+            client_ip = client_ip[7:]
+
+        if client_ip and client_ip not in ('127.0.0.1', '::1', 'localhost'):
+            obj.store_public_ip = client_ip
+            obj.save(update_fields=['store_public_ip'])
+            self.message_user(
+                request,
+                f'매장 공인 IP를 현재 접속 IP({client_ip})로 동기화했습니다.',
+                level=messages.SUCCESS,
+            )
+        else:
+            self.message_user(
+                request,
+                f'로컬/내부 접속(IP: {client_ip or "알 수 없음"})이라 동기화하지 않았습니다. '
+                f'매장 와이파이에 연결한 기기에서 다시 눌러 주세요.',
+                level=messages.WARNING,
+            )
+        return redirect('admin:menu_sitesettings_change', obj.pk)
+
+    def sync_ip_button(self, obj):
+        if not obj or not obj.pk:
+            return '설정을 먼저 저장한 뒤 사용할 수 있습니다.'
+        url = reverse('admin:menu_sitesettings_sync_store_ip', args=[obj.pk])
+        current = obj.store_public_ip or '(미설정)'
+        return format_html(
+            '<a class="button" href="{}" style="background:#3b82f6;color:#fff;">현재 접속 IP로 동기화</a>'
+            '<span style="margin-left:10px;color:#555;">저장된 매장 IP: <b>{}</b></span>'
+            '<p class="help" style="margin-top:6px;">매장 와이파이에 연결한 기기에서 이 버튼을 누르면 현재 공인 IP가 매장 IP로 저장됩니다. '
+            '위 <b>공인 IP 접속 제한</b>이 켜져 있으면, 이 IP로 접속할 때만 메뉴판이 보입니다.</p>',
+            url, current,
+        )
+    sync_ip_button.short_description = '매장 공인 IP 동기화'
 
 
 
