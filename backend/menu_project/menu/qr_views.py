@@ -16,9 +16,9 @@ def generate_qr_code(request, restaurant_slug=None):
     host = request.get_host()
     protocol = 'https' if request.is_secure() else 'http'
     
-    # 식당별 URL 생성
+    # 식당별 URL 생성 — QR 전용 진입점(주소A, /{slug}/enter/)을 가리킨다.
     if restaurant_slug:
-        menu_url = f"{protocol}://{host}/{restaurant_slug}/"
+        menu_url = f"{protocol}://{host}/{restaurant_slug}/enter/"
     else:
         # fallback (혹시 slug 없이 호출된 경우)
         menu_url = f"{protocol}://{host}/"

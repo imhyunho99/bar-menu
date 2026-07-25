@@ -7,9 +7,15 @@ interface IntroManagerProps {
   introVideo: string | null;
   manualVideo: string | null;
   showManualCard: boolean;
+  /**
+   * 메뉴 진입 시 인트로 비디오를 자동재생할지 여부. 기본 true(기존 동작).
+   * 주소A(enter)로 진입 비디오를 옮긴 뒤로, 메뉴판(주소B)에서는 false로 넘겨
+   * 자동재생을 끄되 "메뉴판 설명서" 수동 카드 기능은 그대로 유지한다.
+   */
+  autoPlayIntro?: boolean;
 }
 
-export default function IntroManager({ introVideo, manualVideo, showManualCard }: IntroManagerProps) {
+export default function IntroManager({ introVideo, manualVideo, showManualCard, autoPlayIntro = true }: IntroManagerProps) {
   const [showIntro, setShowIntro] = useState(false);
   const [activeVideo, setActiveVideo] = useState<'intro' | 'manual' | null>(null);
   const [doorOpen, setDoorOpen] = useState(false);
@@ -18,6 +24,7 @@ export default function IntroManager({ introVideo, manualVideo, showManualCard }
   const manualVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
+    if (!autoPlayIntro) return;
     if (!introVideo) return;
 
     const lastIntroTime = localStorage.getItem('lastIntroTime');
@@ -40,7 +47,7 @@ export default function IntroManager({ introVideo, manualVideo, showManualCard }
     }, 5000);
 
     return () => clearTimeout(fallback);
-  }, [introVideo]);
+  }, [introVideo, autoPlayIntro]);
 
   const handleIntroEnd = () => {
     if (manualVideo) {

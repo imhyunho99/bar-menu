@@ -92,3 +92,5 @@ node_modules/
 # AI agent config
 .claude/
 .gemini/
+
+.playwright-mcp/

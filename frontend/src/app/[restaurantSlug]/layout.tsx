@@ -60,7 +60,7 @@ export default async function RestaurantLayout({
     const ipMatches = clientIp === settings.store_public_ip;
 
     if (!isLocal && !ipMatches) {
-      return <WifiRestrictionBlock settings={settings} clientIp={clientIp} />;
+      return <WifiRestrictionBlock settings={settings} clientIp={clientIp} slug={restaurantSlug} />;
     }
   }
 

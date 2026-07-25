@@ -179,13 +179,15 @@ class QRCodeView(APIView):
         restaurant = get_object_or_404(Restaurant, slug=slug)
 
         # FE에서 base_url을 전달하거나, 요청 host 기반으로 생성
+        # QR은 QR 전용 진입점(주소A, /{slug}/enter/)을 가리킨다.
+        # 이 경로만 로딩 비디오를 재생한 뒤 메뉴로 넘긴다(링크 직접 진입은 비디오 없음).
         base_url = request.GET.get('base_url', '')
         if base_url:
-            menu_url = f"{base_url.rstrip('/')}/{slug}/"
+            menu_url = f"{base_url.rstrip('/')}/{slug}/enter/"
         else:
             host = request.get_host()
             protocol = 'https' if request.is_secure() else 'http'
-            menu_url = f"{protocol}://{host}/{slug}/"
+            menu_url = f"{protocol}://{host}/{slug}/enter/"
 
         # 로고 이미지
         logo_img = None

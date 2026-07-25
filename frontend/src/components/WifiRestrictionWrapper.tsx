@@ -76,7 +76,7 @@ export default function WifiRestrictionWrapper({
   if (!isVerified && settings) {
     // WiFi SSID 제한용 락 스크린 노출
     // 클라이언트 사이드 검증이므로 IP 대신 "WiFi 접속 상태(QR 인식)"를 안내
-    return <WifiRestrictionBlock settings={settings} clientIp="SSID 미인증" />;
+    return <WifiRestrictionBlock settings={settings} clientIp="SSID 미인증" slug={slug} />;
   }
 
   return <>{children}</>;

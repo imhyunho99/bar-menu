@@ -62,11 +62,12 @@ export default async function MenuMainPage({
       <TopBar />
       <SideMenu />
 
-      {/* 로딩 인트로 및 설명서 카드 제어 */}
+      {/* 설명서 카드 제어. 인트로 비디오 자동재생은 주소A(/enter)로 이동했으므로 끔. */}
       <IntroManager
         introVideo={settings?.intro_video || null}
         manualVideo={settings?.loading_video_2 || null}
         showManualCard={settings?.show_manual_card || false}
+        autoPlayIntro={false}
       />
 
       <main className="main" style={{ padding: showIntroImage ? '0' : '60px 0 0 0' }}>
