@@ -129,6 +129,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'menu.middleware.RestaurantMiddleware',
+    # request.restaurant 를 읽으므로 반드시 위 미들웨어 뒤에 온다
+    'menu.middleware.SubscriptionGateMiddleware',
 ]
 
 ROOT_URLCONF = 'menu_project.urls'
@@ -273,3 +275,9 @@ CORS_ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+
+# 구독이 끝난 매장의 손님 화면을 잠글지. 결제 대행사가 붙어서 사장님이
+# 실제로 돈을 낼 수 있게 된 다음에 켠다. 그 전에 켜면 체험이 끝난 매장은
+# 되살릴 방법 없이 메뉴판만 꺼진다.
+ENFORCE_SUBSCRIPTION = os.environ.get('ENFORCE_SUBSCRIPTION', 'False') == 'True'

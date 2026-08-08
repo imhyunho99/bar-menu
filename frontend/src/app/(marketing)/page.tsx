@@ -5,11 +5,12 @@ import Nav from '@/components/marketing/Nav';
 import Footer from '@/components/marketing/Footer';
 import ContactSection from '@/components/marketing/ContactSection';
 import { PLANS } from '@/lib/marketing-content';
+import { signupUrl, signupUrlFor } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'bar-menu | 바·이자카야를 위한 QR 메뉴판',
   description:
-    '손님이 QR을 찍으면 매장의 폰트와 색으로 메뉴판이 열립니다. 메뉴가 바뀌면 사장님이 그 자리에서 고칩니다. 태블릿도 약정도 없이 월 9,900원부터.',
+    '손님이 QR을 찍으면 매장의 폰트와 색으로 메뉴판이 열립니다. 메뉴가 바뀌면 사장님이 그 자리에서 고칩니다. 카드 등록 없이 14일 무료 체험, 태블릿도 약정도 없이 월 9,900원부터.',
   keywords: ['QR 메뉴판', '스마트 메뉴판', '모바일 메뉴판', '테이블 오더', '바 메뉴판', '이자카야 메뉴판'],
   openGraph: {
     type: 'website',
@@ -114,12 +115,16 @@ export default function LandingPage() {
             고칩니다. 저장 버튼도, 인쇄 대기도 없습니다.
           </p>
           <div className="cta">
-            <a href="#contact" className="btn btn-solid">
-              도입 문의하기
+            <a href={signupUrl} className="btn btn-solid">
+              14일 무료로 시작하기
             </a>
             <a href="#how" className="btn btn-ghost">
               어떻게 쓰는지 보기
             </a>
+            <p className="cap cta-note">
+              카드를 등록하지 않습니다. 먼저 이야기부터 나누고 싶으시면{' '}
+              <a href="#contact">문의를 남겨주세요</a>.
+            </p>
           </div>
         </div>
       </header>
@@ -284,7 +289,10 @@ export default function LandingPage() {
         <div className="sec-head reveal">
           <div className="ko-lbl rule-lbl">요금</div>
           <h2 className="kd">태블릿을 사거나 빌리지 않습니다</h2>
-          <p className="bd">손님 폰이 곧 메뉴판입니다. 약정도 없습니다. 표시 금액은 부가세 포함입니다.</p>
+          <p className="bd">
+            손님 폰이 곧 메뉴판입니다. 약정도 없습니다. 표시 금액은 부가세 포함이고, 어느 요금제든 14일
+            무료 체험으로 먼저 써보실 수 있습니다.
+          </p>
         </div>
 
         <div className="mkt-plans" style={{ marginTop: 56 }}>
@@ -307,8 +315,8 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <a href={`?plan=${p.id}#contact`} className={p.pick ? 'btn btn-solid' : 'btn btn-ghost'}>
-                문의하기
+              <a href={signupUrlFor(p.id)} className={p.pick ? 'btn btn-solid' : 'btn btn-ghost'}>
+                무료로 시작하기
               </a>
             </div>
           ))}
@@ -355,7 +363,8 @@ export default function LandingPage() {
                 </span>
               </h3>
               <p className="sm">
-                문의부터 오픈까지 다섯 단계. 쓰시던 메뉴판을 찍어 보내주시면 그대로 옮깁니다.
+                가입부터 오픈까지 다섯 단계. 쓰시던 메뉴판을 찍어 올리면 읽어서 옮기고, 확인한 뒤
+                저장합니다.
               </p>
             </Link>
           </div>

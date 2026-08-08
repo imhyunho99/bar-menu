@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>무료로 시작하기 - bar-menu</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+  /* 마케팅 페이지(frontend/src/styles/marketing.css)의 값을 그대로 옮겨 온다.
+     여기는 Next 번들 밖이라 그 파일을 불러올 수 없다. 값이 갈리면 사장님은
+     소개 페이지와 가입 페이지가 다른 서비스처럼 느낀다. */
+  :root {
+    --ink: #0a0a0b;
+    --ash: #6c6c74;
+    --line: #e6e6e9;
+    --amber: #a6650b;
+    --paper: #fbfbfc;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #fff;
+    color: var(--ink);
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+                 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    word-break: keep-all;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection { background: var(--ink); color: #fff; }
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  a { color: inherit; }
+
+  .shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 900px) {
+    .shell { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ── 왼쪽: 무엇을 받게 되는지 ── */
+  .rail {
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    padding: 40px 24px;
+  }
+  @media (min-width: 900px) {
+    .rail {
+      border-bottom: 0;
+      border-right: 1px solid var(--line);
+      padding: 64px 56px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+  }
+  .brand {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    text-decoration: none;
+  }
+  .rail h1 {
+    margin: 40px 0 0;
+    font-size: clamp(1.9rem, 4.2vw, 2.9rem);
+    font-weight: 800;
+    letter-spacing: -0.048em;
+    line-height: 1.07;
+  }
+  .rail .lede {
+    margin: 20px 0 0;
+    max-width: 26rem;
+    color: var(--ash);
+    font-size: 17px;
+    line-height: 1.75;
+    letter-spacing: -0.014em;
+  }
+  .facts { margin: 36px 0 0; padding: 0; list-style: none; }
+  .facts li {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    padding: 14px 0;
+    border-top: 1px solid var(--line);
+    font-size: 14px;
+    line-height: 1.75;
+    letter-spacing: -0.008em;
+  }
+  .facts li:last-child { border-bottom: 1px solid var(--line); }
+  .facts .idx {
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--amber);
+    flex: none;
+  }
+  .rail .fine {
+    margin: 32px 0 0;
+    color: var(--ash);
+    font-size: 12.5px;
+    line-height: 1.65;
+  }
+
+  /* ── 오른쪽: 폼 ── */
+  .panel { padding: 40px 24px 64px; }
+  @media (min-width: 900px) {
+    .panel { padding: 64px 56px; display: flex; align-items: center; }
+  }
+  .form-wrap { width: 100%; max-width: 27rem; margin: 0 auto; }
+  .kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--amber);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.012em;
+    margin-bottom: 18px;
+  }
+  .kicker::before {
+    content: '';
+    width: 16px; height: 1px;
+    background: currentColor;
+    opacity: 0.55;
+  }
+  .form-wrap h2 {
+    margin: 0;
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1.2;
+  }
+  .form-wrap .sub {
+    margin: 12px 0 32px;
+    color: var(--ash);
+    font-size: 14px;
+    line-height: 1.75;
+    letter-spacing: -0.008em;
+  }
+
+  .field { margin-bottom: 22px; }
+  .field > label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.012em;
+    margin-bottom: 8px;
+  }
+  .field input {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 15px 16px;
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--ink);
+    transition: border-color 0.2s, background-color 0.2s;
+  }
+  .field input::placeholder { color: #b6b6bd; }
+  .field input:focus {
+    outline: none;
+    border-color: var(--ink);
+  }
+  .field.has-error input { border-color: #b0341f; }
+  .hint {
+    margin: 8px 0 0;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--ash);
+  }
+  .err {
+    margin: 8px 0 0;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: #b0341f;
+    font-weight: 600;
+  }
+  .ok { color: #1c6b3f; font-weight: 600; }
+
+  /* 주소 입력은 앞에 도메인을 붙여 최종 주소가 눈에 보이게 한다 */
+  .slug-row {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .slug-row:focus-within { border-color: var(--ink); }
+  .field.has-error .slug-row { border-color: #b0341f; }
+  .slug-row .prefix {
+    display: flex;
+    align-items: center;
+    padding: 0 4px 0 16px;
+    background: var(--paper);
+    border-right: 1px solid var(--line);
+    color: var(--ash);
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+  .slug-row input {
+    border: 0;
+    border-radius: 0;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 14px;
+  }
+  .slug-row input:focus { border-color: transparent; }
+
+  .submit {
+    width: 100%;
+    margin-top: 10px;
+    background: var(--ink);
+    color: #fff;
+    border: 1px solid var(--ink);
+    border-radius: 999px;
+    padding: 16px 28px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.25s, border-color 0.25s;
+  }
+  .submit:hover { background: var(--ash); border-color: var(--ash); }
+
+  .form-err {
+    margin: 0 0 24px;
+    padding: 14px 16px;
+    border: 1px solid #e7c4bc;
+    background: #fdf6f4;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.65;
+    color: #b0341f;
+  }
+  .foot {
+    margin: 24px 0 0;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--ash);
+  }
+  .foot a { font-weight: 600; color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <section class="rail">
+    <div>
+      <a class="brand" href="/">bar-menu</a>
+      <h1>메뉴판 하나로<br>충분한 가게</h1>
+      <p class="lede">
+        가입하고 메뉴판 사진 한 장만 올리면, 오늘 저녁 손님이 바로 쓰는
+        QR 메뉴판이 됩니다.
+      </p>
+      <ul class="facts">
+        <li><span class="idx">01</span><span>14일 무료 체험. 카드 등록 없이 시작합니다.</span></li>
+        <li><span class="idx">02</span><span>종이 메뉴판을 찍어 올리면 항목을 알아서 뽑아냅니다.</span></li>
+        <li><span class="idx">03</span><span>테이블에 붙일 QR은 가입 직후 바로 내려받습니다.</span></li>
+      </ul>
+    </div>
+    <p class="fine">이미 계정이 있으신가요? <a href="{% url 'login' %}">로그인</a>하시면 매장으로 바로 이동합니다.</p>
+  </section>
+
+  <section class="panel">
+    <div class="form-wrap">
+      <span class="kicker">무료 체험 14일</span>
+      <h2>매장 만들기</h2>
+      <p class="sub">아래 네 가지만 채우면 끝입니다. 결제 정보는 받지 않습니다.</p>
+
+      {% if errors.form %}<div class="form-err">{{ errors.form }}</div>{% endif %}
+
+      <form method="post" action="{% url 'signup' %}" novalidate>
+        {% if plan %}<input type="hidden" name="plan" value="{{ plan }}">{% endif %}
+        {% csrf_token %}
+
+        <div class="field {% if errors.email %}has-error{% endif %}">
+          <label for="email">이메일 (로그인 아이디로 씁니다)</label>
+          <input type="email" id="email" name="email" value="{{ values.email|default:'' }}"
+                 placeholder="owner@example.com" autocomplete="email" autofocus>
+          {% if errors.email %}<p class="err">{{ errors.email }}</p>{% endif %}
+        </div>
+
+        <div class="field {% if errors.password %}has-error{% endif %}">
+          <label for="password">비밀번호</label>
+          <input type="password" id="password" name="password"
+                 placeholder="8자 이상, 숫자만은 안 됩니다" autocomplete="new-password">
+          {% if errors.password %}<p class="err">{{ errors.password }}</p>{% endif %}
+        </div>
+
+        <div class="field {% if errors.name %}has-error{% endif %}">
+          <label for="name">매장명</label>
+          <input type="text" id="name" name="name" value="{{ values.name|default:'' }}"
+                 placeholder="예: 달빛 이자카야" autocomplete="organization">
+          {% if errors.name %}<p class="err">{{ errors.name }}</p>{% endif %}
+        </div>
+
+        <div class="field {% if errors.slug %}has-error{% endif %}" id="slug-field">
+          <label for="slug">매장 주소</label>
+          <div class="slug-row">
+            <span class="prefix">bar-menu.ddnsfree.com/</span>
+            <input type="text" id="slug" name="slug" value="{{ values.slug|default:'' }}"
+                   placeholder="moonlight" autocomplete="off" autocapitalize="off" spellcheck="false">
+          </div>
+          {% if errors.slug %}
+            <p class="err" id="slug-msg">{{ errors.slug }}</p>
+          {% else %}
+            <p class="hint" id="slug-msg">영문·숫자·하이픈(-)·밑줄(_)만 쓸 수 있습니다. QR에 새겨질 주소라 나중에 바꾸기 어렵습니다.</p>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="submit">14일 무료로 시작하기</button>
+      </form>
+
+      <p class="foot">
+        시작하면 <a href="/contact-us/">이용 문의</a> 없이 바로 메뉴를 등록할 수 있습니다.
+      </p>
+    </div>
+  </section>
+
+</div>
+
+<script>
+// 주소는 QR에 새겨진다. 가입 버튼을 누른 뒤에야 "이미 쓰는 주소"라고
+// 알려주면 늦으므로, 치는 동안 서버에 물어본다.
+(function () {
+  var input = document.getElementById('slug');
+  var msg = document.getElementById('slug-msg');
+  var field = document.getElementById('slug-field');
+  var timer = null;
+  var seq = 0;
+
+  function paint(cls, text) {
+    msg.className = cls;
+    msg.textContent = text;
+  }
+
+  input.addEventListener('input', function () {
+    var value = input.value.trim().toLowerCase();
+    if (input.value !== value) { input.value = value; }
+    clearTimeout(timer);
+    if (!value) {
+      field.classList.remove('has-error');
+      paint('hint', '영문·숫자·하이픈(-)·밑줄(_)만 쓸 수 있습니다. QR에 새겨질 주소라 나중에 바꾸기 어렵습니다.');
+      return;
+    }
+    var mine = ++seq;
+    timer = setTimeout(function () {
+      fetch('{% url "check_slug" %}?slug=' + encodeURIComponent(value))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          // 늦게 온 예전 응답이 방금 친 글자를 덮어쓰지 않게 한다
+          if (mine !== seq) { return; }
+          field.classList.toggle('has-error', !data.available);
+          paint(data.available ? 'hint ok' : 'err', data.reason);
+        })
+        .catch(function () { /* 확인 실패는 조용히 넘긴다. 최종 판정은 서버 저장 시점이다 */ });
+    }, 300);
+  });
+})();
+</script>
+</body>
+</html>

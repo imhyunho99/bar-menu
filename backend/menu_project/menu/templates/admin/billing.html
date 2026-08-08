@@ -1,0 +1,128 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>구독 관리 - bar-menu</title>
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1 class="admin-title">{{ request.restaurant.name|default:"bar-menu" }} 구독 관리</h1>
+            <div class="admin-header-actions">
+                <a href="{% url 'menu:admin_dashboard' request.restaurant.slug %}" class="admin-btn admin-btn-secondary">대시보드로</a>
+            </div>
+        </div>
+
+        {% if messages %}
+            <div style="margin-bottom: 20px;">
+                {% for message in messages %}
+                    <div style="background-color: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--admin-success); padding: 12px; border-radius: var(--admin-radius); margin-bottom: 10px;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if not payment_configured %}
+            <div style="background-color: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.35); color: var(--admin-text-primary); padding: 14px; border-radius: var(--admin-radius); margin-bottom: 20px;">
+                <strong>아직 결제 연동 전입니다.</strong>
+                <span style="color: var(--admin-text-secondary);">
+                    지금은 요금이 청구되지 않습니다. 요금제 신청 버튼을 눌러도 결제가 진행되지 않으니 담당자에게 문의해 주세요.
+                </span>
+            </div>
+        {% endif %}
+
+        <div class="admin-section">
+            <h2>현재 상태</h2>
+            <div class="admin-card">
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <tbody>
+                            <tr>
+                                <th style="width: 180px;">요금제</th>
+                                <td>{{ subscription.get_plan_display }}</td>
+                            </tr>
+                            <tr>
+                                <th>상태</th>
+                                <td>
+                                    {{ subscription.get_status_display }}
+                                    {% if not is_usable %}
+                                        <span style="color: var(--admin-danger);">· 손님 화면이 닫혀 있습니다</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>{% if subscription.status == 'trialing' %}체험 종료일{% else %}이용 가능 기간{% endif %}</th>
+                                <td>
+                                    {% if access_until %}
+                                        {{ access_until|date:"Y년 m월 d일 H:i" }}까지
+                                        {% if days_left is not None %}
+                                            {% if days_left > 0 %}
+                                                <strong style="color: var(--admin-success);">({{ days_left }}일 남음)</strong>
+                                            {% else %}
+                                                <strong style="color: var(--admin-danger);">(오늘 종료)</strong>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% else %}
+                                        <span style="color: var(--admin-text-secondary);">기한 없음</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if subscription.status == 'trialing' %}
+                            <tr>
+                                <th>무료 체험</th>
+                                <td style="color: var(--admin-text-secondary);">
+                                    가입 후 {{ subscription.TRIAL_DAYS }}일간 무료입니다. 체험 기간에는 요금이 청구되지 않습니다.
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% if subscription.canceled_at %}
+                            <tr>
+                                <th>해지 신청</th>
+                                <td>{{ subscription.canceled_at|date:"Y년 m월 d일 H:i" }}</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-section">
+            <h2>요금제 선택</h2>
+            <div class="admin-card">
+                <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                    {% for plan_value, plan_label in plans %}
+                        <form method="post" action="{% url 'menu:billing_start_checkout' request.restaurant.slug %}" style="margin: 0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="plan" value="{{ plan_value }}">
+                            <button type="submit" class="admin-btn {% if subscription.plan == plan_value %}admin-btn-primary{% else %}admin-btn-secondary{% endif %}">
+                                {{ plan_label }}
+                                {% if subscription.plan == plan_value %}(현재){% endif %}
+                            </button>
+                        </form>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        {% if subscription.status != 'canceled' %}
+        <div class="admin-section">
+            <h2>구독 해지</h2>
+            <div class="admin-card">
+                <p style="color: var(--admin-text-secondary); margin-bottom: 14px;">
+                    해지하시면 다음 결제가 진행되지 않습니다.
+                </p>
+                <form method="post" action="{% url 'menu:billing_cancel' request.restaurant.slug %}" onsubmit="return confirm('정말 해지하시겠습니까?');" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="admin-btn admin-btn-danger">구독 해지</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

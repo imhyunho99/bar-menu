@@ -3,11 +3,12 @@ import type { Metadata } from 'next';
 import Nav from '@/components/marketing/Nav';
 import Footer from '@/components/marketing/Footer';
 import { PREP, STEPS } from '@/lib/marketing-content';
+import { signupUrl } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: '도입 절차 — bar-menu',
   description:
-    '문의부터 오픈까지 다섯 단계. 쓰시던 종이 메뉴판을 찍어 보내주시면 그대로 옮깁니다. 매장에서 준비하실 것은 메뉴판 사진 한 장뿐입니다.',
+    '가입부터 오픈까지 다섯 단계. 쓰시던 종이 메뉴판을 찍어 올리면 읽어서 옮기고, 확인한 뒤 저장합니다. 카드 등록 없이 14일 무료로 시작합니다.',
   alternates: { canonical: '/guide' },
 };
 
@@ -19,12 +20,13 @@ export default function GuidePage() {
       <header className="wrap mkt-subhero">
         <div className="en">How it works</div>
         <h1 className="kd">
-          문의부터 오픈까지
+          가입부터 오픈까지
           <br />
           다섯 단계입니다
         </h1>
         <p className="bd">
-          매장에서 준비하실 것은 쓰시던 메뉴판 사진 한 장입니다. 옮겨 넣는 일은 저희가 합니다.
+          회신을 기다리는 단계가 없습니다. 매장에서 준비하실 것은 쓰시던 메뉴판 사진 한 장이고, 옮겨 넣는
+          일은 사진을 읽어 대신 합니다.
         </p>
       </header>
 
@@ -55,7 +57,7 @@ export default function GuidePage() {
               ))}
             </ul>
             <p className="cap note">
-              그 외 서버·도메인·QR 제작·이미지 변환은 모두 포함입니다.
+              그 외 서버·도메인·QR 생성·이미지 변환은 모두 포함입니다.
             </p>
           </div>
           <div className="box">
@@ -69,16 +71,26 @@ export default function GuidePage() {
               곳은 그 자리에서 고친 뒤 저장합니다.
             </p>
             <p className="cap note">
-              디자인 조율과 QR 제작·배송은 메뉴 수와 요청에 따라 달라집니다. 문의 주시면 매장
-              사정에 맞춰 일정을 잡아 드립니다.
+              중간에 사람을 기다리는 단계는 없습니다. 가입도, 메뉴 등록도, QR 인쇄도 사장님이 그
+              자리에서 하십니다. 다만 Pro 이상의 아크릴 거치대는 물건이라 우편으로 따로 가고, 그
+              전까지는 인쇄한 QR로 여시면 됩니다.
             </p>
           </div>
         </div>
 
         <div style={{ padding: '56px 0' }} className="reveal">
-          <Link href="/#contact" className="btn btn-solid">
-            도입 문의하기
-          </Link>
+          <div className="cta-row">
+            <a href={signupUrl} className="btn btn-solid">
+              14일 무료로 시작하기
+            </a>
+            <Link href="/#contact" className="btn btn-ghost">
+              먼저 상담받기
+            </Link>
+          </div>
+          <p className="cap cta-note">
+            카드를 등록하지 않습니다. 가입이 끝나면 바로 로그인된 채로 할 일 목록이 열리고, 첫 항목이
+            메뉴 등록입니다.
+          </p>
         </div>
       </div>
 

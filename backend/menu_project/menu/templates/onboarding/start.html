@@ -1,0 +1,121 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>시작하기 - {{ restaurant.name }} - bar-menu</title>
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+    <style>
+        .ob-lede {
+            color: var(--admin-text-secondary);
+            line-height: 1.7;
+            margin: 8px 0 0;
+        }
+        .ob-trial {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 10px 16px;
+            margin-bottom: 24px;
+        }
+        .ob-trial strong { font-size: 1.15em; }
+        .ob-progress {
+            color: var(--admin-text-secondary);
+            font-size: 0.9em;
+        }
+        .ob-step {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--admin-border-color);
+        }
+        .ob-step:last-child { border-bottom: 0; }
+        .ob-mark {
+            flex: none;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 1px solid var(--admin-border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85em;
+            color: var(--admin-text-secondary);
+        }
+        .ob-step.is-done .ob-mark {
+            background: var(--admin-success);
+            border-color: var(--admin-success);
+            color: #0f172a;
+            font-weight: 700;
+        }
+        .ob-body { flex: 1 1 auto; min-width: 0; }
+        .ob-body h3 { margin: 0 0 6px; font-size: 1.05em; }
+        .ob-body p {
+            margin: 0 0 12px;
+            color: var(--admin-text-secondary);
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+        .ob-links { display: flex; flex-wrap: wrap; gap: 8px; }
+        .ob-links .admin-btn { font-size: 0.85em; padding: 8px 14px; }
+        .ob-missing {
+            color: var(--admin-danger);
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1 class="admin-title">{{ restaurant.name }} · 시작하기</h1>
+            <a href="{% url 'menu:admin_dashboard' restaurant.slug %}" class="admin-btn admin-btn-secondary">관리 화면</a>
+        </div>
+
+        <div class="admin-section">
+            <div class="admin-card">
+                <div class="ob-trial">
+                    {% if days_left is not None %}
+                        <strong>무료 체험 {{ days_left }}일 남음</strong>
+                    {% elif subscription %}
+                        <strong>{{ subscription.get_status_display }}</strong>
+                    {% else %}
+                        <strong>구독 정보 없음</strong>
+                    {% endif %}
+                    <span class="ob-progress">{{ done_count }}/{{ total_count }} 완료</span>
+                    <span class="ob-progress">손님 주소 · /{{ restaurant.slug }}</span>
+                </div>
+                <p class="ob-lede">
+                    아래 순서대로 채우면 오늘 저녁 손님이 바로 쓸 수 있습니다.
+                    메뉴부터 등록하는 것이 가장 빠릅니다.
+                </p>
+            </div>
+        </div>
+
+        <div class="admin-section">
+            <div class="admin-card">
+                {% for step in steps %}
+                <div class="ob-step {% if step.done %}is-done{% endif %}">
+                    <div class="ob-mark">{% if step.done %}✓{% else %}{{ forloop.counter }}{% endif %}</div>
+                    <div class="ob-body">
+                        <h3>{{ step.title }}</h3>
+                        <p>{{ step.detail }}</p>
+                        <div class="ob-links">
+                            {% if step.primary_url %}
+                                <a href="{{ step.primary_url }}" class="admin-btn admin-btn-primary">{{ step.primary_label }}</a>
+                            {% else %}
+                                <span class="ob-missing">설정 화면을 찾을 수 없습니다. 관리자에게 문의해 주세요.</span>
+                            {% endif %}
+                            {% if step.secondary_url %}
+                                <a href="{{ step.secondary_url }}" class="admin-btn admin-btn-secondary">{{ step.secondary_label }}</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

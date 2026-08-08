@@ -461,6 +461,102 @@ class MenuItemPairing(models.Model):
         super().save(*args, **kwargs)
 
 
+class Subscription(models.Model):
+    """
+    매장 하나의 구독 상태.
+
+    결제 대행사는 아직 안 붙었다. 그래서 이 모델은 '누가 언제까지 쓸 수
+    있는가'만 알고, 돈을 걷는 방법은 모른다. 대행사가 붙을 때 채울 자리는
+    provider_* 세 필드뿐이고 나머지 상태 기계는 그대로 쓴다.
+    """
+
+    PLAN_CHOICES = [
+        ('entry', 'Entry'),
+        ('pro', 'Pro'),
+        ('premium', 'Premium'),
+    ]
+
+    # trialing  : 무료 체험 중. 손님 화면 정상 노출
+    # active    : 결제까지 정상
+    # past_due  : 결제 실패. 유예 기간 동안은 계속 열어 둔다
+    # canceled  : 해지됨. 체험 만료도 여기로 온다
+    STATUS_CHOICES = [
+        ('trialing', '무료 체험'),
+        ('active', '이용 중'),
+        ('past_due', '결제 실패'),
+        ('canceled', '해지'),
+    ]
+
+    TRIAL_DAYS = 14
+
+    restaurant = models.OneToOneField(
+        Restaurant, on_delete=models.CASCADE, related_name='subscription', verbose_name="매장"
+    )
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default='entry', verbose_name="요금제")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='trialing', verbose_name="상태")
+
+    trial_ends_at = models.DateTimeField(null=True, blank=True, verbose_name="체험 종료")
+    # 결제가 붙으면 대행사가 알려주는 다음 결제일. 그 전까지는 비어 있다.
+    current_period_end = models.DateTimeField(null=True, blank=True, verbose_name="이번 결제 주기 종료")
+    canceled_at = models.DateTimeField(null=True, blank=True, verbose_name="해지 시각")
+
+    # ── 결제 대행사가 붙을 때 채우는 자리 ──────────────────────────
+    # 어느 대행사인지는 여기 문자열로만 남긴다. 코드가 특정 회사를 알지
+    # 않도록 실제 호출은 menu/billing/ 의 provider 가 맡는다.
+    provider = models.CharField(max_length=30, blank=True, default='', verbose_name="결제 대행사")
+    provider_customer_id = models.CharField(max_length=200, blank=True, default='', verbose_name="대행사 고객 ID")
+    provider_subscription_id = models.CharField(max_length=200, blank=True, default='', verbose_name="대행사 구독 ID")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "구독"
+        verbose_name_plural = "구독 목록"
+
+    def __str__(self):
+        return f"{self.restaurant.name} · {self.get_plan_display()} ({self.get_status_display()})"
+
+    @property
+    def access_until(self):
+        """언제까지 열어 둘지. 결제가 붙기 전에는 체험 종료일이 곧 그 날이다."""
+        return self.current_period_end or self.trial_ends_at
+
+    @property
+    def days_left(self):
+        from django.utils import timezone
+
+        until = self.access_until
+        if until is None:
+            return None
+        return max(0, (until - timezone.now()).days)
+
+    def is_usable(self):
+        """
+        손님에게 메뉴판을 보여줘도 되는 상태인가.
+
+        past_due 를 열어 두는 건 의도적이다. 카드 한 번 실패했다고 영업
+        중인 가게의 메뉴판을 꺼버리면 그게 더 큰 사고다.
+        """
+        from django.utils import timezone
+
+        if self.status == 'canceled':
+            return False
+        if self.status == 'past_due':
+            return True
+        until = self.access_until
+        return until is None or until > timezone.now()
+
+    def start_trial(self, days=None):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        self.status = 'trialing'
+        self.trial_ends_at = timezone.now() + timedelta(days=days or self.TRIAL_DAYS)
+        return self
+
+
 class ContactSubmission(models.Model):
     name = models.CharField(max_length=100, verbose_name="이름(업체명)")
     contact_info = models.CharField(max_length=200, verbose_name="연락처 또는 이메일")

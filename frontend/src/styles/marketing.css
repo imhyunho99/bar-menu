@@ -253,6 +253,30 @@ html:has(.mkt) {
 .mkt .btn-ghost:hover {
   border-color: var(--ink);
 }
+/* 버튼 두 개를 나란히 놓는 자리 — 가입(solid) 옆에 문의(ghost) */
+.mkt .cta-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+/* 버튼 아래 한 줄. 무료 체험 조건은 버튼 라벨을 늘리는 대신 여기 적는다 */
+.mkt .cta-note {
+  color: var(--ash);
+  margin-top: 14px;
+}
+.mkt .cta-note a {
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  transition:
+    color 0.25s,
+    border-color 0.25s;
+}
+.mkt .cta-note a:hover {
+  color: var(--amber);
+  border-color: var(--amber);
+}
+
 /* 밑줄 링크 — 상세 페이지로 넘기는 자리 */
 .mkt .btn-under {
   display: inline-flex;
@@ -379,6 +403,12 @@ html:has(.mkt) {
   gap: 10px;
   flex-wrap: wrap;
   flex-shrink: 0;
+}
+/* 조건 한 줄은 버튼 옆이 아니라 아래로 떨어뜨린다 */
+.mkt-hero .cta .cta-note {
+  flex-basis: 100%;
+  margin-top: 2px;
+  max-width: 30rem;
 }
 @media (min-width: 1024px) {
   .mkt-hero {

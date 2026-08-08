@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from django.views.generic import RedirectView
 from menu.qr_views import generate_qr_code
 from menu import views as menu_views # 이 줄을 다시 추가합니다.
+from menu import auth_views, billing_views, onboarding_views
 
 admin.site.site_header = "bar-menu 통합 관리 시스템"
 admin.site.site_title = "bar-menu 관리 포탈"
@@ -24,6 +25,17 @@ urlpatterns = [
     
     # 제휴 문의 접수 — 기존 SSR
     path('contact-us/', menu_views.contact_us_view, name='contact_us'),
+
+    # 셀프 가입 — 아직 매장이 없으니 slug 앞에 둘 수 없다
+    path('signup/', onboarding_views.signup, name='signup'),
+    path('signup/check-slug/', onboarding_views.check_slug, name='check_slug'),
+
+    # 재방문 로그인. 사장님이 자기 매장 주소를 외우고 있을 거라 기대하지 않는다
+    path('login/', auth_views.login_view, name='login'),
+    path('logout/', auth_views.logout_view, name='logout'),
+
+    # 결제 대행사가 호출하는 웹훅. 대행사별 서명 검증은 provider 가 맡는다
+    path('billing/webhook/<str:provider>/', billing_views.webhook, name='billing_webhook'),
     
     # 식당별 URL (예: /bid/..., /cafe/...) — 기존 SSR
     path('<slug:restaurant_slug>/', include('menu.urls')),
