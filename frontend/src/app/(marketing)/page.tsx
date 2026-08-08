@@ -347,6 +347,17 @@ export default function LandingPage() {
                 세 요금제에 무엇이 들어가고 무엇이 빠지는지 표로 비교하고, 자주 묻는 질문에 답합니다.
               </p>
             </Link>
+            <Link href="/guide">
+              <h3 className="kd">
+                도입 절차
+                <span className="arw" aria-hidden="true">
+                  →
+                </span>
+              </h3>
+              <p className="sm">
+                문의부터 오픈까지 다섯 단계. 쓰시던 메뉴판을 찍어 보내주시면 그대로 옮깁니다.
+              </p>
+            </Link>
           </div>
         </div>
       </div>

@@ -4,10 +4,11 @@ import Link from 'next/link';
 const LINKS = [
   { href: '/features', label: '기능' },
   { href: '/pricing', label: '요금' },
+  { href: '/guide', label: '도입 절차' },
 ] as const;
 
 /** 문의는 랜딩의 #contact 한 곳에만 있다. 하위 페이지에서는 앵커까지 붙여 넘긴다. */
-export default function Nav({ active }: { active?: 'features' | 'pricing' }) {
+export default function Nav({ active }: { active?: 'features' | 'pricing' | 'guide' }) {
   const contactHref = active ? '/#contact' : '#contact';
 
   return (

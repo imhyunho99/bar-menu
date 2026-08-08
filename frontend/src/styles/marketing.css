@@ -1279,6 +1279,98 @@ html:has(.mkt) {
   flex: none;
 }
 
+/* ─── 도입 단계 ─── */
+.mkt-step {
+  display: grid;
+  gap: 20px;
+  padding: 40px 0;
+  border-bottom: 1px solid var(--line);
+}
+@media (min-width: 1024px) {
+  .mkt-step {
+    grid-template-columns: 110px 1fr;
+    gap: 48px;
+  }
+}
+.mkt-step .idx {
+  font-size: 34px;
+  color: var(--line);
+  line-height: 1;
+}
+.mkt-step h2 {
+  font-size: clamp(1.3rem, 2.4vw, 1.7rem);
+  margin-bottom: 10px;
+}
+.mkt-step .lead {
+  margin-bottom: 8px;
+}
+.mkt-step .sm {
+  color: var(--ash);
+  max-width: 42rem;
+}
+
+.mkt-prep {
+  margin-top: 64px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 32px;
+  display: grid;
+  gap: 40px;
+  align-items: center;
+}
+@media (min-width: 1024px) {
+  .mkt-prep {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 48px;
+  }
+}
+.mkt-prep .rule-lbl {
+  color: var(--amber);
+  margin-bottom: 16px;
+}
+.mkt-prep h2 {
+  font-size: clamp(1.4rem, 2.6vw, 1.9rem);
+  margin-bottom: 20px;
+}
+.mkt-prep ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mkt-prep li {
+  display: flex;
+  gap: 12px;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--ash);
+}
+.mkt-prep li + li {
+  margin-top: 12px;
+}
+.mkt-prep li .dash {
+  color: var(--amber);
+  flex: none;
+}
+.mkt-prep .note {
+  color: var(--ash);
+  margin-top: 24px;
+}
+.mkt-prep .box {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 32px;
+}
+.mkt-prep .box .ko-lbl {
+  margin-bottom: 16px;
+}
+.mkt-prep .box .sm {
+  color: var(--ash);
+}
+.mkt-prep .box .sm + .sm {
+  margin-top: 12px;
+}
+
 /* ─── 요금 비교표 ─── */
 .mkt-table-scroll {
   overflow-x: auto;
