@@ -35,14 +35,14 @@ def admin_login(request, restaurant_slug=None):
             # 1. Superuser: 현재 URL의 slug로 이동하거나, 없으면 첫 번째 식당으로 이동 (또는 선택 페이지)
             if user.is_superuser:
                 target_slug = restaurant_slug or (Restaurant.objects.first().slug if Restaurant.objects.exists() else 'bid')
-                return redirect('admin_dashboard', restaurant_slug=target_slug)
+                return redirect('menu:admin_dashboard', restaurant_slug=target_slug)
             
             # 2. 일반 관리자: 본인 소유의 식당으로 강제 리다이렉트
             if hasattr(user, 'profile') and user.profile.restaurant:
-                return redirect('admin_dashboard', restaurant_slug=user.profile.restaurant.slug)
+                return redirect('menu:admin_dashboard', restaurant_slug=user.profile.restaurant.slug)
             else:
                 messages.error(request, '관리할 수 있는 매장이 없습니다.')
-                return redirect('admin_login')
+                return redirect('menu:admin_login')
                 
         messages.error(request, '아이디 또는 비밀번호가 올바르지 않거나 권한이 없습니다.')
         
@@ -125,7 +125,7 @@ def add_menu(request, restaurant_slug=None):
             detail_description=request.POST.get('detail_description', ''),
             restaurant=request.restaurant
         )
-        return redirect('admin_dashboard', restaurant_slug=request.restaurant.slug)
+        return redirect('menu:admin_dashboard', restaurant_slug=request.restaurant.slug)
     categories = Category.objects.filter(restaurant=request.restaurant)
     return render(request, 'admin/menu_form.html', {'categories': categories, 'menu': None})
 
@@ -163,7 +163,7 @@ def edit_menu(request, menu_id, restaurant_slug=None):
         menu.detail_description = request.POST.get('detail_description', '')
         
         menu.save()
-        return redirect('admin_dashboard', restaurant_slug=request.restaurant.slug)
+        return redirect('menu:admin_dashboard', restaurant_slug=request.restaurant.slug)
     categories = Category.objects.filter(restaurant=request.restaurant)
     return render(request, 'admin/menu_form.html', {'menu': menu, 'categories': categories})
 
@@ -173,7 +173,7 @@ def delete_menu(request, menu_id, restaurant_slug=None):
         return HttpResponseForbidden("권한이 없습니다.")
 
     MenuItem.objects.filter(id=menu_id, restaurant=request.restaurant).delete()
-    return redirect('admin_dashboard', restaurant_slug=request.restaurant.slug)
+    return redirect('menu:admin_dashboard', restaurant_slug=request.restaurant.slug)
 
 @login_required
 def delete_category(request, category_id, restaurant_slug=None):
