@@ -1,0 +1,138 @@
+"""
+메뉴판 사진 가져오기 — 비전 호출을 제외한 나머지 경로를 검증한다.
+
+Claude 호출 자체는 API 키가 필요하므로 stub 으로 갈음하고,
+확인 화면이 만들어내는 폼 필드 이름과 저장 뷰가 읽는 이름이
+실제로 맞물리는지를 본다. 여기가 어긋나면 조용히 0건 저장된다.
+"""
+
+from unittest.mock import patch
+
+from django.contrib.auth.models import User
+from django.test import TestCase
+
+from .menu_import import MenuImportError, ParsedCategory, ParsedItem, ParsedMenu
+from .models import Category, MenuItem, Restaurant
+
+SAMPLE = ParsedMenu(
+    categories=[
+        ParsedCategory(
+            name="사시미",
+            name_en="SASHIMI",
+            items=[
+                ParsedItem(name="모둠 사시미", name_en="Assorted Sashimi", price="38,000",
+                           description="당일 입고 선어 5종"),
+                ParsedItem(name="연어 사시미", name_en="Salmon", price="26,000",
+                           description="", confident=False),
+            ],
+        ),
+        ParsedCategory(
+            name="구이",
+            items=[ParsedItem(name="닭꼬치 3종", price="16,000")],
+        ),
+    ],
+    notes="우측 하단이 접혀 일부 가격을 읽지 못했습니다.",
+)
+
+# 업로드 파일 자리를 채우기만 하면 되는 최소 바이트 (stub 이 읽지 않는다)
+DUMMY_IMAGE = b"not-a-real-image"
+
+
+class MenuImportFlowTests(TestCase):
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name="달빛 이자카야", slug="moonlight")
+        self.user = User.objects.create_user("owner", password="pw", is_staff=True, is_superuser=True)
+        self.client.force_login(self.user)
+        self.preview_url = f"/{self.restaurant.slug}/admin/menu/import/"
+        self.commit_url = f"/{self.restaurant.slug}/admin/menu/import/commit/"
+
+    def _upload(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        with patch("menu.admin_views.parse_menu_image", return_value=SAMPLE):
+            return self.client.post(
+                self.preview_url,
+                {"menu_image": SimpleUploadedFile("menu.jpg", DUMMY_IMAGE, content_type="image/jpeg")},
+            )
+
+    def test_preview_renders_every_item_with_matching_field_names(self):
+        response = self._upload()
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+
+        # 키가 빈 문자열로 무너지면 name="_name" 같은 필드가 나온다
+        self.assertNotIn('name="_name"', html)
+        for key in ("c0_i0", "c0_i1", "c1_i0"):
+            self.assertIn(f'value="{key}"', html, f"{key} 체크박스가 없다")
+            self.assertIn(f'name="{key}_price"', html, f"{key} 가격 필드가 없다")
+
+        self.assertIn("우측 하단이 접혀", html)
+        # 자신 없는 항목은 눈에 띄게 표시된다
+        self.assertEqual(html.count("import-row unsure"), 1)
+
+    def test_commit_creates_categories_and_items(self):
+        self._upload()
+
+        response = self.client.post(self.commit_url, {
+            "include": ["c0_i0", "c0_i1", "c1_i0"],
+            "c0_name": "사시미", "c0_name_en": "SASHIMI", "c0_existing": "",
+            "c0_i0_name": "모둠 사시미", "c0_i0_name_en": "Assorted Sashimi",
+            "c0_i0_price": "38,000", "c0_i0_description": "당일 입고 선어 5종",
+            "c0_i1_name": "연어 사시미", "c0_i1_name_en": "Salmon",
+            "c0_i1_price": "26,000", "c0_i1_description": "",
+            "c1_name": "구이", "c1_name_en": "", "c1_existing": "",
+            "c1_i0_name": "닭꼬치 3종", "c1_i0_name_en": "",
+            "c1_i0_price": "16,000", "c1_i0_description": "",
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Category.objects.filter(restaurant=self.restaurant).count(), 2)
+        self.assertEqual(MenuItem.objects.filter(restaurant=self.restaurant).count(), 3)
+
+        item = MenuItem.objects.get(name="모둠 사시미")
+        self.assertEqual(item.price, "38,000")
+        self.assertEqual(item.category.name, "사시미")
+        self.assertEqual(item.restaurant, self.restaurant)
+
+    def test_unchecked_items_are_not_saved(self):
+        self._upload()
+
+        self.client.post(self.commit_url, {
+            "include": ["c0_i0"],  # 나머지는 체크 해제
+            "c0_name": "사시미", "c0_existing": "",
+            "c0_i0_name": "모둠 사시미", "c0_i0_price": "38,000",
+            "c0_i1_name": "연어 사시미", "c0_i1_price": "26,000",
+            "c1_name": "구이", "c1_existing": "",
+            "c1_i0_name": "닭꼬치 3종", "c1_i0_price": "16,000",
+        })
+
+        self.assertEqual(MenuItem.objects.filter(restaurant=self.restaurant).count(), 1)
+        # 항목이 하나도 안 들어간 카테고리는 만들지 않는다
+        self.assertEqual(Category.objects.filter(restaurant=self.restaurant).count(), 1)
+
+    def test_commit_can_target_an_existing_category(self):
+        existing = Category.objects.create(name="기존 안주", restaurant=self.restaurant)
+        self._upload()
+
+        self.client.post(self.commit_url, {
+            "include": ["c0_i0"],
+            "c0_name": "사시미", "c0_existing": str(existing.id),
+            "c0_i0_name": "모둠 사시미", "c0_i0_price": "38,000",
+        })
+
+        self.assertEqual(Category.objects.filter(restaurant=self.restaurant).count(), 1)
+        self.assertEqual(MenuItem.objects.get(name="모둠 사시미").category, existing)
+
+    def test_extractor_failure_is_shown_not_raised(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        with patch("menu.admin_views.parse_menu_image",
+                   side_effect=MenuImportError("이미지 파일을 열 수 없습니다.")):
+            response = self.client.post(
+                self.preview_url,
+                {"menu_image": SimpleUploadedFile("menu.jpg", DUMMY_IMAGE, content_type="image/jpeg")},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("이미지 파일을 열 수 없습니다.", response.content.decode())
+        self.assertEqual(MenuItem.objects.count(), 0)

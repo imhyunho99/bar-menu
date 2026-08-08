@@ -141,6 +141,7 @@
                     <p style="font-size: 0.85rem; color: var(--admin-text-secondary); margin-top: 4px;">* 행 좌측의 ⋮⋮ 핸들을 잡고 드래그하면 순서를 변경할 수 있습니다.</p>
                 </div>
                 <a href="{% url 'menu:add_menu' request.restaurant.slug %}" class="admin-btn admin-btn-primary">메뉴 추가</a>
+                <a href="{% url 'menu:import_menu' request.restaurant.slug %}" class="admin-btn">메뉴판 사진으로 등록</a>
             </div>
             
             <div class="admin-table-container">

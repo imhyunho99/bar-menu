@@ -34,6 +34,10 @@ urlpatterns = [
     path('admin/menu/delete/<int:menu_id>/', admin_views.delete_menu, name='delete_menu'),
     path('admin/menu/reorder/', admin_views.reorder_menus, name='reorder_menus'),
 
+    # 종이 메뉴판 사진 → 메뉴 자동 등록
+    path('admin/menu/import/', admin_views.import_menu, name='import_menu'),
+    path('admin/menu/import/commit/', admin_views.import_menu_commit, name='import_menu_commit'),
+
     # Real-time Order Dashboard
     path('admin/orders/', admin_views.admin_orders, name='admin_orders'),
     path('admin/orders/<int:order_id>/update-status/', admin_views.update_order_status, name='update_order_status'),

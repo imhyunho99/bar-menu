@@ -6,6 +6,7 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.views.decorators.http import require_POST
 import json
 from .models import Category, MenuItem, UserProfile, Restaurant, Order, OrderItem, MenuItemPairing, SiteSettings
+from .menu_import import MenuImportError, parse_menu_image
 
 def check_restaurant_permission(user, restaurant_slug):
     """
@@ -239,6 +240,109 @@ def duplicate_menu(request, menu_id, restaurant_slug=None):
         new_pairing.save()
 
     messages.success(request, f"'{menu.name}' 메뉴 및 관련 주류 페어링이 복제되었습니다.")
+    return redirect('menu:admin_dashboard', restaurant_slug=request.restaurant.slug)
+
+
+@login_required
+def import_menu(request, restaurant_slug=None):
+    """
+    종이 메뉴판 사진을 올려 항목을 뽑아낸다.
+
+    뽑아낸 결과는 저장하지 않고 확인 화면으로 넘긴다. OCR이 가격 한 자리만
+    틀려도 손님 화면이 틀어지므로, 사장님이 눈으로 보고 고친 뒤에 저장한다.
+    """
+    if not check_restaurant_permission(request.user, restaurant_slug):
+        return HttpResponseForbidden("권한이 없습니다.")
+
+    if request.method != 'POST':
+        return render(request, 'admin/menu_import.html')
+
+    upload = request.FILES.get('menu_image')
+    if not upload:
+        messages.error(request, '메뉴판 사진을 선택해 주세요.')
+        return render(request, 'admin/menu_import.html')
+
+    try:
+        parsed = parse_menu_image(upload.read())
+    except MenuImportError as e:
+        messages.error(request, str(e))
+        return render(request, 'admin/menu_import.html')
+
+    if not any(category.items for category in parsed.categories):
+        messages.error(request, '사진에서 메뉴 항목을 찾지 못했습니다. 더 또렷한 사진으로 시도해 주세요.')
+        return render(request, 'admin/menu_import.html')
+
+    return render(request, 'admin/menu_import_preview.html', {
+        'parsed': parsed,
+        'existing_categories': Category.objects.filter(restaurant=request.restaurant).order_by('priority', 'name'),
+    })
+
+
+@login_required
+@require_POST
+def import_menu_commit(request, restaurant_slug=None):
+    """확인 화면에서 손본 내용을 실제 카테고리·메뉴로 만든다."""
+    if not check_restaurant_permission(request.user, restaurant_slug):
+        return HttpResponseForbidden("권한이 없습니다.")
+
+    # 폼은 항목마다 c<카테고리번호>_i<항목번호> 로 이름을 붙인다.
+    # 체크가 풀린 항목은 아예 전송되지 않으므로 include 목록이 곧 저장 대상이다.
+    included = request.POST.getlist('include')
+    if not included:
+        messages.error(request, '저장할 항목을 하나 이상 선택해 주세요.')
+        return redirect('menu:import_menu', restaurant_slug=request.restaurant.slug)
+
+    # 이미 있는 카테고리에 붙일지, 새로 만들지는 카테고리 단위로 정해진다
+    last_priority = (
+        Category.objects.filter(restaurant=request.restaurant)
+        .order_by('-priority')
+        .values_list('priority', flat=True)
+        .first()
+    ) or 0.0
+
+    created_categories = 0
+    created_items = 0
+    category_cache = {}
+
+    for key in included:
+        cat_idx = key.split('_')[0]
+
+        if cat_idx not in category_cache:
+            existing_id = request.POST.get(f'{cat_idx}_existing')
+            if existing_id:
+                category = Category.objects.filter(id=existing_id, restaurant=request.restaurant).first()
+            else:
+                last_priority += 1.0
+                category = Category.objects.create(
+                    name=request.POST.get(f'{cat_idx}_name', '').strip() or '메뉴',
+                    name_en=request.POST.get(f'{cat_idx}_name_en', '').strip(),
+                    priority=last_priority,
+                    restaurant=request.restaurant,
+                )
+                created_categories += 1
+            category_cache[cat_idx] = category
+
+        category = category_cache[cat_idx]
+        name = request.POST.get(f'{key}_name', '').strip()
+        if not name:
+            continue
+
+        MenuItem.objects.create(
+            name=name,
+            name_en=request.POST.get(f'{key}_name_en', '').strip(),
+            price=request.POST.get(f'{key}_price', '').strip(),
+            description=request.POST.get(f'{key}_description', '').strip(),
+            category=category,
+            priority=float(created_items),
+            restaurant=request.restaurant,
+        )
+        created_items += 1
+
+    messages.success(
+        request,
+        f'메뉴 {created_items}개를 등록했습니다.'
+        + (f' (카테고리 {created_categories}개 신규 생성)' if created_categories else '')
+    )
     return redirect('menu:admin_dashboard', restaurant_slug=request.restaurant.slug)
 
 

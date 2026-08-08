@@ -1,0 +1,92 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>읽어낸 메뉴 확인 - bar-menu</title>
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+    <style>
+        .import-cat { border: 1px solid #444; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+        .import-cat > header { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+        .import-cat > header label { display: block; font-size: 12px; margin-bottom: 4px; }
+        .import-row { display: grid; grid-template-columns: 28px 1.4fr 1fr 0.7fr 1.6fr; gap: 8px; align-items: center; padding: 6px 0; }
+        .import-row + .import-row { border-top: 1px solid #2a2a2a; }
+        .import-row input[type=text] { width: 100%; }
+        .import-head { font-size: 12px; opacity: .7; }
+        /* 흐릿하게 읽힌 항목은 사장님이 먼저 봐야 한다 */
+        .import-row.unsure input[type=text] { border-color: #b8860b; }
+        .import-note { font-size: 12px; color: #b8860b; margin: 0 0 12px; }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-form">
+            <h2>읽어낸 메뉴 확인</h2>
+
+            <p>
+                사진에서 읽어낸 내용입니다. <strong>아직 저장되지 않았습니다.</strong>
+                틀린 곳을 고치고, 넣지 않을 항목은 체크를 해제한 뒤 저장하세요.
+                테두리가 노란 항목은 글자가 흐려 잘못 읽었을 수 있는 항목입니다.
+            </p>
+
+            {% if parsed.notes %}
+                <p class="import-note">읽는 중 확인 필요: {{ parsed.notes }}</p>
+            {% endif %}
+
+            <form method="post" action="{% url 'menu:import_menu_commit' restaurant_slug=request.restaurant.slug %}">
+                {% csrf_token %}
+
+                {% for category in parsed.categories %}
+                {% with cat_idx=forloop.counter0|stringformat:"s" %}
+                <section class="import-cat">
+                    <header>
+                        <div>
+                            <label for="c{{ cat_idx }}_name">카테고리명</label>
+                            <input type="text" id="c{{ cat_idx }}_name" name="c{{ cat_idx }}_name" value="{{ category.name }}">
+                        </div>
+                        <div>
+                            <label for="c{{ cat_idx }}_name_en">영문명</label>
+                            <input type="text" id="c{{ cat_idx }}_name_en" name="c{{ cat_idx }}_name_en" value="{{ category.name_en }}">
+                        </div>
+                        <div>
+                            <label for="c{{ cat_idx }}_existing">기존 카테고리에 넣기</label>
+                            <select id="c{{ cat_idx }}_existing" name="c{{ cat_idx }}_existing">
+                                <option value="">새로 만들기</option>
+                                {% for existing in existing_categories %}
+                                    <option value="{{ existing.id }}">{{ existing.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </header>
+
+                    <div class="import-row import-head">
+                        <span></span><span>메뉴명</span><span>영문명</span><span>가격</span><span>설명</span>
+                    </div>
+
+                    {% for item in category.items %}
+                    {# add 필터는 int+str 을 못 붙인다. 인덱스를 먼저 문자열로 만든다 #}
+                    {% with item_idx=forloop.counter0|stringformat:"s" %}
+                    {% with key="c"|add:cat_idx|add:"_i"|add:item_idx %}
+                    <div class="import-row{% if not item.confident %} unsure{% endif %}">
+                        <input type="checkbox" name="include" value="{{ key }}" checked
+                               aria-label="{{ item.name }} 등록">
+                        <input type="text" name="{{ key }}_name" value="{{ item.name }}">
+                        <input type="text" name="{{ key }}_name_en" value="{{ item.name_en }}">
+                        <input type="text" name="{{ key }}_price" value="{{ item.price }}">
+                        <input type="text" name="{{ key }}_description" value="{{ item.description }}">
+                    </div>
+                    {% endwith %}
+                    {% endwith %}
+                    {% endfor %}
+                </section>
+                {% endwith %}
+                {% endfor %}
+
+                <button type="submit" class="admin-btn">이대로 등록하기</button>
+                <a href="{% url 'menu:import_menu' restaurant_slug=request.restaurant.slug %}" class="admin-btn admin-btn-secondary">다시 올리기</a>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
