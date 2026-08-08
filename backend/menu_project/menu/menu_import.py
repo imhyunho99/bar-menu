@@ -19,11 +19,23 @@ logger = logging.getLogger(__name__)
 # 읽히는 글자는 같아서 미리 줄인다.
 MAX_EDGE_PX = 2000
 
+# 압축 폭탄 방어. PIL 기본 MAX_IMAGE_PIXELS(89M)는 2배를 넘어야 예외를 내고
+# 그 아래는 경고만 하고 디코딩한다. 440KB 짜리 12000x12000 PNG 한 장이
+# 수백 MB를 먹는데 운영 인스턴스는 RAM 1GB 미만이라 그대로 죽는다.
+# 요즘 폰 사진이 4032x3024(12M)라 40M면 충분히 넉넉하다.
+MAX_PIXELS = 40_000_000
+MAX_UPLOAD_BYTES = 12 * 1024 * 1024
+
 # 메뉴판 한 장이 60~80개 항목까지 갈 수 있다. thinking 과 출력이 max_tokens 를
 # 함께 나눠 쓰므로 넉넉히 잡는다.
 MAX_TOKENS = 16000
 
 MODEL = "claude-opus-5"
+
+# SDK 기본 타임아웃은 10분이고, 이 호출은 요청 스레드를 붙잡은 채로 기다린다.
+# 운영은 uwsgi 워커 2개라 임포트 두 건이 겹치면 사이트 전체가 멈춘다.
+# 메뉴판 한 장은 이 안에 끝난다. 못 끝내면 기다리는 쪽이 손해다.
+REQUEST_TIMEOUT_SECONDS = 120.0
 
 SYSTEM_PROMPT = """당신은 종이 메뉴판 사진을 읽어 구조화하는 일을 합니다.
 
@@ -71,11 +83,28 @@ def shrink_for_vision(image_bytes: bytes) -> tuple[bytes, str]:
     """긴 변을 MAX_EDGE_PX 로 줄이고 JPEG 로 통일한다."""
     from PIL import Image
 
+    if len(image_bytes) > MAX_UPLOAD_BYTES:
+        raise MenuImportError(
+            f"사진이 너무 큽니다. {MAX_UPLOAD_BYTES // (1024 * 1024)}MB 이하로 올려 주세요."
+        )
+
+    # Image.open 은 헤더만 읽는다. 크기를 먼저 보고 거른 뒤에 디코딩해야
+    # 압축 폭탄이 convert() 에서 메모리를 통째로 먹는 일을 막을 수 있다.
     try:
         im = Image.open(io.BytesIO(image_bytes))
-        im = im.convert("RGB")
     except Exception as exc:
         raise MenuImportError("이미지 파일을 열 수 없습니다. jpg/png 파일인지 확인해 주세요.") from exc
+
+    if im.width * im.height > MAX_PIXELS:
+        raise MenuImportError(
+            f"사진 해상도가 너무 큽니다 ({im.width}x{im.height}). "
+            "휴대폰으로 찍은 사진 그대로 올려 주세요."
+        )
+
+    try:
+        im = im.convert("RGB")
+    except Exception as exc:
+        raise MenuImportError("이미지를 읽지 못했습니다. 다른 사진으로 시도해 주세요.") from exc
 
     if max(im.size) > MAX_EDGE_PX:
         ratio = MAX_EDGE_PX / max(im.size)
@@ -99,7 +128,7 @@ def parse_menu_image(image_bytes: bytes) -> ParsedMenu:
     payload, media_type = shrink_for_vision(image_bytes)
     encoded = base64.standard_b64encode(payload).decode("utf-8")
 
-    client = anthropic.Anthropic()
+    client = anthropic.Anthropic(timeout=REQUEST_TIMEOUT_SECONDS, max_retries=1)
     try:
         response = client.messages.parse(
             model=MODEL,
@@ -129,6 +158,10 @@ def parse_menu_image(image_bytes: bytes) -> ParsedMenu:
     except anthropic.APIStatusError as exc:
         logger.warning("menu import: Claude API error %s", exc.status_code)
         raise MenuImportError(f"메뉴판 인식 요청이 실패했습니다. (오류 {exc.status_code})") from exc
+    except anthropic.APITimeoutError as exc:
+        raise MenuImportError(
+            "메뉴판 인식이 시간 안에 끝나지 않았습니다. 사진을 두세 장으로 나눠 올려 주세요."
+        ) from exc
     except anthropic.APIConnectionError as exc:
         raise MenuImportError("메뉴판 인식 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.") from exc
 

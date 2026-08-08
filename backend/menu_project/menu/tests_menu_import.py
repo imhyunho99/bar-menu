@@ -70,6 +70,40 @@ class MenuImportFlowTests(TestCase):
         # 자신 없는 항목은 눈에 띄게 표시된다
         self.assertEqual(html.count("import-row unsure"), 1)
 
+    def test_preview_form_posts_back_without_hand_written_field_names(self):
+        """
+        확인 화면이 실제로 뱉은 필드 이름만으로 저장까지 간다.
+
+        다른 저장 테스트들은 POST 키를 손으로 적어서, 템플릿이 이름을 바꿔도
+        초록불이 유지된다. 여기서는 HTML 을 파싱해 나온 이름만 되돌려 보내
+        템플릿↔뷰 계약을 실제로 고정한다.
+        """
+        import re
+
+        html = self._upload().content.decode()
+
+        # <form action=".../commit/"> 안의 input 만 긁는다
+        form = html.split('import_menu_commit')[1] if 'import_menu_commit' in html else html
+        form = html[html.index('<form'):html.index('</form>')]
+
+        payload = {}
+        for name, value in re.findall(r'<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"', form):
+            payload.setdefault(name, []).append(value) if name == 'include' else payload.update({name: value})
+        # 체크박스는 여러 개라 리스트로 유지
+        payload['include'] = re.findall(r'name="include" value="([^"]+)"', form)
+        payload.update({
+            name: value
+            for name, value in re.findall(r'<input type="text" name="([^"]+)" value="([^"]*)"', form)
+        })
+        payload.pop('csrfmiddlewaretoken', None)
+
+        self.assertGreaterEqual(len(payload['include']), 3, '확인 화면에 항목이 안 나왔다')
+
+        self.client.post(self.commit_url, payload)
+
+        self.assertEqual(MenuItem.objects.filter(restaurant=self.restaurant).count(), 3)
+        self.assertEqual(MenuItem.objects.get(name="모둠 사시미").price, "38,000")
+
     def test_commit_creates_categories_and_items(self):
         self._upload()
 
@@ -122,6 +156,25 @@ class MenuImportFlowTests(TestCase):
 
         self.assertEqual(Category.objects.filter(restaurant=self.restaurant).count(), 1)
         self.assertEqual(MenuItem.objects.get(name="모둠 사시미").category, existing)
+
+    def test_unknown_category_id_is_rejected_not_orphaned(self):
+        """
+        남의 매장 카테고리 id (또는 그새 지워진 id) 를 보내면 저장을 막는다.
+        그냥 두면 카테고리 없는 메뉴가 생기는데, 그건 손님 화면 어디에도
+        뜨지 않으면서 어드민에는 등록된 것처럼 보인다.
+        """
+        other = Restaurant.objects.create(name="남의 매장", slug="rival")
+        foreign = Category.objects.create(name="남의 카테고리", restaurant=other)
+        self._upload()
+
+        self.client.post(self.commit_url, {
+            "include": ["c0_i0"],
+            "c0_name": "사시미", "c0_existing": str(foreign.id),
+            "c0_i0_name": "모둠 사시미", "c0_i0_price": "38,000",
+        })
+
+        self.assertEqual(MenuItem.objects.filter(restaurant=self.restaurant).count(), 0)
+        self.assertFalse(MenuItem.objects.filter(category__isnull=True).exists())
 
     def test_extractor_failure_is_shown_not_raised(self):
         from django.core.files.uploadedfile import SimpleUploadedFile

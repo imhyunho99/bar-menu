@@ -6,7 +6,7 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.views.decorators.http import require_POST
 import json
 from .models import Category, MenuItem, UserProfile, Restaurant, Order, OrderItem, MenuItemPairing, SiteSettings
-from .menu_import import MenuImportError, parse_menu_image
+from .menu_import import MAX_UPLOAD_BYTES, MenuImportError, parse_menu_image
 
 def check_restaurant_permission(user, restaurant_slug):
     """
@@ -262,6 +262,14 @@ def import_menu(request, restaurant_slug=None):
         messages.error(request, '메뉴판 사진을 선택해 주세요.')
         return render(request, 'admin/menu_import.html')
 
+    # read() 로 통째로 메모리에 올리기 전에 크기부터 본다
+    if upload.size and upload.size > MAX_UPLOAD_BYTES:
+        messages.error(
+            request,
+            f'사진이 너무 큽니다. {MAX_UPLOAD_BYTES // (1024 * 1024)}MB 이하로 올려 주세요.',
+        )
+        return render(request, 'admin/menu_import.html')
+
     try:
         parsed = parse_menu_image(upload.read())
     except MenuImportError as e:
@@ -304,6 +312,13 @@ def import_menu_commit(request, restaurant_slug=None):
     created_items = 0
     category_cache = {}
 
+    # 이름을 비운 항목은 저장하지 않는다. 카테고리를 먼저 만들어 두면 그런
+    # 항목만 있는 카테고리가 빈 채로 남으므로, 저장할 항목부터 추려낸다.
+    included = [k for k in included if request.POST.get(f'{k}_name', '').strip()]
+    if not included:
+        messages.error(request, '저장할 항목의 메뉴명이 모두 비어 있습니다.')
+        return redirect('menu:import_menu', restaurant_slug=request.restaurant.slug)
+
     for key in included:
         cat_idx = key.split('_')[0]
 
@@ -311,6 +326,11 @@ def import_menu_commit(request, restaurant_slug=None):
             existing_id = request.POST.get(f'{cat_idx}_existing')
             if existing_id:
                 category = Category.objects.filter(id=existing_id, restaurant=request.restaurant).first()
+                # 남의 매장 카테고리이거나 그새 지워진 id. 그냥 두면 카테고리
+                # 없는 메뉴가 조용히 생겨서 손님 화면 어디에도 안 뜬다.
+                if category is None:
+                    messages.error(request, '고른 카테고리를 찾을 수 없습니다. 다시 시도해 주세요.')
+                    return redirect('menu:import_menu', restaurant_slug=request.restaurant.slug)
             else:
                 last_priority += 1.0
                 category = Category.objects.create(

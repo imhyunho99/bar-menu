@@ -1,8 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { Suspense, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { submitContact } from '@/lib/api';
 
 const PLAN_LABEL: Record<string, string> = {
@@ -12,9 +11,20 @@ const PLAN_LABEL: Record<string, string> = {
 };
 
 function ContactForm() {
-  // 요금 페이지의 "Pro 문의하기"는 /?plan=pro#contact 로 넘어온다
-  const planParam = useSearchParams().get('plan') ?? '';
-  const plan = planParam in PLAN_LABEL ? planParam : 'general';
+  // 요금 페이지의 "Pro 문의하기"는 /?plan=pro#contact 로 넘어온다.
+  //
+  // useSearchParams 를 쓰면 Next 가 이 서브트리를 프리렌더에서 빼기 때문에
+  // 정적 HTML 에 폼이 통째로 사라진다. 랜딩의 유일한 전환 지점이라 그건
+  // 곤란하다. 폼은 그냥 렌더하고, 요금제만 마운트 후에 읽어 채운다.
+  const [plan, setPlan] = useState('general');
+
+  useEffect(() => {
+    // 마운트 후에 읽는 건 의도적이다. 렌더 중에 window 를 읽으면 프리렌더된
+    // HTML('general')과 클라이언트('pro')가 어긋나 하이드레이션이 깨진다.
+    const fromUrl = new URLSearchParams(window.location.search).get('plan');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (fromUrl && fromUrl in PLAN_LABEL) setPlan(fromUrl);
+  }, []);
 
   const [name, setName] = useState('');
   const [contactInfo, setContactInfo] = useState('');
@@ -103,9 +113,7 @@ export default function ContactSection() {
               받는 즉시 확인하고 안내드리겠습니다. 상담이 부담스러우시면 문자로만 진행해도 됩니다.
             </p>
           </div>
-          <Suspense fallback={null}>
-            <ContactForm />
-          </Suspense>
+          <ContactForm />
         </div>
       </div>
     </section>

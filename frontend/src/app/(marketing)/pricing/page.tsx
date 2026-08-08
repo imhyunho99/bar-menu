@@ -45,7 +45,7 @@ export default function PricingPage() {
         <div className="mkt-plans reveal" style={{ paddingTop: 56 }}>
           {PLANS.map((p) => (
             <div key={p.id} className={p.pick ? 'mkt-plan pick' : 'mkt-plan'}>
-              {p.pick && <span className="tag">가장 많이 씁니다</span>}
+              {p.pick && <span className="tag">추천 구성</span>}
               <div className="en">{p.name}</div>
               <div className="kd num price">
                 {p.price}
@@ -71,7 +71,9 @@ export default function PricingPage() {
           <p className="bd t-ash" style={{ marginBottom: 32 }}>
             표시된 기능은 모두 지금 동작하는 기능입니다.
           </p>
-          <div className="mkt-table-scroll">
+          {/* 좁은 화면에서 가로로 스크롤된다. tabindex 가 없으면 키보드만 쓰는
+              사람은 Pro·Premium 열에 닿지 못한다 */}
+          <div className="mkt-table-scroll" tabIndex={0} role="region" aria-label="요금제별 포함 기능 비교표">
             <table className="mkt-table">
               <thead>
                 <tr>

@@ -290,7 +290,7 @@ export default function LandingPage() {
         <div className="mkt-plans" style={{ marginTop: 56 }}>
           {PLANS.map((p) => (
             <div key={p.id} className={p.pick ? 'mkt-plan pick reveal' : 'mkt-plan reveal'}>
-              {p.pick && <span className="tag">가장 많이 씁니다</span>}
+              {p.pick && <span className="tag">추천 구성</span>}
               <div className="en">{p.name}</div>
               <div className="kd num price">
                 {p.price}

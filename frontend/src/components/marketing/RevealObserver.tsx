@@ -1,12 +1,18 @@
 'use client';
 
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 /**
  * .reveal 요소를 화면에 들어올 때 한 번씩 켠다.
  * 요소마다 컴포넌트를 감싸는 대신 관찰자 하나가 페이지 전체를 훑는다.
  */
 export default function RevealObserver() {
+  // 이 컴포넌트는 레이아웃에 있고, 레이아웃은 라우트 이동에도 다시 렌더되지
+  // 않는다. pathname 을 걸지 않으면 관찰자가 첫 로드 때 한 번만 돌고,
+  // 내비 링크로 넘어간 페이지는 전부 opacity:0 인 채로 빈 화면이 된다.
+  const pathname = usePathname();
+
   useEffect(() => {
     const targets = document.querySelectorAll<HTMLElement>('.mkt .reveal');
     if (!targets.length) return;
@@ -35,7 +41,7 @@ export default function RevealObserver() {
     });
 
     return () => io.disconnect();
-  }, []);
+  }, [pathname]);
 
   return null;
 }

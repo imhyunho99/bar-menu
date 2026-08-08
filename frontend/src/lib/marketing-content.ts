@@ -28,7 +28,7 @@ export const PLANS: Plan[] = [
     name: 'Pro',
     price: '19,900',
     note: '세팅비 없음 · 아크릴 거치대 제공',
-    items: ['Entry 전부', '주문 · 결제 연동', '와이파이 원클릭', '매장 안에서만 열람', '화면 캡처 차단'],
+    items: ['Entry 전부', '주문 · 결제 연동', '와이파이 원클릭', '매장 안에서만 열람', '복사 · 우클릭 · 인쇄 차단'],
     pick: true,
   },
   {
@@ -36,7 +36,7 @@ export const PLANS: Plan[] = [
     name: 'Premium',
     price: '39,900',
     note: '초기 디자인비 20만원 · 1:1 제작',
-    items: ['Pro 전부', '전용 레이아웃 설계', '인트로 영상 제작', '다지점 통합 관리'],
+    items: ['Pro 전부', '전용 레이아웃 설계', '인트로 영상 제작', '전담 담당자 응대'],
   },
 ];
 
@@ -61,7 +61,7 @@ export const FEATURES: Feature[] = [
     pts: [
       '드래그 앤 드롭 정렬 (카테고리 트리 · 메뉴)',
       '품절 즉시 토글',
-      '메뉴 대량 복제 · 이동 · 삭제',
+      '메뉴 복제 · 이동 · 삭제',
       '상위/하위 카테고리 무제한 중첩',
     ],
   },
@@ -93,7 +93,7 @@ export const FEATURES: Feature[] = [
     k: '매장 보호',
     h: '매장 안에서만 열리게 잠급니다',
     p: '메뉴와 가격이 밖으로 새지 않도록 접근을 제한합니다. 필요 없으면 꺼두면 됩니다.',
-    pts: ['매장 공인 IP 기준 접근 제한', '와이파이 SSID 기준 접근 제한', '화면 캡처 · 우클릭 차단'],
+    pts: ['매장 공인 IP 기준 접근 제한', '와이파이 SSID 기준 접근 제한', '텍스트 복사 · 우클릭 · 인쇄 차단'],
   },
   {
     k: '손님 편의',
@@ -122,10 +122,10 @@ export const COMPARE_ROWS: [string, boolean, boolean, boolean][] = [
   ['주문 대시보드 · 알림음', false, true, true],
   ['와이파이 원클릭 연결 QR', false, true, true],
   ['매장 안에서만 열람 (IP/SSID)', false, true, true],
-  ['화면 캡처 차단', false, true, true],
+  ['복사 · 우클릭 · 인쇄 차단', false, true, true],
   ['카드 레이아웃 1:1 설계', false, false, true],
   ['인트로 영상 제작', false, false, true],
-  ['다지점 통합 관리', false, false, true],
+  ['전담 담당자 응대', false, false, true],
 ];
 
 export type Step = { h: string; lead: string; p: string };
@@ -192,7 +192,7 @@ export const FAQ: [string, string][] = [
   ],
   [
     '메뉴가 밖으로 새는 게 걱정됩니다.',
-    'Pro 이상에서 매장 IP나 와이파이 SSID 기준으로 접근을 막을 수 있고, 화면 캡처도 차단합니다.',
+    'Pro 이상에서 매장 IP나 와이파이 SSID 기준으로 접근을 막을 수 있고, 복사·우클릭·인쇄도 막습니다. 다만 손님 휴대폰의 OS 화면 캡처까지는 막지 못합니다.',
   ],
   [
     '포스가 없어도 쓸 수 있나요?',
