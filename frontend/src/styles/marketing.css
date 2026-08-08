@@ -1,0 +1,1426 @@
+@import './pretendard.css';
+
+/* ─────────────────────────────────────────────────────────────
+   마케팅 페이지 디자인 시스템 (/, /features, /pricing)
+
+   globals.css 는 손님용 메뉴판 앱의 것이고 다크 테마다.
+   그게 body 에 color:#fff 와 GT Walsheim 을 걸어두기 때문에,
+   여기 있는 모든 규칙은 .mkt 아래로만 적용되도록 가둔다.
+   ───────────────────────────────────────────────────────────── */
+
+.mkt {
+  --ink: #0a0a0b;
+  --ash: #6c6c74;
+  --line: #e6e6e9;
+  --amber: #a6650b;
+  --paper: #fbfbfc;
+
+  /* 프리텐다드는 public/fonts 에서 유니코드 레인지로 조각 로드한다.
+     --font-mono / --font-myeongjo 는 next/font 가 래퍼에 심어준다. */
+  --font-pretendard: 'Pretendard Variable', Pretendard;
+
+  /* 디스플레이 타입 — 프리텐다드 800, 자간을 크게 조인다 */
+  --dls: -0.048em;
+  --dlh: 1.07;
+
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--font-pretendard), -apple-system, BlinkMacSystemFont, sans-serif;
+  word-break: keep-all;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 다크 테마 body 를 이 페이지에서만 되돌린다 */
+body:has(.mkt) {
+  background: #fff;
+  color: var(--ink);
+}
+
+html:has(.mkt) {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(.mkt) {
+    scroll-behavior: auto;
+  }
+}
+
+.mkt ::selection {
+  background: #0a0a0b;
+  color: #fff;
+}
+
+.mkt :focus-visible {
+  outline: 2px solid #0a0a0b;
+  outline-offset: 3px;
+}
+
+.mkt img {
+  display: block;
+  max-width: 100%;
+}
+
+/* ─── 작은 글씨 체계 ───────────────────────────────
+   원칙 1. mono(IBM Plex)는 라틴·숫자 전용. 한글엔 절대 쓰지 않는다
+           (한글 글리프가 없어 폴백되면서 자간만 남아 흩어져 보인다)
+   원칙 2. 한글 라벨은 프리텐다드 600, 자간은 거의 0
+   원칙 3. 크기는 6단계로 고정 — 10 / 11.5 / 12.5 / 14 / 16 / 17
+   ------------------------------------------------- */
+.mkt .en,
+.mkt .en-xs {
+  font-family: var(--font-mono), monospace;
+  text-transform: uppercase;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.mkt .en {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+}
+.mkt .en-xs {
+  font-size: 9px;
+  letter-spacing: 0.24em;
+}
+.mkt .ko-lbl {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.012em;
+  line-height: 1.5;
+}
+.mkt .cap {
+  font-size: 12.5px;
+  line-height: 1.65;
+  letter-spacing: -0.005em;
+}
+.mkt .sm {
+  font-size: 14px;
+  line-height: 1.75;
+  letter-spacing: -0.008em;
+}
+.mkt .bd {
+  font-size: 16px;
+  line-height: 1.8;
+  letter-spacing: -0.01em;
+}
+.mkt .lede {
+  font-size: 17px;
+  line-height: 1.75;
+  letter-spacing: -0.014em;
+}
+.mkt .num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* 디스플레이 타입 */
+.mkt .kd {
+  font-weight: 800;
+  letter-spacing: var(--dls);
+  line-height: var(--dlh);
+}
+/* 강조용 명조 — 히어로 취소선 단어와 업종 마퀴에만 쓴다 */
+.mkt .acc {
+  font-family: var(--font-myeongjo), serif;
+  font-weight: 800;
+}
+
+/* 라벨 앞 짧은 괘선 — 한글 라벨의 왼쪽 정렬을 잡아준다 */
+.mkt .rule-lbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.mkt .rule-lbl::before {
+  content: '';
+  width: 16px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.55;
+  flex: none;
+}
+
+.mkt .t-ash {
+  color: var(--ash);
+}
+.mkt .t-amber {
+  color: var(--amber);
+}
+.mkt .t-ink {
+  color: var(--ink);
+}
+
+/* ─── 레이아웃 ─── */
+.mkt .wrap {
+  margin: 0 auto;
+  max-width: 1280px;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+@media (min-width: 1024px) {
+  .mkt .wrap {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}
+
+.mkt .sec-head {
+  max-width: 44rem;
+}
+.mkt .sec-head h2 {
+  font-size: clamp(1.9rem, 4.2vw, 3.1rem);
+}
+.mkt .sec-head .bd {
+  color: var(--ash);
+  margin-top: 20px;
+}
+.mkt .sec-head .rule-lbl {
+  color: var(--amber);
+  margin-bottom: 20px;
+}
+
+/* ─── 등장 애니메이션 ─── */
+.mkt .reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mkt .reveal.in {
+  opacity: 1;
+  transform: none;
+}
+.mkt .rise > * {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: mkt-rise 0.95s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes mkt-rise {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mkt .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .mkt .rise > * {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+  .mkt .marq {
+    animation: none;
+  }
+}
+
+/* ─── 버튼 ─── */
+.mkt .btn {
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 14px 28px;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    background-color 0.25s,
+    border-color 0.25s,
+    color 0.25s;
+  cursor: pointer;
+}
+.mkt .btn-solid {
+  background: var(--ink);
+  color: #fff;
+  border: 1px solid var(--ink);
+}
+.mkt .btn-solid:hover {
+  background: var(--ash);
+  border-color: var(--ash);
+}
+.mkt .btn-ghost {
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: transparent;
+}
+.mkt .btn-ghost:hover {
+  border-color: var(--ink);
+}
+/* 밑줄 링크 — 상세 페이지로 넘기는 자리 */
+.mkt .btn-under {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 2px;
+  transition:
+    color 0.25s,
+    border-color 0.25s;
+}
+.mkt .btn-under:hover {
+  color: var(--amber);
+  border-color: var(--amber);
+}
+
+/* ─── 내비게이션 ─── */
+.mkt-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--line);
+}
+.mkt-nav .inner {
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.mkt-nav .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+}
+.mkt-nav .brand .kd {
+  font-size: 17px;
+}
+.mkt-nav .brand .en-xs {
+  color: var(--ash);
+  margin-left: 4px;
+}
+.mkt-nav .links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mkt-nav .links a {
+  font-size: 13.5px;
+  color: var(--ash);
+  text-decoration: none;
+  padding: 8px 14px;
+  transition: color 0.2s;
+}
+.mkt-nav .links a:hover {
+  color: var(--ink);
+}
+.mkt-nav .links a[aria-current='page'] {
+  color: var(--ink);
+  font-weight: 600;
+}
+.mkt-nav .links .btn {
+  margin-left: 8px;
+  padding: 10px 20px;
+  font-size: 13.5px;
+}
+.mkt-nav .links .btn:hover {
+  color: #fff;
+}
+@media (max-width: 639px) {
+  .mkt-nav .brand .en-xs,
+  .mkt-nav .links a.nav-link {
+    display: none;
+  }
+}
+
+/* ─── 히어로 ─── */
+.mkt-hero {
+  padding-top: 80px;
+  padding-bottom: 56px;
+}
+.mkt-hero .en {
+  color: var(--amber);
+  margin-bottom: 32px;
+  animation-delay: 0.05s;
+}
+.mkt-hero h1 {
+  font-size: clamp(2.6rem, 7.2vw, 5.8rem);
+  max-width: 17ch;
+  animation-delay: 0.14s;
+}
+.mkt-hero .row {
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  animation-delay: 0.24s;
+}
+.mkt-hero .lede {
+  color: var(--ash);
+  max-width: 35rem;
+}
+.mkt-hero .cta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+@media (min-width: 1024px) {
+  .mkt-hero {
+    padding-top: 128px;
+    padding-bottom: 80px;
+  }
+  .mkt-hero .row {
+    margin-top: 48px;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+}
+
+/* 취소선이 그어진 단어 — "인쇄소" */
+.mkt .struck {
+  position: relative;
+  display: inline-block;
+}
+.mkt .struck::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 0.055em;
+  background: var(--amber);
+  transform: rotate(-1.4deg);
+}
+
+/* ─── 풀블리드 사진 + 걸치는 폰 ─── */
+.mkt-stage {
+  position: relative;
+}
+.mkt-stage .photo {
+  position: relative;
+  overflow: hidden;
+}
+.mkt-stage .photo img {
+  width: 100%;
+  height: 420px;
+  object-fit: cover;
+}
+.mkt-stage .photo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(to right, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.45) 50%, rgba(0, 0, 0, 0.55)),
+    linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent);
+}
+.mkt-stage .copy {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.mkt-stage .copy .wrap {
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+.mkt-stage .copy .box {
+  color: #fff;
+  max-width: 27rem;
+  text-shadow: 0 1px 28px rgba(0, 0, 0, 0.85);
+}
+.mkt-stage .live {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.mkt-stage .live::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #e8973a;
+  flex: none;
+}
+.mkt-stage .lead {
+  font-size: 21px;
+  line-height: 1.45;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.mkt-stage .sub {
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 20px;
+}
+.mkt-stage .phone-slot {
+  position: absolute;
+  right: 6vw;
+  bottom: 0;
+  transform: translateY(26%);
+  z-index: 20;
+}
+/* 좁은 화면에서는 폰이 카피를 덮는다. 카피를 위로 올리고 폰을 줄인다. */
+@media (max-width: 767px) {
+  .mkt-stage .photo img {
+    height: 480px;
+  }
+  .mkt-stage .copy .wrap {
+    align-items: flex-start;
+    /* sticky 내비(68px) 아래로 내린다 */
+    padding-top: 84px;
+  }
+  .mkt-stage .copy .box {
+    max-width: 100%;
+  }
+  .mkt-stage .lead {
+    font-size: 19px;
+  }
+  .mkt-stage .sub {
+    margin-top: 12px;
+  }
+  .mkt-stage .phone-slot {
+    right: 5vw;
+  }
+}
+
+@media (min-width: 640px) {
+  .mkt-stage .photo img {
+    height: 560px;
+  }
+}
+@media (min-width: 1024px) {
+  .mkt-stage .photo img {
+    height: 660px;
+  }
+  .mkt-stage .lead {
+    font-size: 27px;
+  }
+  .mkt-stage .phone-slot {
+    right: 10vw;
+  }
+}
+
+/* 사진 위 그레인 — 그라데이션의 밴딩을 가린다 */
+.mkt .grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.26;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ─── 폰 목업 ─── */
+.mkt .phone {
+  border-radius: 36px;
+  background: #08080a;
+  padding: 8px;
+  width: 196px;
+}
+.mkt .phone .screen {
+  position: relative;
+  border-radius: 29px;
+  overflow: hidden;
+  background: #0a0a0a;
+  height: 356px;
+}
+.mkt .phone img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+/* 유리 반사 — 목업이 스크린샷으로 안 보이게 한다 */
+.mkt .phone .screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 32%,
+    rgba(255, 255, 255, 0.07) 44%,
+    rgba(255, 255, 255, 0.02) 52%,
+    transparent 62%
+  );
+}
+.mkt .phsh {
+  filter: drop-shadow(0 2px 5px rgba(10, 10, 11, 0.12)) drop-shadow(0 20px 34px rgba(10, 10, 11, 0.2))
+    drop-shadow(0 56px 90px rgba(10, 10, 11, 0.3));
+}
+@media (min-width: 640px) {
+  .mkt .phone {
+    width: 236px;
+  }
+  .mkt .phone .screen {
+    height: 430px;
+  }
+}
+@media (min-width: 1024px) {
+  .mkt .phone {
+    width: 290px;
+  }
+  .mkt .phone .screen {
+    height: 528px;
+  }
+}
+/* 히어로에 걸친 폰만 좁은 화면에서 줄인다 (대조 섹션의 phone-sm 은 그대로) */
+@media (max-width: 767px) {
+  .mkt-stage .phone {
+    width: 168px;
+  }
+  .mkt-stage .phone .screen {
+    height: 305px;
+  }
+}
+
+.mkt .phone-sm {
+  width: 188px;
+  border-radius: 26px;
+  padding: 6px;
+  box-shadow: 0 10px 30px -12px rgba(10, 10, 11, 0.4);
+}
+.mkt .phone-sm .screen {
+  border-radius: 21px;
+  height: 330px;
+}
+
+/* ─── 숫자 4칸 ─── */
+.mkt-facts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.mkt-facts > div {
+  background: #fff;
+  padding: 28px;
+}
+.mkt-facts .n {
+  font-size: 28px;
+}
+.mkt-facts .u {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ash);
+  letter-spacing: -0.01em;
+  font-family: var(--font-pretendard), sans-serif;
+}
+.mkt-facts .ko-lbl {
+  margin-top: 12px;
+}
+.mkt-facts .cap {
+  color: var(--ash);
+  margin-top: 2px;
+}
+@media (min-width: 1024px) {
+  .mkt-facts {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .mkt-facts > div {
+    padding: 40px;
+  }
+  .mkt-facts .n {
+    font-size: 35px;
+  }
+}
+
+/* ─── 사진 카드 2장 ─── */
+.mkt-photocards {
+  display: grid;
+  gap: 20px;
+}
+@media (min-width: 768px) {
+  .mkt-photocards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+}
+.mkt-photocard {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #f5f5f5;
+  aspect-ratio: 4 / 3.1;
+}
+.mkt-photocard img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 1.4s ease-out;
+}
+.mkt-photocard:hover img {
+  transform: scale(1.05);
+}
+.mkt-photocard .veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.92),
+    rgba(0, 0, 0, 0.45) 55%,
+    rgba(0, 0, 0, 0.05)
+  );
+}
+.mkt-photocard .body {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding: 32px;
+  color: #fff;
+}
+.mkt-photocard .rule-lbl {
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 14px;
+}
+.mkt-photocard h3 {
+  font-size: 21px;
+  margin-bottom: 10px;
+}
+.mkt-photocard p {
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 27rem;
+}
+@media (min-width: 1024px) {
+  .mkt-photocard .body {
+    padding: 40px;
+  }
+  .mkt-photocard h3 {
+    font-size: 25px;
+  }
+}
+
+/* ─── 어드민 클로즈업 ─── */
+.mkt-shot {
+  position: relative;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  background: #141821;
+  box-shadow:
+    0 1px 2px rgba(10, 10, 11, 0.06),
+    0 10px 26px -12px rgba(10, 10, 11, 0.28);
+}
+/* next/image 가 height 속성을 박아두기 때문에 auto 로 풀어야 비율이 산다 */
+.mkt-shot img {
+  width: 100%;
+  height: auto;
+}
+.mkt-shot .badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+}
+.mkt-shot + .cap,
+.mkt-shot ~ .cap {
+  color: var(--ash);
+  margin-top: 12px;
+}
+
+.mkt-admin {
+  display: grid;
+  gap: 40px;
+  align-items: start;
+  margin-top: 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 32px;
+}
+@media (min-width: 1024px) {
+  .mkt-admin {
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 64px;
+    padding: 48px;
+    margin-top: 24px;
+  }
+}
+.mkt-admin .shots > * + * {
+  margin-top: 20px;
+}
+.mkt-admin h3 {
+  font-size: clamp(1.4rem, 2.6vw, 1.9rem);
+  margin-bottom: 20px;
+}
+.mkt-admin .rule-lbl {
+  color: var(--amber);
+  margin-bottom: 16px;
+}
+.mkt-admin .points > * + * {
+  margin-top: 28px;
+}
+.mkt-admin .point {
+  border-left: 2px solid var(--line);
+  padding-left: 20px;
+}
+.mkt-admin .point h4 {
+  font-size: 16.5px;
+  margin-bottom: 6px;
+}
+.mkt-admin .point p {
+  color: var(--ash);
+}
+.mkt-admin .note {
+  color: var(--ash);
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+/* ─── 어드민 ↔ 손님 화면 대조 ─── */
+.mkt-mirror {
+  margin-top: 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+}
+.mkt-mirror .cols {
+  display: grid;
+}
+@media (min-width: 768px) {
+  .mkt-mirror .cols {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.mkt-mirror .col {
+  padding: 32px;
+  border-bottom: 1px solid var(--line);
+}
+.mkt-mirror .col:last-child {
+  border-bottom: 0;
+  background: var(--paper);
+}
+@media (min-width: 768px) {
+  .mkt-mirror .col {
+    border-bottom: 0;
+    border-right: 1px solid var(--line);
+  }
+  .mkt-mirror .col:last-child {
+    border-right: 0;
+  }
+}
+@media (min-width: 1024px) {
+  .mkt-mirror .col {
+    padding: 40px;
+  }
+}
+.mkt-mirror .rule-lbl {
+  color: var(--amber);
+  margin-bottom: 16px;
+}
+.mkt-mirror h4 {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+.mkt-mirror .phone-wrap {
+  display: flex;
+  justify-content: center;
+}
+.mkt-mirror .foot {
+  color: var(--ash);
+  padding: 20px 32px;
+  border-top: 1px solid var(--line);
+}
+@media (min-width: 1024px) {
+  .mkt-mirror .foot {
+    padding-inline: 40px;
+  }
+}
+
+/* ─── 업종 마퀴 ─── */
+.mkt-marquee {
+  padding: 28px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  overflow: hidden;
+}
+.mkt-marquee .track {
+  display: flex;
+  white-space: nowrap;
+  width: max-content;
+  animation: mkt-mq 42s linear infinite;
+}
+.mkt-marquee .grp {
+  display: flex;
+  flex-shrink: 0;
+}
+.mkt-marquee .item {
+  font-size: 27px;
+  padding: 0 36px;
+  color: var(--ash);
+}
+.mkt-marquee .dot {
+  font-size: 24px;
+  padding: 0 4px;
+  color: var(--line);
+}
+@keyframes mkt-mq {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ─── 요금 카드 ─── */
+.mkt-plans {
+  display: grid;
+  gap: 20px;
+}
+@media (min-width: 768px) {
+  .mkt-plans {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.mkt-plan {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.3s;
+}
+.mkt-plan:hover {
+  border-color: var(--ink);
+}
+.mkt-plan.pick {
+  border: 2px solid var(--ink);
+}
+.mkt-plan .tag {
+  position: absolute;
+  top: -14px;
+  left: 32px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+.mkt-plan .en {
+  color: var(--ash);
+}
+.mkt-plan .price {
+  font-size: 37px;
+  margin-top: 20px;
+}
+.mkt-plan .per {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ash);
+  letter-spacing: -0.01em;
+  font-family: var(--font-pretendard), sans-serif;
+}
+.mkt-plan .sub {
+  color: var(--ash);
+  margin-top: 8px;
+  margin-bottom: 32px;
+}
+.mkt-plan ul {
+  list-style: none;
+  margin: 0 0 36px;
+  padding: 0;
+  color: var(--ash);
+}
+.mkt-plan li {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.mkt-plan li + li {
+  margin-top: 12px;
+}
+.mkt-plan li .dash {
+  color: var(--amber);
+  flex: none;
+}
+.mkt-plan .btn {
+  margin-top: auto;
+}
+@media (min-width: 1024px) {
+  .mkt-plan {
+    padding: 36px;
+  }
+}
+
+/* ─── 더 자세히 3칸 ─── */
+.mkt-more {
+  border-top: 1px solid var(--line);
+  padding-top: 56px;
+}
+.mkt-more .rule-lbl {
+  color: var(--amber);
+  margin-bottom: 20px;
+}
+.mkt-more .grid {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+}
+/* 카드가 2장이든 3장이든 남는 칸 없이 채운다 (/guide 는 아직 없다) */
+@media (min-width: 768px) {
+  .mkt-more .grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+}
+.mkt-more a {
+  background: #fff;
+  padding: 32px;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: background-color 0.25s;
+}
+.mkt-more a:hover {
+  background: var(--paper);
+}
+.mkt-more h3 {
+  font-size: 18px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mkt-more .arw {
+  color: var(--amber);
+  display: inline-block;
+  transition: transform 0.25s;
+}
+.mkt-more a:hover .arw {
+  transform: translateX(4px);
+}
+.mkt-more p {
+  color: var(--ash);
+}
+@media (min-width: 1024px) {
+  .mkt-more a {
+    padding: 40px;
+  }
+}
+
+/* ─── 문의 ─── */
+.mkt-contact {
+  position: relative;
+  overflow: hidden;
+}
+.mkt-contact .bgshot {
+  width: 100%;
+  height: 520px;
+  object-fit: cover;
+}
+.mkt-contact .veil {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 11, 0.82);
+}
+.mkt-contact .over {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  z-index: 3;
+  overflow-y: auto;
+}
+.mkt-contact .cols {
+  display: grid;
+  gap: 48px;
+  align-items: center;
+  width: 100%;
+}
+.mkt-contact .lead {
+  color: #fff;
+}
+.mkt-contact .rule-lbl {
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 20px;
+}
+.mkt-contact h2 {
+  font-size: clamp(1.8rem, 3.6vw, 2.6rem);
+  margin-bottom: 16px;
+}
+.mkt-contact .lead p {
+  color: rgba(255, 255, 255, 0.6);
+}
+@media (min-width: 1024px) {
+  .mkt-contact .bgshot {
+    height: 580px;
+  }
+  .mkt-contact .cols {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+/* 모바일에선 사진 위 절대배치가 무너진다. 흐름 배치로 되돌린다 */
+@media (max-width: 767px) {
+  .mkt-contact .bgshot {
+    height: 300px;
+  }
+  .mkt-contact .veil {
+    inset: 0 0 auto;
+    height: 300px;
+  }
+  .mkt-contact .over {
+    position: static;
+    background: var(--ink);
+    padding: 40px 0 56px;
+  }
+}
+
+/* 문의 폼 — 어두운 배경 위에 놓인다 */
+.mkt-form {
+  width: 100%;
+  max-width: 440px;
+}
+@media (min-width: 1024px) {
+  .mkt-form {
+    justify-self: end;
+  }
+}
+.mkt-form .chosen {
+  display: inline-block;
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  padding: 5px 12px;
+  margin-bottom: 16px;
+}
+.mkt-form label {
+  display: block;
+  margin-bottom: 16px;
+}
+.mkt-form label .ko-lbl {
+  display: block;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 8px;
+}
+.mkt-form input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-size: 15px;
+  font-family: inherit;
+  color: #fff;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s;
+}
+.mkt-form input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+.mkt-form input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.12);
+}
+.mkt-form button {
+  width: 100%;
+  margin-top: 4px;
+  background: #fff;
+  color: var(--ink);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  border: 0;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.mkt-form button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.88);
+}
+.mkt-form button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.mkt-form .note {
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 14px;
+  text-align: center;
+  min-height: 1.65em;
+}
+
+/* ─── 푸터 ─── */
+.mkt-footer {
+  border-top: 1px solid var(--line);
+}
+.mkt-footer .inner {
+  padding: 44px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  justify-content: space-between;
+  align-items: center;
+}
+@media (min-width: 640px) {
+  .mkt-footer .inner {
+    flex-direction: row;
+  }
+}
+.mkt-footer .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+}
+.mkt-footer .brand img {
+  opacity: 0.7;
+}
+.mkt-footer .biz {
+  color: var(--ash);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  justify-content: center;
+}
+
+/* ─── 하위 페이지 히어로 ─── */
+.mkt-subhero {
+  padding: 64px 0 48px;
+  border-bottom: 1px solid var(--line);
+}
+.mkt-subhero .en {
+  color: var(--amber);
+  margin-bottom: 24px;
+}
+.mkt-subhero h1 {
+  font-size: clamp(2.1rem, 5.2vw, 3.8rem);
+  max-width: 20ch;
+}
+.mkt-subhero p {
+  color: var(--ash);
+  margin-top: 24px;
+  max-width: 42rem;
+}
+@media (min-width: 1024px) {
+  .mkt-subhero {
+    padding: 96px 0 64px;
+  }
+}
+
+/* ─── 기능 목록 ─── */
+.mkt-feature {
+  display: grid;
+  gap: 24px;
+  padding: 48px 0;
+  border-bottom: 1px solid var(--line);
+}
+@media (min-width: 1024px) {
+  .mkt-feature {
+    grid-template-columns: 240px 1fr;
+    gap: 56px;
+    padding: 56px 0;
+  }
+}
+.mkt-feature .rule-lbl {
+  color: var(--amber);
+  margin-bottom: 8px;
+}
+.mkt-feature .en-xs {
+  color: var(--ash);
+}
+.mkt-feature h2 {
+  font-size: clamp(1.35rem, 2.6vw, 1.85rem);
+  margin-bottom: 16px;
+}
+.mkt-feature .bd {
+  color: var(--ash);
+  max-width: 44rem;
+  margin-bottom: 24px;
+}
+.mkt-feature .bd b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.mkt-feature ul {
+  display: grid;
+  gap: 10px 32px;
+  max-width: 44rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+@media (min-width: 640px) {
+  .mkt-feature ul {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.mkt-feature li {
+  color: var(--ash);
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.mkt-feature li .dash {
+  color: var(--amber);
+  flex: none;
+}
+
+/* ─── 요금 비교표 ─── */
+.mkt-table-scroll {
+  overflow-x: auto;
+  margin-inline: -24px;
+  padding-inline: 24px;
+}
+@media (min-width: 1024px) {
+  .mkt-table-scroll {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+}
+.mkt-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+}
+.mkt-table thead tr {
+  border-top: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+}
+.mkt-table thead th {
+  padding: 16px 12px;
+  width: 110px;
+}
+.mkt-table thead th:first-child {
+  text-align: left;
+  padding-left: 0;
+  padding-right: 16px;
+  width: auto;
+  color: var(--ash);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+/* 각 행의 기능명. td 가 아니라 th[scope=row] 다 */
+.mkt-table tbody th {
+  text-align: left;
+  padding: 14px 16px 14px 0;
+  color: var(--ash);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.75;
+}
+.mkt-table th .en {
+  color: var(--ash);
+}
+.mkt-table th .kd {
+  font-size: 15px;
+  margin-top: 4px;
+}
+.mkt-table th .won {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ash);
+}
+.mkt-table tbody tr {
+  border-bottom: 1px solid var(--line);
+}
+.mkt-table td {
+  padding: 14px 12px;
+  text-align: center;
+  font-size: 15px;
+}
+.mkt-table td:first-child {
+  text-align: left;
+  padding-left: 0;
+  padding-right: 16px;
+  color: var(--ash);
+  font-size: 14px;
+  line-height: 1.75;
+}
+.mkt-table .hl {
+  background: rgba(166, 101, 11, 0.05);
+}
+.mkt-table .yes {
+  color: var(--ink);
+  font-weight: 700;
+}
+.mkt-table .no {
+  color: var(--line);
+}
+
+/* ─── FAQ ─── */
+.mkt-faq {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  max-width: 52rem;
+}
+.mkt-faq details {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+.mkt-faq details:last-child {
+  border-bottom: 0;
+}
+.mkt-faq summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  cursor: pointer;
+  list-style: none;
+}
+.mkt-faq summary::-webkit-details-marker {
+  display: none;
+}
+.mkt-faq summary .kd {
+  font-size: 16.5px;
+}
+.mkt-faq summary .plus {
+  color: var(--ash);
+  font-size: 18px;
+  flex: none;
+  transition: transform 0.25s;
+}
+.mkt-faq details[open] summary .plus {
+  transform: rotate(45deg);
+}
+.mkt-faq p {
+  color: var(--ash);
+  margin-top: 12px;
+  max-width: 46rem;
+}
+
+/* ─── 여백 유틸 ─── */
+.mkt .pt-sec {
+  padding-top: 96px;
+}
+.mkt .mt-sec {
+  margin-top: 96px;
+}
+.mkt .mt-stage {
+  padding-top: 140px;
+}
+@media (min-width: 1024px) {
+  .mkt .pt-sec {
+    padding-top: 144px;
+  }
+  .mkt .mt-sec {
+    margin-top: 144px;
+  }
+  .mkt .mt-stage {
+    padding-top: 190px;
+  }
+}
