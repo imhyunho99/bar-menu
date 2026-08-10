@@ -92,3 +92,6 @@ node_modules/
 # AI agent config
 .claude/
 .gemini/
+
+# Playwright MCP 산출물 (스크린샷·페이지 스냅샷). 레포에 들어갈 이유가 없다.
+.playwright-mcp/

@@ -40,8 +40,11 @@ def admin_login(request, restaurant_slug=None):
             if hasattr(user, 'profile') and user.profile.restaurant:
                 return redirect('menu:admin_dashboard', restaurant_slug=user.profile.restaurant.slug)
             else:
+                # 여기서 redirect 하면 안 된다. admin_login 은 <slug>/admin/login/
+                # 아래에 있어서 restaurant_slug 없이는 reverse 되지 않는다.
+                # 어차피 같은 화면으로 돌아가는 것이니 그대로 렌더한다.
                 messages.error(request, '관리할 수 있는 매장이 없습니다.')
-                return redirect('menu:admin_login')
+                return render(request, 'admin/login.html')
                 
         messages.error(request, '아이디 또는 비밀번호가 올바르지 않거나 권한이 없습니다.')
         
