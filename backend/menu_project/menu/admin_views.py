@@ -22,6 +22,26 @@ def check_restaurant_permission(user, restaurant_slug):
     
     return False
 
+#: 카테고리를 고르지 않고 등록한 메뉴가 담기는 곳. 사진으로 등록하는 경로가
+#: 구분선 없는 메뉴판에 쓰는 이름과 같다.
+DEFAULT_CATEGORY_NAME = '메뉴'
+
+
+def default_category_for(restaurant):
+    """
+    카테고리를 고르지 않았을 때 메뉴를 담을 카테고리. 없으면 만든다.
+
+    손님 화면은 카테고리를 타고 그려져서, 카테고리 없는 메뉴는 DB 에 있어도
+    어디에도 나타나지 않는다. 갓 가입한 매장에는 카테고리가 하나도 없으므로
+    '직접 입력'으로 처음 등록한 메뉴가 그대로 사라진다. 사장님은 등록했다고
+    믿은 채 QR 을 인쇄해 붙이고, 빈 메뉴판은 개업 당일에 발견된다.
+    """
+    category, _ = Category.objects.get_or_create(
+        restaurant=restaurant, name=DEFAULT_CATEGORY_NAME
+    )
+    return category
+
+
 def admin_login(request, restaurant_slug=None):
     if request.method == 'POST':
         username = request.POST['username']
@@ -59,9 +79,14 @@ def admin_dashboard(request, restaurant_slug=None):
 
     categories = Category.objects.filter(restaurant=request.restaurant).order_by('priority', 'name')
     menu_items = MenuItem.objects.filter(restaurant=request.restaurant).order_by('category__priority', 'priority', 'name')
+    subscription = getattr(request.restaurant, 'subscription', None)
     return render(request, 'admin/dashboard.html', {
         'categories': categories,
-        'menu_items': menu_items
+        'menu_items': menu_items,
+        'restaurant': request.restaurant,
+        # 결제 전이면 배너를 띄운다. 사장님이 메뉴를 다 채우고 QR 을 인쇄한 뒤에야
+        # 손님 화면이 닫혀 있다는 걸 알게 되는 일을 막는다.
+        'menu_is_live': bool(subscription and subscription.menu_is_live()),
     })
 
 @login_required
@@ -110,6 +135,8 @@ def add_menu(request, restaurant_slug=None):
         category = None
         if category_id:
              category = Category.objects.filter(id=category_id, restaurant=request.restaurant).first()
+        if category is None:
+            category = default_category_for(request.restaurant)
 
         MenuItem.objects.create(
             name=request.POST['name'],

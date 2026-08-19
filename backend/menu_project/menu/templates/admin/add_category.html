@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>카테고리 추가 - BidBar</title>
+    <title>카테고리 추가 - {{ request.restaurant.name|default:"bar-menu" }}</title>
     <link rel="stylesheet" href="{% static 'css/admin.css' %}">
 </head>
 <body>

@@ -8,7 +8,7 @@ UserProfile·Subscription 네 덩어리가 빠짐없이 생기는가. 둘, 손�
 """
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import get_resolver
 from django.urls.resolvers import RoutePattern
 
@@ -27,7 +27,7 @@ GOOD_FORM = {
 
 
 class SignupTests(TestCase):
-    def test_signup_creates_all_four_objects_and_starts_trial(self):
+    def test_signup_creates_all_four_objects_unpaid(self):
         response = self.client.post(SIGNUP_URL, GOOD_FORM)
 
         self.assertRedirects(response, '/moonlight/admin/start/')
@@ -44,10 +44,10 @@ class SignupTests(TestCase):
         self.assertEqual(profile.restaurant, restaurant)
 
         subscription = Subscription.objects.get(restaurant=restaurant)
-        self.assertEqual(subscription.status, 'trialing')
-        self.assertIsNotNone(subscription.trial_ends_at)
-        self.assertEqual(subscription.days_left, Subscription.TRIAL_DAYS - 1)
-        self.assertTrue(subscription.is_usable())
+        self.assertEqual(subscription.status, 'unpaid')
+        self.assertIsNone(subscription.access_until)
+        # 체험이 없으므로 가입 직후 손님 화면은 닫혀 있다.
+        self.assertFalse(subscription.is_usable())
 
         # Restaurant post_save 시그널이 만드는 것. 여기서 또 만들면 두 개가 된다.
         self.assertEqual(SiteSettings.objects.filter(restaurant=restaurant).count(), 1)
@@ -215,7 +215,7 @@ class OnboardingHomeTests(TestCase):
         self.assertEqual(response.context['menu_count'], 0)
         self.assertEqual(response.context['category_count'], 0)
         self.assertEqual(response.context['done_count'], 0)
-        self.assertEqual(response.context['days_left'], Subscription.TRIAL_DAYS - 1)
+        self.assertIsNone(response.context['days_left'])
 
     def test_menu_step_flips_on_real_rows(self):
         category = Category.objects.create(name='사시미', restaurant=self.restaurant)
@@ -272,3 +272,76 @@ class OnboardingHomeTests(TestCase):
 
     def test_unknown_restaurant_is_404(self):
         self.assertEqual(self.client.get('/nosuchstore/admin/start/').status_code, 404)
+
+
+@override_settings(ENFORCE_SUBSCRIPTION=True)
+class PaymentBannerTests(TestCase):
+    """
+    결제 전에는 손님 화면이 닫혀 있다는 사실을 사장님이 알아야 한다.
+
+    이 배너가 없으면 사장님은 메뉴를 다 채우고 QR 까지 인쇄한 뒤에야
+    손님이 아무것도 못 본다는 걸 알게 된다. 개업 당일에.
+    """
+
+    BANNER = '결제해야 손님 화면이 열립니다'
+
+    def setUp(self):
+        self.client.post(SIGNUP_URL, GOOD_FORM)
+        self.restaurant = Restaurant.objects.get(slug='moonlight')
+        self.start_url = '/moonlight/admin/start/'
+        self.dashboard_url = '/moonlight/admin/dashboard/'
+
+    def _activate(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        sub = self.restaurant.subscription
+        sub.status = 'active'
+        sub.current_period_end = timezone.now() + timedelta(days=30)
+        sub.save()
+
+    def test_no_banner_while_the_gate_is_off(self):
+        """
+        게이트가 꺼져 있으면 미결제 매장의 메뉴판도 실제로 열려 있다.
+
+        그때 '손님 화면이 닫혀 있습니다' 라고 하면 사장님이 자기 QR 을 찍어보는
+        순간 들통난다. 한 번 그러면 배너를 아무도 믿지 않는다.
+        """
+        with self.settings(ENFORCE_SUBSCRIPTION=False):
+            response = self.client.get(self.dashboard_url)
+            self.assertTrue(response.context['menu_is_live'])
+            self.assertNotContains(response, self.BANNER)
+
+    def test_unpaid_store_sees_the_banner_on_the_start_page(self):
+        response = self.client.get(self.start_url)
+        self.assertFalse(response.context['menu_is_live'])
+        self.assertContains(response, self.BANNER)
+
+    def test_unpaid_store_sees_the_banner_on_the_dashboard(self):
+        response = self.client.get(self.dashboard_url)
+        self.assertFalse(response.context['menu_is_live'])
+        self.assertContains(response, self.BANNER)
+
+    def test_banner_links_to_the_billing_page(self):
+        response = self.client.get(self.dashboard_url)
+        self.assertContains(response, '/moonlight/admin/billing/')
+
+    def test_paid_store_sees_no_banner(self):
+        self._activate()
+        for url in (self.start_url, self.dashboard_url):
+            response = self.client.get(url)
+            self.assertTrue(response.context['menu_is_live'])
+            self.assertNotContains(response, self.BANNER)
+
+    def test_partner_store_sees_no_banner(self):
+        """무제한 파트너에게 결제를 조르지 않는다."""
+        Subscription.objects.filter(restaurant=self.restaurant).update(status='partner')
+        response = self.client.get(self.dashboard_url)
+        self.assertTrue(response.context['menu_is_live'])
+        self.assertNotContains(response, self.BANNER)
+
+    def test_billing_step_detail_no_longer_mentions_a_trial(self):
+        response = self.client.get(self.start_url)
+        steps = {step['key']: step for step in response.context['steps']}
+        self.assertNotIn('체험', steps['billing']['detail'])

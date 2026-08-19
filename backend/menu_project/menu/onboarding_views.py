@@ -161,19 +161,18 @@ def signup(request):
                 is_staff=True,  # 사장님이 관리 화면에 들어가려면 is_staff 가 있어야 한다
             )
             restaurant = Restaurant.objects.create(name=name, slug=slug)
-            # SiteSettings 는 Restaurant post_save 시그널이 이미 만든다.
+            # SiteSettings 와 Subscription 은 Restaurant post_save 시그널이 이미
+            # 만든다. 구독은 미결제 상태로 시작하고, 손님 화면은 결제가 확인되기
+            # 전까지 닫혀 있다.
             UserProfile.objects.create(user=user, restaurant=restaurant)
-            # 요금 페이지에서 "Premium 무료로 시작"을 누르고 왔으면 그 요금제로
-            # 체험을 연다. 무시하면 Premium 을 고른 사장님이 아무 안내 없이
-            # Entry 체험을 받게 된다. 모르는 값은 조용히 기본값으로 떨군다.
+            # 요금 페이지에서 요금제를 고르고 왔으면 그것으로 맞춰 둔다. 무시하면
+            # Premium 을 고른 사장님이 아무 안내 없이 Entry 결제 화면을 만난다.
+            # 모르는 값은 조용히 기본값으로 떨군다.
             wanted = request.GET.get('plan') or request.POST.get('plan') or ''
             valid_plans = {code for code, _ in Subscription.PLAN_CHOICES}
-
-            subscription = Subscription(restaurant=restaurant)
             if wanted in valid_plans:
-                subscription.plan = wanted
-            subscription.start_trial()
-            subscription.save()
+                restaurant.subscription.plan = wanted
+                restaurant.subscription.save(update_fields=['plan'])
     except IntegrityError:
         # validate 와 INSERT 사이에 같은 주소·이메일이 먼저 들어온 경우.
         # 유일 제약이 최종 심판이므로 여기서 폼으로 되돌린다.
@@ -220,7 +219,10 @@ def onboarding_home(request, restaurant_slug=None):
 
     restaurant = request.restaurant
     category_count = Category.objects.filter(restaurant=restaurant).count()
-    menu_count = MenuItem.objects.filter(restaurant=restaurant).count()
+    # 손님 화면은 카테고리를 타고 그려진다. 카테고리 없는 메뉴는 DB 에 있어도
+    # 손님에게 닿지 않으므로 '등록됨'으로 세지 않는다. 여기서 세어 버리면
+    # 체크는 켜져 있는데 메뉴판은 비어 있는 상태가 만들어진다.
+    menu_count = MenuItem.objects.filter(restaurant=restaurant, category__isnull=False).count()
     site_settings = restaurant.site_settings.first()
     subscription = getattr(restaurant, 'subscription', None)
 
@@ -229,6 +231,7 @@ def onboarding_home(request, restaurant_slug=None):
     # 사장님이 실제로 손댔는지는 올린 이미지가 있는지로 본다.
     design_touched = bool(site_settings and (site_settings.logo_image or site_settings.intro_image))
     paid = bool(subscription and subscription.status == 'active')
+    menu_is_live = bool(subscription and subscription.menu_is_live())
 
     steps = [
         {
@@ -275,7 +278,7 @@ def onboarding_home(request, restaurant_slug=None):
             'done': paid,
             'detail': (
                 '결제가 등록되어 있습니다.'
-                if paid else '체험이 끝나기 전에 등록하면 메뉴판이 멈추지 않습니다.'
+                if paid else '결제를 등록해야 손님이 메뉴판을 볼 수 있습니다.'
             ),
             'primary_url': reverse('menu:billing_home', kwargs={'restaurant_slug': restaurant.slug}),
             'primary_label': '결제 등록하기',
@@ -289,6 +292,7 @@ def onboarding_home(request, restaurant_slug=None):
         'total_count': len(steps),
         'subscription': subscription,
         'days_left': subscription.days_left if subscription else None,
+        'menu_is_live': menu_is_live,
         'menu_count': menu_count,
         'category_count': category_count,
     })

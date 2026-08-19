@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if menu %}메뉴 수정{% else %}메뉴 추가{% endif %} - BidBar</title>
+    <title>{% if menu %}메뉴 수정{% else %}메뉴 추가{% endif %} - {{ request.restaurant.name|default:"bar-menu" }}</title>
     <link rel="stylesheet" href="{% static 'css/admin.css' %}">
 </head>
 <body>
