@@ -7,6 +7,7 @@
 
 import logging
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
@@ -18,7 +19,7 @@ from django.views.decorators.http import require_POST
 
 from .admin_views import check_restaurant_permission
 from .billing import base
-from .billing.base import PaymentNotConfigured
+from .billing.base import PaymentError, PaymentNotConfigured
 from .billing.registry import get_provider, get_provider_by_name
 from .models import Subscription
 
@@ -29,15 +30,14 @@ PLAN_LABELS = dict(Subscription.PLAN_CHOICES)
 
 def _subscription_for(restaurant):
     """
-    매장의 구독 레코드. 셀프가입 이전에 만들어진 매장은 아직 없으므로 만들어 준다.
+    매장의 구독 레코드.
 
-    이때 체험을 시작해 주는 건 의도적이다. 없는 구독을 canceled 로 만들어
-    두면 기존 매장의 메뉴판이 어느 날 갑자기 꺼진다.
+    Restaurant post_save 가 매장마다 하나씩 만들어 주고, 그 이전에 생긴
+    매장들은 마이그레이션이 partner 로 채워 두었다. 여기서 만들 일은 사실상
+    없지만, 없을 때 500 을 내는 대신 미결제로 열어 두면 사장님이 결제 화면까지는
+    도달한다.
     """
-    subscription, created = Subscription.objects.get_or_create(restaurant=restaurant)
-    if created:
-        subscription.start_trial()
-        subscription.save()
+    subscription, _ = Subscription.objects.get_or_create(restaurant=restaurant)
     return subscription
 
 
@@ -54,10 +54,26 @@ def billing_home(request, restaurant_slug=None):
         'days_left': subscription.days_left,
         'access_until': subscription.access_until,
         'is_usable': subscription.is_usable(),
-        'plans': Subscription.PLAN_CHOICES,
+        # 상품명과 판매가격을 함께 넘긴다. 이름만 있는 결제 화면은
+        # 전자결제 심사에서 '판매가격 미표기'로 걸린다.
+        # 금액은 여기서 천단위까지 만들어 넘긴다. 템플릿의 floatformat 은
+        # 구분 기호를 넣지 않아 '9900' 으로 나오고, 그건 가격표로 읽히지 않는다.
+        'plans': [
+            {
+                'value': value,
+                'label': label,
+                'price': f'{Subscription.PLAN_PRICES[value]:,}',
+                'current': subscription.plan == value,
+            }
+            for value, label in Subscription.PLAN_CHOICES
+        ],
         # 결제 연동 여부를 화면에 그대로 드러낸다. 사장님이 버튼을 누르고
         # 나서야 알게 되는 것보다 낫다.
         'payment_configured': provider.name != 'null',
+        'terms_url': settings.TERMS_URL,
+        'contact_url': f'{settings.MARKETING_SITE_URL}/#contact',
+        'support_email': settings.SUPPORT_EMAIL,
+        'support_phone': settings.SUPPORT_PHONE,
     })
 
 
@@ -73,6 +89,12 @@ def start_checkout(request, restaurant_slug=None):
         messages.error(request, '알 수 없는 요금제입니다.')
         return redirect('menu:billing_home', restaurant_slug=request.restaurant.slug)
 
+    # 템플릿의 required 는 브라우저에서만 막는다. 정기결제 조건을 안내하고
+    # 동의를 받았다고 말하려면 서버가 확인한 동의여야 한다.
+    if request.POST.get('agree') != '1':
+        messages.error(request, '정기결제 조건이 담긴 약관에 동의하셔야 결제를 진행할 수 있습니다.')
+        return redirect('menu:billing_home', restaurant_slug=request.restaurant.slug)
+
     return_url = request.build_absolute_uri(
         reverse('menu:billing_home', kwargs={'restaurant_slug': request.restaurant.slug})
     )
@@ -83,11 +105,53 @@ def start_checkout(request, restaurant_slug=None):
         # 아직 대행사가 없다. 성공한 척하지 않고 그대로 말한다.
         messages.warning(
             request,
-            f'아직 결제 연동 전입니다. {PLAN_LABELS[plan]} 요금제 신청은 담당자에게 문의해 주세요.'
+            f'{PLAN_LABELS[plan]} 요금제를 선택하셨습니다. 결제 연동을 준비 중이라 아직 결제가 진행되지 않으며, '
+            '준비되는 대로 안내드리겠습니다.'
         )
         return redirect('menu:billing_home', restaurant_slug=request.restaurant.slug)
 
     return redirect(checkout_url)
+
+
+@login_required
+def approve_return(request, restaurant_slug=None):
+    """
+    결제창에서 돌아온 사용자를 받는다.
+
+    카카오페이는 웹훅이 없다. 승인이 이 요청 안에서 일어나므로, 여기서 실패하면
+    결제가 안 된 것이다. 그래서 어떤 경로로도 '성공한 척' 하지 않는다 —
+    approve 가 예외를 던지면 구독은 미결제로 남는다.
+    """
+    if not check_restaurant_permission(request.user, restaurant_slug):
+        return HttpResponseForbidden("권한이 없습니다.")
+
+    subscription = _subscription_for(request.restaurant)
+    result = request.GET.get('result', 'approve')
+    home = redirect('menu:billing_home', restaurant_slug=request.restaurant.slug)
+
+    if result == 'cancel':
+        messages.info(request, '결제가 취소되었습니다. 언제든 다시 시도하실 수 있습니다.')
+        return home
+    if result == 'fail':
+        messages.error(request, '결제에 실패했습니다. 다른 결제수단으로 다시 시도해 주세요.')
+        return home
+
+    try:
+        event = get_provider().approve_return(subscription, request.GET)
+    except PaymentNotConfigured as e:
+        logger.warning('approve_return: 설정 없음 %s', e)
+        messages.error(request, '결제 설정이 완료되지 않았습니다. 잠시 후 다시 시도해 주세요.')
+        return home
+    except PaymentError as e:
+        # 승인 실패. 구독은 건드리지 않는다.
+        logger.warning('approve_return: 승인 실패 %s', e)
+        messages.error(request, f'결제를 완료하지 못했습니다. {e}')
+        return home
+
+    if _apply_event(subscription, event):
+        subscription.save()
+    messages.success(request, '결제가 완료되었습니다. 손님 화면이 열렸습니다.')
+    return home
 
 
 @login_required
@@ -107,8 +171,8 @@ def cancel_subscription(request, restaurant_slug=None):
             pass
         subscription.status = 'canceled'
         subscription.canceled_at = timezone.now()
-        # trial_ends_at / current_period_end 는 건드리지 않는다. 이미 낸 돈이나
-        # 남은 체험 기간까지는 쓰는 게 맞아서 access_until 을 그대로 남긴다.
+        # current_period_end 는 건드리지 않는다. 이미 낸 기간까지는 쓰는 게
+        # 맞아서 access_until 을 그대로 남긴다.
         #
         # 다만 지금 Subscription.is_usable() 은 status == 'canceled' 면
         # access_until 을 보지 않고 곧바로 False 를 준다. 즉 해지 즉시 손님

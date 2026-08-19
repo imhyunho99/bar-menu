@@ -44,6 +44,7 @@ urlpatterns = [
     path('admin/billing/', billing_views.billing_home, name='billing_home'),
     path('admin/billing/start/', billing_views.start_checkout, name='billing_start_checkout'),
     path('admin/billing/cancel/', billing_views.cancel_subscription, name='billing_cancel'),
+    path('admin/billing/approve/', billing_views.approve_return, name='billing_approve'),
 
     # 온보딩 체크리스트 (가입 직후 사장님이 보는 화면)
     path('admin/start/', onboarding_views.onboarding_home, name='onboarding_home'),

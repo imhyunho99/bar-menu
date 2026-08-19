@@ -9,12 +9,14 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import PaymentProvider
+from .kakaopay import KakaoPayProvider
 from .null import NullPaymentProvider
 
 # 새 대행사를 붙일 때 여기 한 줄을 추가하는 것이 등록의 전부다.
 #   'toss': TossPaymentProvider,
 PROVIDERS = {
     NullPaymentProvider.name: NullPaymentProvider,
+    KakaoPayProvider.name: KakaoPayProvider,
 }
 
 

@@ -11,6 +11,16 @@ from datetime import datetime
 from typing import Mapping, Optional
 
 
+class PaymentError(Exception):
+    """
+    대행사와 통신은 됐는데 결제가 성립하지 않았다.
+
+    PaymentNotConfigured 와 구분한다. 그쪽은 '우리 설정이 없다'는 우리 잘못이고,
+    이쪽은 '카드가 거절됐다' 같은 결제 자체의 실패다. 호출자가 다르게 다뤄야 한다 —
+    앞은 500 으로 시끄럽게, 뒤는 사장님께 사유를 보여주고 재시도를 권한다.
+    """
+
+
 class PaymentNotConfigured(Exception):
     """결제 대행사가 아직 연결되지 않았는데 결제를 요구받았을 때."""
 
@@ -91,6 +101,36 @@ class PaymentProvider:
         구현자가 할 일: 대행사 해지 API 호출. 이미 해지된 구독에 대해
         다시 불려도 예외를 던지지 않도록 한다(사장님이 해지 버튼을 두 번
         누르는 일은 늘 일어난다).
+        """
+        raise NotImplementedError
+
+    #: 이 대행사가 웹훅으로 사건을 알려주는가.
+    #: 카카오페이처럼 웹훅이 없고 리다이렉트로 돌아오는 곳은 False 로 두고
+    #: approve_return / charge 를 구현한다.
+    pushes_webhook: bool = True
+
+    def approve_return(self, subscription, params: Mapping[str, str]):
+        """
+        결제창에서 우리 쪽으로 되돌아왔을 때 최종 승인한다.
+
+        리다이렉트형 대행사만 구현한다. params 는 복귀 URL 의 쿼리스트링이며,
+        카카오페이의 경우 pg_token 이 들어 있다. 성공하면 BillingEvent 를 준다.
+
+        구현자가 할 일:
+        - 돌아온 값이 우리가 시작한 결제인지 확인한다(저장해 둔 tid 대조).
+          확인 없이 승인하면 남이 만든 pg_token 으로 남의 구독을 켤 수 있다.
+        - 승인 응답에서 다음 청구에 필요한 식별자(카카오페이는 SID)를 저장한다.
+          이걸 놓치면 다음 달에 청구할 방법이 없다.
+        """
+        raise NotImplementedError
+
+    def charge(self, subscription, raise_on_fail: bool = True):
+        """
+        이미 승인된 구독에 다음 회차를 청구한다.
+
+        웹훅형 대행사는 이 메서드가 필요 없다 — 그쪽이 알아서 청구하고 결과를
+        웹훅으로 알려준다. 카카오페이는 알아서 청구해 주지 않으므로 우리가
+        주기를 보고 직접 건다. 그래서 이 메서드와 스케줄러가 함께 있어야 한다.
         """
         raise NotImplementedError
 

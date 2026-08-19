@@ -281,3 +281,25 @@ CORS_ALLOW_CREDENTIALS = True
 # 실제로 돈을 낼 수 있게 된 다음에 켠다. 그 전에 켜면 체험이 끝난 매장은
 # 되살릴 방법 없이 메뉴판만 꺼진다.
 ENFORCE_SUBSCRIPTION = os.environ.get('ENFORCE_SUBSCRIPTION', 'False') == 'True'
+
+
+# 결제 화면의 이의신청 창구와 이용약관 주소.
+#
+# 전자결제 심사는 결제 화면에 취소·이의신청 방법이 안내돼 있는지 본다.
+# 연락처의 원본은 frontend/src/lib/business.ts 이고(사이트 하단 정보와 같은
+# 값이어야 한다), 여기 값이 그것과 갈리지 않는지는 tests_pricing 이 대조한다.
+SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', '')
+SUPPORT_PHONE = os.environ.get('SUPPORT_PHONE', '')
+
+# 마케팅 사이트(Vercel)의 이용약관. 결제 화면에서 새 창으로 연다.
+MARKETING_SITE_URL = os.environ.get(
+    'MARKETING_SITE_URL', 'https://bar-menu.ddnsfree.com'
+).rstrip('/')
+TERMS_URL = f'{MARKETING_SITE_URL}/terms'
+
+
+# ── 카카오페이 ────────────────────────────────────────────────────────
+# 개발용 Secret key 만 있으면 계약 전에도 전 구간을 시험할 수 있다.
+# 테스트 CID: 정기결제 TCSUBSCRIP / 단건 TC0ONETIME (문서 명시)
+KAKAOPAY_SECRET_KEY = os.environ.get('KAKAOPAY_SECRET_KEY', '')
+KAKAOPAY_CID = os.environ.get('KAKAOPAY_CID', '')
