@@ -8,7 +8,7 @@ import { signupUrl } from '@/lib/site';
 export const metadata: Metadata = {
   title: '도입 절차 — bar-menu',
   description:
-    '가입부터 오픈까지 다섯 단계. 쓰시던 종이 메뉴판을 찍어 올리면 읽어서 옮기고, 확인한 뒤 저장합니다. 카드 등록 없이 14일 무료로 시작합니다.',
+    '가입부터 오픈까지 다섯 단계. 쓰시던 종이 메뉴판을 찍어 올리면 읽어서 옮기고, 확인한 뒤 저장합니다. 가입은 무료이고, 결제하면 손님에게 열립니다.',
   alternates: { canonical: '/guide' },
 };
 
@@ -81,7 +81,7 @@ export default function GuidePage() {
         <div style={{ padding: '56px 0' }} className="reveal">
           <div className="cta-row">
             <a href={signupUrl} className="btn btn-solid">
-              14일 무료로 시작하기
+              무료로 가입하기
             </a>
             <Link href="/#contact" className="btn btn-ghost">
               먼저 상담받기

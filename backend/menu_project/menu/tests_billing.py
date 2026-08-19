@@ -64,40 +64,35 @@ class SubscriptionStateTest(TestCase):
 
     def setUp(self):
         self.restaurant = Restaurant.objects.create(name="알파바", slug="alpha")
-        self.subscription = Subscription.objects.create(restaurant=self.restaurant)
+        # 매장을 만들면 Restaurant post_save 가 미결제 구독을 붙여 준다.
+        self.subscription = self.restaurant.subscription
 
-    def test_start_trial_sets_14_days(self):
-        self.subscription.start_trial()
-        self.assertEqual(self.subscription.status, 'trialing')
-        remaining = self.subscription.trial_ends_at - timezone.now()
-        self.assertGreater(remaining, timedelta(days=13, hours=23))
-        self.assertLessEqual(remaining, timedelta(days=14))
+    def test_new_subscription_is_unpaid_and_closed(self):
+        """가입만 한 매장. 결제 전에는 손님 화면이 열리지 않는다."""
+        self.assertEqual(self.subscription.status, 'unpaid')
+        self.assertFalse(self.subscription.is_usable())
 
     def test_days_left_truncates_toward_zero(self):
-        # 남은 시간을 내림한다. 방금 시작한 14일 체험이 '13일 남음' 으로 보인다.
-        self.subscription.trial_ends_at = timezone.now() + timedelta(days=3, hours=20)
+        # 남은 시간을 내림한다. 30일 결제 주기가 '29일 남음' 으로 보인다.
+        self.subscription.current_period_end = timezone.now() + timedelta(days=3, hours=20)
         self.assertEqual(self.subscription.days_left, 3)
 
     def test_days_left_never_negative(self):
-        self.subscription.trial_ends_at = timezone.now() - timedelta(days=5)
+        self.subscription.current_period_end = timezone.now() - timedelta(days=5)
         self.assertEqual(self.subscription.days_left, 0)
 
     def test_days_left_is_none_without_any_end_date(self):
         self.assertIsNone(self.subscription.days_left)
 
-    def test_access_until_prefers_paid_period_over_trial(self):
-        self.subscription.trial_ends_at = timezone.now() + timedelta(days=2)
+    def test_access_until_is_the_paid_period(self):
         self.subscription.current_period_end = timezone.now() + timedelta(days=30)
         self.assertEqual(self.subscription.access_until, self.subscription.current_period_end)
 
-    def test_usable_while_trialing(self):
-        self.subscription.start_trial()
+    def test_partner_is_open_without_any_date(self):
+        """무제한 파트너. 결제일도 만료도 보지 않는다."""
+        self.subscription.status = 'partner'
+        self.assertIsNone(self.subscription.access_until)
         self.assertTrue(self.subscription.is_usable())
-
-    def test_not_usable_when_trial_expired(self):
-        self.subscription.status = 'trialing'
-        self.subscription.trial_ends_at = timezone.now() - timedelta(minutes=1)
-        self.assertFalse(self.subscription.is_usable())
 
     def test_usable_while_active_within_period(self):
         self.subscription.status = 'active'
@@ -160,10 +155,13 @@ class BillingPermissionTest(TestCase):
         self.assertEqual(self.client.post(urls['start'], {'plan': 'pro'}).status_code, 403)
         self.assertEqual(self.client.post(urls['cancel']).status_code, 403)
 
-    def test_forbidden_request_does_not_create_a_subscription(self):
+    def test_forbidden_request_does_not_touch_the_other_tenant(self):
+        """403 이 남의 구독을 만들지도, 상태를 바꾸지도 않는다."""
+        before = Subscription.objects.get(restaurant=self.beta).status
         self.client.force_login(self.owner)
         self.client.post(self._urls('beta')['cancel'])
-        self.assertFalse(Subscription.objects.filter(restaurant=self.beta).exists())
+        self.assertEqual(Subscription.objects.filter(restaurant=self.beta).count(), 1)
+        self.assertEqual(Subscription.objects.get(restaurant=self.beta).status, before)
 
     def test_superuser_may_view_any_tenant(self):
         self.client.force_login(self.superuser)
@@ -175,12 +173,13 @@ class BillingPermissionTest(TestCase):
         self.assertEqual(self.client.get(urls['start']).status_code, 405)
         self.assertEqual(self.client.get(urls['cancel']).status_code, 405)
 
-    def test_billing_home_starts_a_trial_for_a_restaurant_without_one(self):
+    def test_billing_home_makes_a_subscription_for_a_restaurant_without_one(self):
+        """레코드가 없어도 500 을 내지 않는다. 미결제로 열어 결제 화면까지는 보낸다."""
+        Subscription.objects.filter(restaurant=self.alpha).delete()
         self.client.force_login(self.owner)
         self.client.get(self._urls('alpha')['home'])
         subscription = Subscription.objects.get(restaurant=self.alpha)
-        self.assertEqual(subscription.status, 'trialing')
-        self.assertIsNotNone(subscription.trial_ends_at)
+        self.assertEqual(subscription.status, 'unpaid')
 
 
 class NullProviderTest(TestCase):
@@ -205,10 +204,10 @@ class NullProviderTest(TestCase):
     def test_start_checkout_says_so_instead_of_faking_success(self):
         response = self.client.post('/alpha/admin/billing/start/', {'plan': 'pro'}, follow=True)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '아직 결제 연동 전입니다')
+        self.assertContains(response, '결제 연동을 준비')
 
         subscription = Subscription.objects.get(restaurant=self.restaurant)
-        self.assertEqual(subscription.status, 'trialing')
+        self.assertEqual(subscription.status, 'unpaid')
         self.assertEqual(subscription.plan, 'entry')          # 요금제가 바뀌지 않았다
         self.assertEqual(subscription.provider, '')           # 대행사에 아무것도 안 만들었다
         self.assertEqual(subscription.provider_subscription_id, '')
@@ -219,20 +218,21 @@ class NullProviderTest(TestCase):
         self.assertContains(response, '알 수 없는 요금제입니다')
 
     def test_billing_home_shows_the_countdown_the_model_reports(self):
-        subscription = Subscription.objects.create(restaurant=self.restaurant)
-        subscription.trial_ends_at = timezone.now() + timedelta(days=9, hours=5)
+        subscription = self.restaurant.subscription
+        subscription.status = 'active'
+        subscription.current_period_end = timezone.now() + timedelta(days=9, hours=5)
         subscription.save()
 
         response = self.client.get('/alpha/admin/billing/')
         self.assertContains(response, '9일 남음')
-        self.assertContains(response, '무료 체험')
+        self.assertContains(response, '이용 중')
 
     def test_billing_home_warns_that_payment_is_not_wired(self):
         response = self.client.get('/alpha/admin/billing/')
-        self.assertContains(response, '아직 결제 연동 전입니다')
+        self.assertContains(response, '결제 연동을 준비')
 
     def test_cancel_works_without_a_provider_and_keeps_the_paid_window(self):
-        subscription = Subscription.objects.create(restaurant=self.restaurant)
+        subscription = self.restaurant.subscription
         subscription.status = 'active'
         subscription.current_period_end = timezone.now() + timedelta(days=20)
         subscription.save()
@@ -247,7 +247,6 @@ class NullProviderTest(TestCase):
         self.assertGreater(subscription.access_until, timezone.now())
 
     def test_cancel_twice_keeps_the_first_cancel_time(self):
-        Subscription.objects.create(restaurant=self.restaurant).start_trial().save()
         self.client.post('/alpha/admin/billing/cancel/')
         first = Subscription.objects.get(restaurant=self.restaurant).canceled_at
         self.client.post('/alpha/admin/billing/cancel/')
@@ -274,13 +273,9 @@ class WebhookTest(TestCase):
         self.restaurant = Restaurant.objects.create(name="알파바", slug="alpha")
         self.other = Restaurant.objects.create(name="베타바", slug="beta")
 
-        self.subscription = Subscription.objects.create(
-            restaurant=self.restaurant,
-            status='trialing',
-            provider='stub',
-            provider_subscription_id='sub_alpha',
-        )
-        self.subscription.start_trial()
+        self.subscription = self.restaurant.subscription
+        self.subscription.provider = 'stub'
+        self.subscription.provider_subscription_id = 'sub_alpha'
         self.subscription.save()
 
     def _post(self, body: bytes, signature=None, provider='stub'):
@@ -314,7 +309,7 @@ class WebhookTest(TestCase):
             response = self._post(payload, signature='deadbeef')
         self.assertEqual(response.status_code, 400)
         self.subscription.refresh_from_db()
-        self.assertEqual(self.subscription.status, 'trialing')
+        self.assertEqual(self.subscription.status, 'unpaid')
 
     def test_tampered_body_invalidates_the_signature(self):
         payload = self._payload(base.EVENT_SUBSCRIPTION_CANCELED)
@@ -395,17 +390,17 @@ class WebhookTest(TestCase):
         # 재시도해도 영원히 주인을 못 찾으므로 200 으로 끊는다.
         self.assertEqual(response.status_code, 200)
         self.subscription.refresh_from_db()
-        self.assertEqual(self.subscription.status, 'trialing')
+        self.assertEqual(self.subscription.status, 'unpaid')
 
     def test_webhook_cannot_reach_another_providers_subscription(self):
         # 같은 구독 ID 라도 provider 가 다르면 남의 것이다.
-        Subscription.objects.create(
-            restaurant=self.other, provider='other', provider_subscription_id='sub_alpha'
+        Subscription.objects.filter(restaurant=self.other).update(
+            provider='other', provider_subscription_id='sub_alpha'
         )
         with stub_registered():
             self._post(self._payload(base.EVENT_SUBSCRIPTION_CANCELED))
 
-        self.assertEqual(Subscription.objects.get(restaurant=self.other).status, 'trialing')
+        self.assertEqual(Subscription.objects.get(restaurant=self.other).status, 'unpaid')
         self.assertEqual(Subscription.objects.get(restaurant=self.restaurant).status, 'canceled')
 
     def test_uninteresting_event_is_ignored(self):
@@ -413,4 +408,4 @@ class WebhookTest(TestCase):
             response = self._post(json.dumps({'type': 'invoice.drafted'}).encode())
         self.assertEqual(response.status_code, 200)
         self.subscription.refresh_from_db()
-        self.assertEqual(self.subscription.status, 'trialing')
+        self.assertEqual(self.subscription.status, 'unpaid')

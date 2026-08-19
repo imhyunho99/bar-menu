@@ -259,7 +259,7 @@ html:has(.mkt) {
   gap: 10px;
   flex-wrap: wrap;
 }
-/* 버튼 아래 한 줄. 무료 체험 조건은 버튼 라벨을 늘리는 대신 여기 적는다 */
+/* 버튼 아래 한 줄. 가입·결제 조건은 버튼 라벨을 늘리는 대신 여기 적는다 */
 .mkt .cta-note {
   color: var(--ash);
   margin-top: 14px;

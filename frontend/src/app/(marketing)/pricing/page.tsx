@@ -8,7 +8,7 @@ import { signupUrl, signupUrlFor } from '@/lib/site';
 export const metadata: Metadata = {
   title: '요금 — bar-menu',
   description:
-    '월 9,900원부터, 부가세 포함. 기기값도 약정도 없고, 카드 등록 없이 14일 무료로 시작합니다. Entry·Pro·Premium 세 요금제에 무엇이 들어가고 무엇이 빠지는지 표로 비교했습니다.',
+    '월 9,900원부터, 부가세 포함. 기기값도 약정도 없고, 가입은 무료입니다. Entry·Pro·Premium 세 요금제에 무엇이 들어가고 무엇이 빠지는지 표로 비교했습니다.',
   alternates: { canonical: '/pricing' },
 };
 
@@ -37,8 +37,8 @@ export default function PricingPage() {
           없습니다
         </h1>
         <p className="bd">
-          태블릿을 사거나 빌리지 않습니다. 손님 폰이 곧 메뉴판입니다. 어느 요금제든 카드 등록 없이 14일
-          무료로 먼저 써보시고, 아래 표는 각 요금제에 실제로 포함되는 기능입니다.
+          태블릿을 사거나 빌리지 않습니다. 손님 폰이 곧 메뉴판입니다. 가입해서 메뉴를 등록해 보신 뒤에
+          결제하시면 되고, 아래 표는 각 요금제에 실제로 포함되는 기능입니다.
         </p>
       </header>
 
@@ -56,7 +56,7 @@ export default function PricingPage() {
                 {p.note}
               </p>
               <a href={signupUrlFor(p.id)} className={p.pick ? 'btn btn-solid' : 'btn btn-ghost'}>
-                {p.name} 무료로 시작
+                {p.name}로 가입하기
               </a>
             </div>
           ))}
@@ -133,14 +133,14 @@ export default function PricingPage() {
         <div style={{ padding: '56px 0' }} className="reveal">
           <div className="cta-row">
             <a href={signupUrl} className="btn btn-solid">
-              14일 무료로 시작하기
+              무료로 가입하기
             </a>
             <Link href="/#contact" className="btn btn-ghost">
               요금 문의하기
             </Link>
           </div>
           <p className="cap cta-note">
-            카드를 등록하지 않습니다. 체험이 끝나도 자동으로 결제되지 않습니다.
+            가입에는 카드가 필요 없습니다. 메뉴를 등록해 확인하신 뒤 결제하시면 손님에게 열립니다.
           </p>
         </div>
       </div>

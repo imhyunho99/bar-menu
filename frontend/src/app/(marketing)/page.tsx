@@ -10,7 +10,7 @@ import { signupUrl, signupUrlFor } from '@/lib/site';
 export const metadata: Metadata = {
   title: 'bar-menu | 바·이자카야를 위한 QR 메뉴판',
   description:
-    '손님이 QR을 찍으면 매장의 폰트와 색으로 메뉴판이 열립니다. 메뉴가 바뀌면 사장님이 그 자리에서 고칩니다. 카드 등록 없이 14일 무료 체험, 태블릿도 약정도 없이 월 9,900원부터.',
+    '손님이 QR을 찍으면 매장의 폰트와 색으로 메뉴판이 열립니다. 메뉴가 바뀌면 사장님이 그 자리에서 고칩니다. 가입은 무료, 태블릿도 약정도 없이 월 9,900원부터.',
   keywords: ['QR 메뉴판', '스마트 메뉴판', '모바일 메뉴판', '테이블 오더', '바 메뉴판', '이자카야 메뉴판'],
   openGraph: {
     type: 'website',
@@ -116,7 +116,7 @@ export default function LandingPage() {
           </p>
           <div className="cta">
             <a href={signupUrl} className="btn btn-solid">
-              14일 무료로 시작하기
+              무료로 가입하기
             </a>
             <a href="#how" className="btn btn-ghost">
               어떻게 쓰는지 보기
@@ -290,8 +290,8 @@ export default function LandingPage() {
           <div className="ko-lbl rule-lbl">요금</div>
           <h2 className="kd">태블릿을 사거나 빌리지 않습니다</h2>
           <p className="bd">
-            손님 폰이 곧 메뉴판입니다. 약정도 없습니다. 표시 금액은 부가세 포함이고, 어느 요금제든 14일
-            무료 체험으로 먼저 써보실 수 있습니다.
+            손님 폰이 곧 메뉴판입니다. 약정도 없습니다. 표시 금액은 부가세 포함이고, 가입해서 메뉴를
+            등록해 보신 뒤에 결제를 결정하시면 됩니다.
           </p>
         </div>
 
@@ -316,7 +316,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <a href={signupUrlFor(p.id)} className={p.pick ? 'btn btn-solid' : 'btn btn-ghost'}>
-                무료로 시작하기
+                이 요금제로 가입하기
               </a>
             </div>
           ))}

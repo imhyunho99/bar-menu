@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { BUSINESS_SHOWN } from '@/lib/business';
 
 export default function Footer() {
   return (
@@ -12,15 +13,11 @@ export default function Footer() {
           </span>
         </Link>
         <div className="cap biz">
-          <span>
-            상호명 <span className="t-ink">bar-menu</span>
-          </span>
-          <span>
-            대표 <span className="t-ink">나현호</span>
-          </span>
-          <span>
-            사업자등록번호 <span className="t-ink num">102-13-82292</span>
-          </span>
+          {BUSINESS_SHOWN.map((field) => (
+            <span key={field.label}>
+              {field.label} <span className="t-ink">{field.value}</span>
+            </span>
+          ))}
           <Link href="/terms" className="t-ink">
             이용약관
           </Link>

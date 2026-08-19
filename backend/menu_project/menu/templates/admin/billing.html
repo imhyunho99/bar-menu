@@ -28,9 +28,10 @@
 
         {% if not payment_configured %}
             <div style="background-color: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.35); color: var(--admin-text-primary); padding: 14px; border-radius: var(--admin-radius); margin-bottom: 20px;">
-                <strong>아직 결제 연동 전입니다.</strong>
+                <strong>결제 연동을 준비하고 있습니다.</strong>
                 <span style="color: var(--admin-text-secondary);">
-                    지금은 요금이 청구되지 않습니다. 요금제 신청 버튼을 눌러도 결제가 진행되지 않으니 담당자에게 문의해 주세요.
+                    지금은 어떤 요금도 청구되지 않습니다. 연동이 끝나면 이 화면에서 바로 결제하실 수 있고,
+                    준비되는 대로 안내드리겠습니다.
                 </span>
             </div>
         {% endif %}
@@ -55,7 +56,7 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th>{% if subscription.status == 'trialing' %}체험 종료일{% else %}이용 가능 기간{% endif %}</th>
+                                <th>이용 가능 기간</th>
                                 <td>
                                     {% if access_until %}
                                         {{ access_until|date:"Y년 m월 d일 H:i" }}까지
@@ -66,16 +67,18 @@
                                                 <strong style="color: var(--admin-danger);">(오늘 종료)</strong>
                                             {% endif %}
                                         {% endif %}
+                                    {% elif subscription.status == 'partner' %}
+                                        <span style="color: var(--admin-text-secondary);">기한 없음 · 무제한</span>
                                     {% else %}
-                                        <span style="color: var(--admin-text-secondary);">기한 없음</span>
+                                        <span style="color: var(--admin-text-secondary);">결제 전</span>
                                     {% endif %}
                                 </td>
                             </tr>
-                            {% if subscription.status == 'trialing' %}
+                            {% if subscription.status == 'unpaid' %}
                             <tr>
-                                <th>무료 체험</th>
+                                <th>손님 화면</th>
                                 <td style="color: var(--admin-text-secondary);">
-                                    가입 후 {{ subscription.TRIAL_DAYS }}일간 무료입니다. 체험 기간에는 요금이 청구되지 않습니다.
+                                    결제가 확인되면 열립니다. 그전까지 메뉴 등록·디자인·QR 준비는 모두 하실 수 있습니다.
                                 </td>
                             </tr>
                             {% endif %}
@@ -94,17 +97,69 @@
         <div class="admin-section">
             <h2>요금제 선택</h2>
             <div class="admin-card">
-                <div style="display: flex; flex-wrap: wrap; gap: 12px;">
-                    {% for plan_value, plan_label in plans %}
-                        <form method="post" action="{% url 'menu:billing_start_checkout' request.restaurant.slug %}" style="margin: 0;">
+                <div class="plan-grid">
+                    {% for plan in plans %}
+                        <form method="post" action="{% url 'menu:billing_start_checkout' request.restaurant.slug %}" class="plan-card{% if plan.current %} plan-card-current{% endif %}">
                             {% csrf_token %}
-                            <input type="hidden" name="plan" value="{{ plan_value }}">
-                            <button type="submit" class="admin-btn {% if subscription.plan == plan_value %}admin-btn-primary{% else %}admin-btn-secondary{% endif %}">
-                                {{ plan_label }}
-                                {% if subscription.plan == plan_value %}(현재){% endif %}
+                            <input type="hidden" name="plan" value="{{ plan.value }}">
+
+                            <div class="plan-name">
+                                {{ plan.label }}
+                                {% if plan.current %}<span class="plan-badge">현재 이용 중</span>{% endif %}
+                            </div>
+                            <div class="plan-price">
+                                <strong>{{ plan.price }}</strong>원
+                                <span class="plan-per">/ 월</span>
+                            </div>
+                            <p class="plan-note">부가세 포함 · 매월 자동 결제 · 약정 없음</p>
+
+                            <label class="plan-agree">
+                                <input type="checkbox" name="agree" value="1" required>
+                                <span>
+                                    <a href="{{ terms_url }}" target="_blank" rel="noopener">이용약관 및 정기결제 조건</a>에 동의합니다
+                                </span>
+                            </label>
+
+                            <button type="submit" class="admin-btn {% if plan.current %}admin-btn-primary{% else %}admin-btn-secondary{% endif %} plan-btn">
+                                {{ plan.price }}원 결제하기
                             </button>
                         </form>
                     {% endfor %}
+                </div>
+
+                {# 정기결제 조건 고지. 전자결제 심사에서 결제 시기·취소·이의신청 안내 여부를 본다. #}
+                <div class="recurring-terms">
+                    <h3>정기결제 안내</h3>
+                    <dl>
+                        <dt>결제 방식</dt>
+                        <dd>등록하신 결제수단으로 매월 자동 청구되는 정기결제(구독) 상품입니다.</dd>
+
+                        <dt>결제 시기</dt>
+                        <dd>최초 결제일에 1개월분을 선불로 결제하고, 이후 매월 같은 날에 자동 결제됩니다.</dd>
+
+                        <dt>서비스 제공기간</dt>
+                        <dd>결제 즉시 손님 화면이 열리며, 결제일로부터 1개월간 이용하실 수 있습니다.</dd>
+
+                        <dt>해지 · 환불</dt>
+                        <dd>
+                            언제든 해지할 수 있고 위약금은 없습니다. 해지하시면 이미 결제한 기간까지 이용한 뒤
+                            다음 결제부터 청구되지 않습니다. 환불 조건은 <a href="{{ terms_url }}" target="_blank" rel="noopener">이용약관</a>을 따릅니다.
+                        </dd>
+
+                        <dt>이의신청</dt>
+                        <dd>
+                            {% if support_email or support_phone %}
+                                결제 내역에 이의가 있으시면
+                                {% if support_email %}{{ support_email }}{% endif %}{% if support_email and support_phone %} 또는 {% endif %}{% if support_phone %}{{ support_phone }}{% endif %}
+                                으로 알려주시면 3영업일 안에 회신드립니다.
+                            {% else %}
+                                {# 연락처를 아직 못 받았을 때. 빈 값을 그대로 박으면 문장에 구멍이 난다. #}
+                                결제 내역에 이의가 있으시면
+                                <a href="{{ contact_url }}" target="_blank" rel="noopener">문의하기</a>로
+                                알려주시면 3영업일 안에 회신드립니다.
+                            {% endif %}
+                        </dd>
+                    </dl>
                 </div>
             </div>
         </div>
