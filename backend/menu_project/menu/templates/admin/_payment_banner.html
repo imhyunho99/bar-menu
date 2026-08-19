@@ -1,0 +1,15 @@
+{% comment %}
+결제 전 매장에 띄우는 배너.
+
+사장님이 메뉴를 다 채우고 QR 까지 인쇄한 뒤에야 손님이 아무것도 못 본다는
+사실을 알게 되는 사고를 막는다. menu_is_live 를 넘겨주는 화면에서만 뜬다.
+{% endcomment %}
+{% if not menu_is_live %}
+<div class="payment-banner">
+    <div class="payment-banner-text">
+        <strong>결제해야 손님 화면이 열립니다</strong>
+        <span>지금은 손님이 메뉴판 주소로 들어와도 메뉴가 보이지 않습니다. 관리 화면은 그대로 쓰실 수 있습니다.</span>
+    </div>
+    <a class="payment-banner-btn" href="{% url 'menu:billing_home' restaurant_slug=restaurant.slug %}">결제 등록하기</a>
+</div>
+{% endif %}

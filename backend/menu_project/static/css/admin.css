@@ -264,6 +264,189 @@ body {
     text-align: center;
 }
 
+/*
+ * 결제 전 매장에 띄우는 배너 (admin/_payment_banner.html).
+ * admin-error 의 빨강은 '뭔가 잘못됐다' 로 읽힌다. 여기는 잘못된 상태가
+ * 아니라 아직 안 끝난 절차라서 주황을 쓴다.
+ */
+.payment-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 20px;
+    background-color: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: var(--admin-radius);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+}
+
+.payment-banner-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 240px;
+    flex: 1;
+}
+
+.payment-banner-text strong {
+    color: #f59e0b;
+    font-size: 1rem;
+}
+
+.payment-banner-text span {
+    color: var(--admin-text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.payment-banner-btn {
+    flex-shrink: 0;
+    background-color: #f59e0b;
+    color: #0f172a;
+    font-weight: 600;
+    padding: 10px 18px;
+    border-radius: var(--admin-radius);
+    text-decoration: none;
+    transition: var(--admin-transition);
+}
+
+.payment-banner-btn:hover {
+    background-color: #d97706;
+}
+
+/*
+ * 결제 화면 (admin/billing.html).
+ * 전자결제 심사는 상품명·판매가격·결제버튼이 한 화면에 함께 보이는지 본다.
+ * 그래서 요금제를 버튼 한 줄이 아니라 가격이 큰 카드로 세운다.
+ */
+.plan-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.plan-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 20px;
+    border: 1px solid var(--admin-border-color);
+    border-radius: var(--admin-radius);
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.plan-card-current {
+    border-color: var(--admin-primary);
+}
+
+.plan-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.plan-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--admin-primary);
+    border: 1px solid var(--admin-primary);
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+
+.plan-price {
+    color: var(--admin-text-primary);
+}
+
+.plan-price strong {
+    font-size: 1.9rem;
+    letter-spacing: -0.02em;
+}
+
+.plan-per,
+.plan-note {
+    color: var(--admin-text-secondary);
+    font-size: 0.85rem;
+}
+
+.plan-note {
+    margin: 0;
+}
+
+.plan-agree {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--admin-text-secondary);
+    line-height: 1.5;
+    cursor: pointer;
+}
+
+.plan-agree input {
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.plan-agree a {
+    color: var(--admin-primary);
+}
+
+.plan-btn {
+    margin-top: auto;
+    width: 100%;
+}
+
+.recurring-terms {
+    margin-top: 28px;
+    padding-top: 22px;
+    border-top: 1px solid var(--admin-border-color);
+}
+
+.recurring-terms h3 {
+    margin: 0 0 14px;
+    font-size: 0.95rem;
+}
+
+.recurring-terms dl {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 10px 20px;
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.6;
+}
+
+.recurring-terms dt {
+    color: var(--admin-text-secondary);
+    font-weight: 600;
+}
+
+.recurring-terms dd {
+    margin: 0;
+    color: var(--admin-text-primary);
+}
+
+.recurring-terms a {
+    color: var(--admin-primary);
+}
+
+@media (max-width: 560px) {
+    .recurring-terms dl {
+        grid-template-columns: 1fr;
+        gap: 4px 0;
+    }
+
+    .recurring-terms dd {
+        margin-bottom: 10px;
+    }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .admin-header {

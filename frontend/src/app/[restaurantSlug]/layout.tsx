@@ -1,4 +1,5 @@
-import { getRestaurant, getCategoryTree } from '@/lib/api';
+import { getRestaurant, getCategoryTree, isMenuClosed } from '@/lib/api';
+import MenuNotOpen from '@/components/MenuNotOpen';
 import { buildCSSVariables, buildFontFaces } from '@/lib/styles';
 import type { RestaurantDetail, CategoryTree } from '@/lib/types';
 import { RestaurantProvider } from './context';
@@ -30,7 +31,13 @@ export default async function RestaurantLayout({
       getRestaurant(restaurantSlug),
       getCategoryTree(restaurantSlug),
     ]);
-  } catch {
+  } catch (error) {
+    // 결제 전 매장(402)은 없는 매장이 아니다. 여기서 '/' 로 보내면 매장 QR 을
+    // 찍은 손님이 bar-menu 영업 페이지에 떨어진다. 레이아웃이 페이지보다 먼저
+    // 돌기 때문에, 이 분기가 없으면 페이지 쪽 처리는 실행되지도 않는다.
+    if (isMenuClosed(error)) {
+      return <MenuNotOpen />;
+    }
     redirect('/');
   }
 

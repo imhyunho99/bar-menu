@@ -1,4 +1,5 @@
-import { getRestaurant, getCategoryDetail, getCategoryTree } from '@/lib/api';
+import { getRestaurant, getCategoryDetail, getCategoryTree, isMenuClosed } from '@/lib/api';
+import MenuNotOpen from '@/components/MenuNotOpen';
 import TopBar from '@/components/TopBar';
 import SideMenu from '@/components/SideMenu';
 import MenuCard from '@/components/MenuCard';
@@ -75,6 +76,9 @@ export default async function CategoryDetailPage({
       getCategoryTree(restaurantSlug),
     ]);
   } catch (error) {
+    if (isMenuClosed(error)) {
+      return <MenuNotOpen />;
+    }
     console.error('Failed to fetch category detail or tree:', error);
     notFound();
   }

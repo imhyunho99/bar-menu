@@ -73,11 +73,13 @@
             <a href="{% url 'menu:admin_dashboard' restaurant.slug %}" class="admin-btn admin-btn-secondary">관리 화면</a>
         </div>
 
+        {% include "admin/_payment_banner.html" %}
+
         <div class="admin-section">
             <div class="admin-card">
                 <div class="ob-trial">
                     {% if days_left is not None %}
-                        <strong>무료 체험 {{ days_left }}일 남음</strong>
+                        <strong>{{ subscription.get_status_display }} · {{ days_left }}일 남음</strong>
                     {% elif subscription %}
                         <strong>{{ subscription.get_status_display }}</strong>
                     {% else %}

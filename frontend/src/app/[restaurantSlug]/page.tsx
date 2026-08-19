@@ -1,4 +1,5 @@
-import { getRestaurant, getCategories } from '@/lib/api';
+import { getRestaurant, getCategories, isMenuClosed } from '@/lib/api';
+import MenuNotOpen from '@/components/MenuNotOpen';
 import TopBar from '@/components/TopBar';
 import SideMenu from '@/components/SideMenu';
 import IntroManager from '@/components/IntroManager';
@@ -50,6 +51,10 @@ export default async function MenuMainPage({
       getCategories(restaurantSlug),
     ]);
   } catch (error) {
+    // 결제 전 매장은 없어진 매장이 아니다. 404 로 떨구면 손님에게 폐업으로 읽힌다.
+    if (isMenuClosed(error)) {
+      return <MenuNotOpen />;
+    }
     console.error('Failed to fetch restaurant or categories:', error);
     notFound();
   }

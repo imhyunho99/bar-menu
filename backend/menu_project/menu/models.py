@@ -32,6 +32,10 @@ class UserProfile(models.Model):
 def create_restaurant_settings(sender, instance, created, **kwargs):
     if created:
         SiteSettings.objects.create(restaurant=instance)
+        # 구독 없는 매장은 게이트가 잠그도록 바뀌었다(SubscriptionGateMiddleware).
+        # 어드민에서 손으로 매장을 만들고 구독을 깜빡하면 그 집 메뉴판이
+        # 이유 없이 캄캄해지므로, 매장이 생기는 모든 경로에서 같이 만든다.
+        Subscription.objects.create(restaurant=instance)
 
 def default_category_layout():
     return {
@@ -476,26 +480,38 @@ class Subscription(models.Model):
         ('premium', 'Premium'),
     ]
 
-    # trialing  : 무료 체험 중. 손님 화면 정상 노출
+    # 월 구독료(원, 부가세 포함). 요금 페이지에서 본 금액과 결제 화면 금액이
+    # 다르면 그건 사고라, 값은 여기 하나만 두고 양쪽이 이것을 쓴다.
+    # frontend/src/lib/marketing-content.ts 의 PLANS 와 tests_pricing 이 대조한다.
+    PLAN_PRICES = {
+        'entry': 9_900,
+        'pro': 19_900,
+        'premium': 39_900,
+    }
+
+    # unpaid    : 가입은 했지만 아직 결제 전. 손님 화면은 닫혀 있다
     # active    : 결제까지 정상
     # past_due  : 결제 실패. 유예 기간 동안은 계속 열어 둔다
-    # canceled  : 해지됨. 체험 만료도 여기로 온다
+    # canceled  : 해지됨
+    # partner   : 무제한 파트너. 결제도 만료도 없다
     STATUS_CHOICES = [
-        ('trialing', '무료 체험'),
+        ('unpaid', '미결제'),
         ('active', '이용 중'),
         ('past_due', '결제 실패'),
         ('canceled', '해지'),
+        ('partner', '무제한 파트너'),
     ]
 
-    TRIAL_DAYS = 14
+    # 날짜를 아예 보지 않고 통과시키는 상태. 셀프가입 이전부터 쓰던 매장들이
+    # 여기 속한다. active 로 올려두면 결제일이 지나는 순간 꺼지므로 따로 둔다.
+    UNLIMITED_STATUS = 'partner'
 
     restaurant = models.OneToOneField(
         Restaurant, on_delete=models.CASCADE, related_name='subscription', verbose_name="매장"
     )
     plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default='entry', verbose_name="요금제")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='trialing', verbose_name="상태")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unpaid', verbose_name="상태")
 
-    trial_ends_at = models.DateTimeField(null=True, blank=True, verbose_name="체험 종료")
     # 결제가 붙으면 대행사가 알려주는 다음 결제일. 그 전까지는 비어 있다.
     current_period_end = models.DateTimeField(null=True, blank=True, verbose_name="이번 결제 주기 종료")
     canceled_at = models.DateTimeField(null=True, blank=True, verbose_name="해지 시각")
@@ -506,6 +522,10 @@ class Subscription(models.Model):
     provider = models.CharField(max_length=30, blank=True, default='', verbose_name="결제 대행사")
     provider_customer_id = models.CharField(max_length=200, blank=True, default='', verbose_name="대행사 고객 ID")
     provider_subscription_id = models.CharField(max_length=200, blank=True, default='', verbose_name="대행사 구독 ID")
+    # 결제창을 띄우고 사용자가 돌아올 때까지만 들고 있는 값. 카카오페이는 승인이
+    # '돌아오는 길'에 일어나는데, 우리가 시작한 결제인지 확인할 근거가 이것뿐이다.
+    # 승인이 끝나면 비운다 — 같은 값으로 두 번 승인되지 않게.
+    pending_tid = models.CharField(max_length=64, blank=True, default='', verbose_name="진행 중 결제 번호")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -519,8 +539,8 @@ class Subscription(models.Model):
 
     @property
     def access_until(self):
-        """언제까지 열어 둘지. 결제가 붙기 전에는 체험 종료일이 곧 그 날이다."""
-        return self.current_period_end or self.trial_ends_at
+        """언제까지 열어 둘지. 대행사가 알려주기 전에는 비어 있다."""
+        return self.current_period_end
 
     @property
     def days_left(self):
@@ -531,30 +551,43 @@ class Subscription(models.Model):
             return None
         return max(0, (until - timezone.now()).days)
 
+    def menu_is_live(self):
+        """
+        손님이 지금 이 매장의 메뉴판을 실제로 볼 수 있는가.
+
+        is_usable 과 다르다. 게이트가 꺼져 있으면(ENFORCE_SUBSCRIPTION=False)
+        미결제 매장도 실제로는 열려 있다. 그때 사장님 화면에 '닫혀 있습니다'
+        라고 띄우면, 자기 QR 을 찍어보는 순간 들통나고 그다음부터는 배너를
+        아무도 믿지 않는다. 화면에 뭘 보여줄지는 이쪽으로 판단한다.
+        """
+        from django.conf import settings
+
+        if not getattr(settings, 'ENFORCE_SUBSCRIPTION', False):
+            return True
+        return self.is_usable()
+
     def is_usable(self):
         """
         손님에게 메뉴판을 보여줘도 되는 상태인가.
+
+        상태가 먼저 결정하고 날짜는 그 다음이다. 날짜부터 보면 아무 날짜도
+        없는 구독(=갓 가입해 결제 전인 매장)이 통과해 버린다. 체험이 있던
+        시절엔 늘 trial_ends_at 이 차 있어서 드러나지 않던 구멍이다.
 
         past_due 를 열어 두는 건 의도적이다. 카드 한 번 실패했다고 영업
         중인 가게의 메뉴판을 꺼버리면 그게 더 큰 사고다.
         """
         from django.utils import timezone
 
-        if self.status == 'canceled':
+        if self.status == self.UNLIMITED_STATUS:
+            return True
+        if self.status in ('unpaid', 'canceled'):
             return False
         if self.status == 'past_due':
             return True
+
         until = self.access_until
-        return until is None or until > timezone.now()
-
-    def start_trial(self, days=None):
-        from datetime import timedelta
-
-        from django.utils import timezone
-
-        self.status = 'trialing'
-        self.trial_ends_at = timezone.now() + timedelta(days=days or self.TRIAL_DAYS)
-        return self
+        return until is not None and until > timezone.now()
 
 
 class ContactSubmission(models.Model):
