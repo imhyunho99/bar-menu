@@ -7,11 +7,12 @@ Restaurant · UserProfile · Subscription 네 덩어리가 한 트랜잭션에�
 생기고, 바로 로그인된 채 체크리스트로 떨어진다.
 """
 
+import logging
 import re
 
 from django.conf import settings
 from django.contrib.auth import login
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
@@ -23,6 +24,8 @@ from django.urls import NoReverseMatch, reverse
 from . import notifications
 from .admin_views import check_restaurant_permission
 from .models import Category, MenuItem, Restaurant, Subscription, UserProfile
+
+logger = logging.getLogger(__name__)
 
 # menu_project/urls.py 의 최상위 path() 에서 그대로 뽑은 목록.
 # <slug:restaurant_slug> 는 urlpatterns 의 맨 끝이라, 앞에 놓인 이름과 같은
@@ -56,6 +59,10 @@ SLUG_RE = re.compile(r'^[-a-zA-Z0-9_]+$')
 
 SLUG_MAX_LENGTH = Restaurant._meta.get_field('slug').max_length
 NAME_MAX_LENGTH = Restaurant._meta.get_field('name').max_length
+
+# 사장님에게 Django admin 의 디자인 기능을 열어 주는 권한 그룹. 실체는
+# 마이그레이션 0053 이 만든다 — 이름만 여기서 참조한다.
+OWNER_GROUP_NAME = '매장 사장님'
 PHONE_MAX_LENGTH = UserProfile._meta.get_field('phone').max_length
 USERNAME_MAX_LENGTH = User._meta.get_field('username').max_length
 
@@ -166,6 +173,14 @@ def signup(request):
                 password=password,
                 is_staff=True,  # 사장님이 관리 화면에 들어가려면 is_staff 가 있어야 한다
             )
+            # is_staff 만으로는 /admin/ 이 빈 화면이다. 메뉴판 레이아웃 빌더와
+            # 디자인 설정은 거기에만 있으므로 모델 권한까지 줘야 실제로 쓸 수 있다.
+            # 그룹이 없으면(마이그레이션 전) 조용히 넘어간다 — 가입이 막히는 것보다 낫다.
+            owner_group = Group.objects.filter(name=OWNER_GROUP_NAME).first()
+            if owner_group:
+                user.groups.add(owner_group)
+            else:
+                logger.error('%s 그룹이 없어 사장님에게 admin 권한을 주지 못했습니다', OWNER_GROUP_NAME)
             restaurant = Restaurant.objects.create(name=name, slug=slug)
             # SiteSettings 와 Subscription 은 Restaurant post_save 시그널이 이미
             # 만든다. 구독은 7일 무료 체험으로 시작하고, 체험이 끝나면 손님
