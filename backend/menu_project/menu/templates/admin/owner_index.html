@@ -1,0 +1,29 @@
+{% extends "admin/index.html" %}
+{% load owner_nav %}
+{% comment %}
+사장님이 로그인하면 도착하는 화면.
+
+Django 기본 index 위에 '아직 여기 없는 것들' 로 가는 줄을 얹는다. 주문·결제·QR
+은 /<slug>/admin/ 에 남아 있고, 로그인 도착지를 /admin/ 으로 옮긴 순간 그 길이
+사라졌다. 사장님은 기능이 없어진 줄 안다.
+
+파일 이름이 index.html 이 아닌 이유: 같은 이름이면 {% templatetag openblock %} extends {% templatetag closeblock %} 가
+자기 자신을 찾아 재귀한다. admin.site.index_template 로 이 이름을 가리킨다.
+{% endcomment %}
+
+{% block content %}
+{% owner_restaurant as shop %}
+{% if shop %}
+<div class="owner-shortcuts">
+  <p class="owner-shortcuts-label"><span class="owner-shortcuts-eyebrow">Store</span>{{ shop.name }}</p>
+  <div class="owner-shortcuts-row">
+    <a href="{% url 'menu:admin_orders' restaurant_slug=shop.slug %}">주문 관리</a>
+    <a href="{% url 'menu:billing_home' restaurant_slug=shop.slug %}">결제 · 구독</a>
+    <a href="{% url 'menu:qr_code' restaurant_slug=shop.slug %}">QR 코드</a>
+    <a href="{% url 'menu:menu_main' restaurant_slug=shop.slug %}" target="_blank" rel="noopener">손님 화면 보기</a>
+  </div>
+</div>
+{% endif %}
+
+{{ block.super }}
+{% endblock %}

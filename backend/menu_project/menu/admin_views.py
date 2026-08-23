@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
 from django.http import HttpResponseForbidden, JsonResponse
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 import json
 from .models import Category, MenuItem, UserProfile, Restaurant, Order, OrderItem, MenuItemPairing, SiteSettings
@@ -285,24 +286,33 @@ def duplicate_menu(request, menu_id, restaurant_slug=None):
     return redirect('menu:admin_dashboard', restaurant_slug=request.restaurant.slug)
 
 
-@login_required
-def import_menu(request, restaurant_slug=None):
+def relay_menu_photos(request, restaurant, template, cancel_url, success_url, extra_context=None):
     """
-    종이 메뉴판 사진을 올려 항목을 뽑아낸다.
+    종이 메뉴판 사진을 받아 우리에게 넘긴다.
 
-    뽑아낸 결과는 저장하지 않고 확인 화면으로 넘긴다. OCR이 가격 한 자리만
-    틀려도 손님 화면이 틀어지므로, 사장님이 눈으로 보고 고친 뒤에 저장한다.
+    뽑아낸 결과는 저장하지 않는다. 비전 API 를 부르지 않고 사진을 그대로
+    Discord 로 보내면, 우리가 보고 손으로 정리해 넣는다.
+
+    extra_context 는 Django admin 안에서 그릴 때 쓴다. admin 의 머리띠·빵부스러기는
+    each_context() 가 채우는 값(site_header, has_permission …)으로 그려져서, 그걸
+    안 넘기면 화면이 'Django 관리' 로 되돌아가고 사장님은 다른 사이트에 온 줄 안다.
+
+    매장은 인자로 받는다 — 이 흐름이 주소가 다른 두 화면에서 돌기 때문이다.
+    /<slug>/admin/ 은 slug 로, Django /admin/ 은 로그인 계정으로 매장을 정한다.
+    여기서 request.restaurant 를 읽으면 후자에서는 늘 None 이다(미들웨어가
+    /admin/ 을 건너뛴다). 화면과 돌아갈 곳만 다르고 규칙은 하나여야 한다.
     """
-    if not check_restaurant_permission(request.user, restaurant_slug):
-        return HttpResponseForbidden("권한이 없습니다.")
+    # extra_context 를 앞에 둔다. 명시 인자로 받은 값을 dict 병합으로
+    # 잃을 수 있는 순서는 그 자체가 버그 자리다.
+    page = {**(extra_context or {}), 'max_images': MAX_IMAGES, 'cancel_url': cancel_url}
 
     if request.method != 'POST':
-        return render(request, 'admin/menu_import.html', {'max_images': MAX_IMAGES})
+        return render(request, template, page)
 
     uploads = request.FILES.getlist('menu_image')
     if not uploads:
         messages.error(request, '메뉴판 사진을 선택해 주세요.')
-        return render(request, 'admin/menu_import.html', {'max_images': MAX_IMAGES})
+        return render(request, template, page)
 
     # 조용히 앞의 10장만 쓰면 사장님은 빠진 페이지가 있는 줄 모르고,
     # 메뉴가 반만 들어온 이유를 우리도 사장님도 찾지 못한다.
@@ -312,7 +322,7 @@ def import_menu(request, restaurant_slug=None):
             f'사진은 한 번에 {MAX_IMAGES}장까지 올릴 수 있습니다. '
             f'{len(uploads)}장을 선택하셨습니다. 나눠서 올려 주세요.',
         )
-        return render(request, 'admin/menu_import.html', {'max_images': MAX_IMAGES})
+        return render(request, template, page)
 
     # read() 로 통째로 메모리에 올리기 전에 크기부터 본다. 운영 인스턴스는
     # RAM 이 1GB 미만이라 큰 사진 여러 장을 한꺼번에 펼치면 워커가 죽는다.
@@ -324,14 +334,14 @@ def import_menu(request, restaurant_slug=None):
                 f'사진 한 장이 너무 큽니다({upload.name}). '
                 f'{MAX_UPLOAD_BYTES // (1024 * 1024)}MB 이하로 올려 주세요.',
             )
-            return render(request, 'admin/menu_import.html', {'max_images': MAX_IMAGES})
+            return render(request, template, page)
     if total > MAX_TOTAL_UPLOAD_BYTES:
         messages.error(
             request,
             f'사진 합계가 너무 큽니다. {MAX_TOTAL_UPLOAD_BYTES // (1024 * 1024)}MB 이하로, '
             '또는 몇 장씩 나눠 올려 주세요.',
         )
-        return render(request, 'admin/menu_import.html', {'max_images': MAX_IMAGES})
+        return render(request, template, page)
 
     # 한 장씩 줄이고 원본은 바로 버린다. 열 장을 다 펼쳐 놓으면 워커 하나가
     # 130MB 넘게 쓴다(실측). 브라우저가 이미 줄여 보냈으면 여기선 거의 공짜다.
@@ -341,23 +351,39 @@ def import_menu(request, restaurant_slug=None):
             payload, _ = shrink_for_vision(upload.read())
         except MenuImportError as e:
             messages.error(request, f'{upload.name}: {e}')
-            return render(request, 'admin/menu_import.html', {'max_images': MAX_IMAGES})
+            return render(request, template, page)
         images.append(payload)
 
     # 비동기로 던지지 않는다. 도착 여부를 사장님께 말해야 하기 때문이다 —
     # 못 갔는데 '받았습니다' 가 뜨면 사장님은 기다리고 우리는 모른다.
-    if not notifications.send_menu_photos(request.restaurant, images):
+    if not notifications.send_menu_photos(restaurant, images):
         messages.error(
             request,
             '사진을 보내지 못했습니다. 잠시 후 다시 시도해 주시고, 계속 안 되면 알려 주세요.',
         )
-        return render(request, 'admin/menu_import.html', {'max_images': MAX_IMAGES})
+        return render(request, template, page)
 
     messages.success(
         request,
         f'메뉴판 사진 {len(images)}장을 받았습니다. 확인 후 정리해서 넣어 드리겠습니다.',
     )
-    return redirect('menu:admin_dashboard', restaurant_slug=request.restaurant.slug)
+    return redirect(success_url)
+
+
+@login_required
+def import_menu(request, restaurant_slug=None):
+    """/<slug>/admin/ 쪽 입구. 매장은 주소의 slug 가 정한다."""
+    if not check_restaurant_permission(request.user, restaurant_slug):
+        return HttpResponseForbidden("권한이 없습니다.")
+
+    dashboard = reverse('menu:admin_dashboard', kwargs={'restaurant_slug': request.restaurant.slug})
+    return relay_menu_photos(
+        request,
+        request.restaurant,
+        'admin/menu_import.html',
+        cancel_url=dashboard,
+        success_url=dashboard,
+    )
 
 # 자동 인식을 다시 켤 때 필요한 것은 전부 남아 있다: menu_import.parse_menu_image
 # 와 admin/menu_import_preview.html, 그리고 아래 import_menu_commit. 위 함수에서

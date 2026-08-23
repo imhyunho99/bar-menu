@@ -10,20 +10,21 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import redirect, render
 
-from .models import Restaurant
-
 
 def _home_for(user):
-    """이 계정이 관리하는 매장의 대시보드 주소. 없으면 None."""
-    profile = getattr(user, 'profile', None)
-    if profile and profile.restaurant:
-        return redirect('menu:admin_dashboard', restaurant_slug=profile.restaurant.slug)
+    """
+    로그인한 사장님이 도착할 곳. 관리할 매장이 없으면 None.
 
-    # 슈퍼유저는 매장에 매여 있지 않다. 첫 매장으로 보낸다.
-    if user.is_superuser:
-        first = Restaurant.objects.order_by('id').first()
-        if first:
-            return redirect('menu:admin_dashboard', restaurant_slug=first.slug)
+    Django admin 이 집이다. 메뉴 편집과 디자인·레이아웃 빌더가 둘 다 거기에
+    있어서, 예전처럼 /<slug>/admin/dashboard/ 로 보내면 디자인을 고치려는
+    사장님은 도착하자마자 다른 화면으로 건너가야 했다.
+
+    주문·결제·QR 은 아직 /<slug>/admin/ 에 남아 있고, /admin/ 첫 화면이
+    그리로 가는 바로가기를 들고 있다.
+    """
+    profile = getattr(user, 'profile', None)
+    if (profile and profile.restaurant) or user.is_superuser:
+        return redirect('admin:index')
 
     return None
 

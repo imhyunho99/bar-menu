@@ -151,12 +151,13 @@ div.breadcrumbs {
 }
 #nav-sidebar .module caption,
 #nav-sidebar .module h2 {
-    /* 라틴 라벨은 모노 대문자. 랜딩에서 가장 특징적인 장치이고,
-       구획 제목에 그대로 옮겨 세 화면을 하나로 읽히게 한다. */
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.2em;
+    /* 눈썹 라벨이지만 모노는 못 쓴다 — 여기 들어오는 건 Django 가 주는 앱
+       이름이고, 우리 앱은 'Menu' 지만 기본 앱은 '인증 및 권한' 이다. 한글에
+       모노를 씌우면 글리프가 없어 폴백되면서 자간만 남아 흩어진다.
+       본문 서체로 두고 크기·굵기·색으로만 눈썹처럼 읽히게 한다. */
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--ash);
     background: transparent;
@@ -175,9 +176,27 @@ div.breadcrumbs {
 #nav-sidebar .module td a:hover {
     background: rgba(10, 10, 11, 0.05);
 }
-#nav-sidebar .current-model a {
+/* 지금 열려 있는 모델. 선택자를 길게 쓰는 이유는 바로 위
+   `#nav-sidebar .module td a` 가 (0,1,1,2) 라서 `.current-model a` (0,1,1,1)
+   을 이기기 때문이다 — 배경만 잉크로 깔리고 글씨는 잉크로 남아 검은 칸이
+   됐다. 안 보이는 것이지 없는 게 아니라서 화면만 봐서는 원인을 못 찾는다. */
+#nav-sidebar .module tr.current-model th a,
+#nav-sidebar .module .current-model th a {
     background: var(--ink);
     color: #fff;
+}
+
+/* Django 가 주는 +·연필 아이콘은 초록(#70bf2b)·파랑이다. 랜딩에 색은 앰버
+   하나뿐이라 그대로 두면 화면에 강조가 셋이 된다. SVG 를 갈아끼우는 대신
+   필터로 채도를 죽여 잉크 쪽으로 민다. */
+.addlink,
+.changelink,
+.deletelink,
+#nav-sidebar .addlink {
+    filter: grayscale(1) brightness(.35);
+}
+#nav-sidebar .module .current-model th a.addlink {
+    filter: grayscale(1) brightness(3);
 }
 
 /* ─── 면 ──────────────────────────────────────────────
@@ -202,6 +221,80 @@ div.breadcrumbs {
     font-weight: 700;
     letter-spacing: -0.01em;
     border-bottom: 1px solid var(--line);
+}
+
+/* Django 의 dashboard.css 는 caption 안의 링크를 --header-link-color 로 칠한다.
+   그 변수는 검은 머리띠용이라 #fff 이고, caption 을 흰 종이로 바꾼 순간 앱
+   이름이 흰 바탕에 흰 글씨가 됐다. 색이 사라진 자리는 빈 줄처럼 보여서
+   '왜 여기 여백이 있지' 로만 읽힌다 — 글자가 있는 줄 모른다. */
+.dashboard .module caption a,
+.dashboard .module caption a:link,
+.dashboard .module caption a:visited {
+    color: var(--ink);
+}
+
+/* ─── 사장님 바로가기 ─────────────────────────────────
+   주문·결제·QR 은 아직 /<slug>/admin/ 에 있다. 로그인 도착지를 여기로
+   옮겼으니 이 줄이 그 화면들로 가는 유일한 길이다.
+   ------------------------------------------------- */
+
+.owner-shortcuts {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #fff;
+    padding: 16px 18px;
+    margin-bottom: 18px;
+}
+
+/* 눈썹은 라틴만, 매장 이름은 본문 서체로. 한글에 모노를 씌우면 글리프가
+   없어 폴백되면서 자간만 남아 '새 로 운  바' 처럼 흩어진다. */
+.owner-shortcuts-label {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 12px;
+}
+
+.owner-shortcuts-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ash);
+}
+
+.owner-shortcuts-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.owner-shortcuts-row a,
+.owner-shortcuts-row a:link,
+.owner-shortcuts-row a:visited {
+    display: inline-block;
+    padding: 8px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--pill);
+    background: #fff;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.owner-shortcuts-row a:hover {
+    border-color: var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+}
+
+@media (max-width: 600px) {
+    .owner-shortcuts-row a { flex: 1 1 45%; text-align: center; }
 }
 
 /* ─── 버튼 ────────────────────────────────────────────

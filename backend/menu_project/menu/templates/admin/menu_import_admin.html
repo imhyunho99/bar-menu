@@ -1,0 +1,126 @@
+{% extends "admin/base_site.html" %}
+{% comment %}
+Django admin 안에서 보는 메뉴판 사진 등록.
+
+알맹이는 /<slug>/admin/ 쪽과 같은 파일을 쓴다. 다른 건 껍데기뿐이다 —
+사장님이 메뉴 워크스페이스에서 버튼 하나로 들어왔다가 그대로 돌아가야 해서,
+빵부스러기와 사이드바가 붙은 admin 틀 안에 있어야 한다. 여기서 단독 페이지를
+띄우면 사장님은 "나갔다" 고 느끼고 뒤로가기를 누른다.
+{% endcomment %}
+
+{% block title %}메뉴판 사진으로 등록 | {{ site_title }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">홈</a>
+  {% comment %}취소 링크와 달리 빵부스러기는 쿼리스트링을 안 물고 간다.
+  슈퍼유저가 B매장을 고른 채 들어왔다가 여기로 나가면 A매장으로 돌아간다.{% endcomment %}
+  &rsaquo; <a href="{{ cancel_url }}">메뉴</a>
+  &rsaquo; 메뉴판 사진으로 등록
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="menu-import">
+  {% include 'admin/_menu_import_form.html' %}
+</div>
+
+<style>
+/* admin.css 를 통째로 들여오면 Django admin 의 레이아웃과 부딪힌다.
+   이 화면에 필요한 클래스만 brand.css 토큰으로 다시 그린다. */
+.menu-import { max-width: 640px; }
+
+.menu-import h2 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: var(--dls);
+  color: var(--ink);
+  margin: 0 0 14px;
+}
+
+.menu-import p { color: var(--ash); font-size: 14px; line-height: 1.65; }
+
+.menu-import .admin-error {
+  border: 1px solid var(--danger-line);
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.menu-import .admin-form-group { margin: 22px 0; }
+
+.menu-import .admin-form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.menu-import .admin-form-group small {
+  display: block;
+  color: var(--ash);
+  font-size: 12.5px;
+  line-height: 1.6;
+  margin-top: 8px;
+}
+
+.menu-import input[type="file"] {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  font: inherit;
+  color: var(--ink);
+}
+
+.menu-import .import-picked {
+  font-size: 12.5px;
+  color: var(--ash);
+  margin: 8px 0 0;
+}
+
+.menu-import .import-picked-over { color: var(--danger); }
+
+.menu-import .admin-btn {
+  display: inline-block;
+  padding: 11px 20px;
+  border: 1px solid var(--ink);
+  border-radius: var(--pill);
+  background: var(--ink);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.menu-import .admin-btn:hover { background: var(--amber); border-color: var(--amber); color: #fff; }
+.menu-import .admin-btn[disabled] { opacity: .55; cursor: default; }
+
+.menu-import .admin-btn-secondary {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--line);
+  margin-left: 8px;
+}
+
+.menu-import .admin-btn-secondary:hover {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+/* 사장님은 가게에서 폰으로 사진을 올린다. 버튼이 나란히 있으면 좁은 화면에서
+   '취소' 가 '보내기' 옆으로 겹쳐 잘못 눌린다. */
+@media (max-width: 600px) {
+  .menu-import .admin-btn { display: block; width: 100%; text-align: center; }
+  .menu-import .admin-btn-secondary { margin: 10px 0 0; }
+}
+</style>
+{% endblock %}

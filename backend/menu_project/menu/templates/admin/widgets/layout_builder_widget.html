@@ -1,13 +1,33 @@
 {% include "django/forms/widgets/textarea.html" %}
 
-<div class="layout-widget-wrapper" id="widget_wrapper_{{ widget.name }}" style="margin-top: 10px; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+<div class="layout-widget-wrapper" id="widget_wrapper_{{ widget.name }}" style="margin-top: 10px; font-family: var(--font-body);">
     <style>
+        /* ─────────────────────────────────────────────────────
+           레이아웃 빌더.
+
+           여기만 규칙이 하나 다르다. 가운데 캔버스는 **손님이 보는 화면**이라
+           검은 바탕을 그대로 둔다 — 여기를 흰 갤러리로 칠하면 미리보기가
+           거짓말이 되고, 사장님은 폰에서 실물을 보고서야 알게 된다.
+
+           바꾸는 건 캔버스를 둘러싼 도구 쪽이다. 그쪽은 사장님이 보는
+           화면이므로 랜딩 톤(brand.css)으로 간다.
+
+           검은 캔버스 위의 조작 표시에는 --amber(#a6650b)를 그대로 못 쓴다.
+           흰 바탕용으로 고른 값이라 검정 위에서는 갈색 얼룩으로 읽힌다.
+           같은 색상각의 밝은 쪽을 따로 둔다.
+           ───────────────────────────────────────────────────── */
+
+        .layout-widget-wrapper {
+            /* 검은 캔버스 위 전용. 흰 화면에는 쓰지 않는다. */
+            --amber-on-dark: #e0a33a;
+        }
+
         .layout-widget-wrapper .builder-canvas-area {
             display: flex;
             gap: 20px;
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
+            background: var(--paper);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             padding: 20px;
             margin-bottom: 10px;
             box-sizing: border-box;
@@ -20,22 +40,23 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: #f1f5f9;
-            border-radius: 8px;
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             padding: 24px;
         }
 
+        /* 손님 화면의 카드. 검정은 의도한 것이다 — 위 주석 참고. */
         .layout-widget-wrapper .card-preview-canvas {
             position: relative;
             width: 320px;
-            background: #000000;
-            border-radius: 12px;
+            max-width: 100%;
+            background: #000;
+            border-radius: var(--radius);
             overflow: hidden;
-            border: 2px solid #334155;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            border: 1px solid var(--ink);
         }
 
-        /* Height based on card type */
         .layout-widget-wrapper .card-preview-canvas.category-type {
             height: 240px;
         }
@@ -43,14 +64,16 @@
             height: 440px;
         }
 
-        /* Draggable Box */
+        /* 끌어 옮기는 상자 */
         .layout-widget-wrapper .comp-box {
             position: absolute;
-            border: 1px solid #3b82f6;
-            background: rgba(59, 130, 246, 0.2);
-            color: #ffffff;
-            font-size: 9px;
-            font-weight: 700;
+            border: 1px solid rgba(255,255,255,.5);
+            background: rgba(255,255,255,.12);
+            color: #fff;
+            /* 상자 이름은 '메뉴명(한글)' 처럼 한글이다. 모노를 씌우면 폴백되며
+               자간만 남아 흩어진다 — 320px 캔버스 안이라 더 눈에 띈다. */
+            font-size: 10px;
+            font-weight: 600;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -61,32 +84,35 @@
             text-align: center;
             padding: 2px;
             overflow: hidden;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            text-shadow: 0 1px 2px rgba(0,0,0,.8);
         }
 
+        /* 지금 고른 것. 강조색은 하나뿐이므로 초록이 아니라 앰버로 표시한다. */
         .layout-widget-wrapper .comp-box.selected {
-            background: rgba(16, 185, 129, 0.3);
-            border: 2px solid #10b981;
+            background: rgba(224, 163, 58, .28);
+            border: 2px solid var(--amber-on-dark);
             z-index: 10;
         }
 
         .layout-widget-wrapper .comp-box:hover {
-            border-color: #60a5fa;
-            background: rgba(59, 130, 246, 0.35);
+            border-color: rgba(255,255,255,.85);
+            background: rgba(255,255,255,.22);
         }
 
         .layout-widget-wrapper .resize-grip {
             position: absolute;
-            width: 8px;
-            height: 8px;
-            background: #10b981;
+            /* 손가락으로 잡는 손잡이다. 8px 은 폰에서 못 잡는다. */
+            width: 14px;
+            height: 14px;
+            background: var(--amber-on-dark);
             right: 0;
             bottom: 0;
             cursor: se-resize;
-            border-top-left-radius: 2px;
+            border-top-left-radius: 4px;
         }
 
-        /* Inspector sidebar inside widget */
+        /* ─── 오른쪽 조작판 ─────────────────────────────────── */
+
         .layout-widget-wrapper .inspector-sidebar {
             width: 340px;
             display: flex;
@@ -99,19 +125,24 @@
         }
 
         .layout-widget-wrapper .inspector-box {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             padding: 14px;
         }
 
+        /* 여기 들어오는 글자는 요소 이름('메뉴명(한글)') 처럼 대부분 한글이고,
+           일부는 JS 가 채운다. 눈썹 라벨(모노·자간 0.2em)을 씌우면 글리프가
+           없어 폴백되면서 자간만 남아 '선 택 된  요 소' 로 흩어진다. */
         .layout-widget-wrapper .inspector-hdr {
+            font-family: var(--font-body);
             font-size: 13px;
             font-weight: 700;
-            color: #1e293b;
-            margin: 0 0 10px 0;
-            border-bottom: 1px solid #f1f5f9;
-            padding-bottom: 6px;
+            letter-spacing: -0.01em;
+            color: var(--ink);
+            margin: 0 0 10px;
+            border-bottom: 1px solid var(--line);
+            padding-bottom: 8px;
         }
 
         .layout-widget-wrapper .inp-row {
@@ -130,19 +161,23 @@
         .layout-widget-wrapper .inp-col label {
             font-size: 10px;
             font-weight: 600;
-            color: #64748b;
+            color: var(--ash);
         }
 
         .layout-widget-wrapper input[type="number"] {
             width: 100% !important;
             max-width: 100% !important;
             min-width: 0 !important;
-            padding: 6px 8px !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 4px !important;
-            font-size: 11px !important;
+            /* 폰에서 16px 미만이면 사파리가 화면을 확대해 버린다. 확대되면
+               캔버스가 화면 밖으로 나가 사장님은 방금 옮기던 상자를 잃는다. */
+            padding: 8px 10px !important;
+            border: 1px solid var(--line) !important;
+            border-radius: 8px !important;
+            font-family: var(--font-mono) !important;
+            font-size: 12.5px !important;
+            color: var(--ink) !important;
             box-sizing: border-box !important;
-            background: #ffffff !important;
+            background: #fff !important;
             height: auto !important;
         }
 
@@ -150,31 +185,32 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 6px 10px;
-            border: 1px solid #f1f5f9;
-            border-radius: 4px;
-            background: #ffffff;
+            padding: 8px 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--ink);
             cursor: pointer;
-            font-size: 11px;
+            font-size: 12.5px;
             margin-bottom: 4px;
-            transition: all 0.15s;
+            transition: border-color .15s, background .15s, color .15s;
         }
 
         .layout-widget-wrapper .comp-item-row:hover {
-            border-color: #cbd5e1;
+            border-color: var(--ink);
         }
 
         .layout-widget-wrapper .comp-item-row.active {
-            border-color: #3b82f6;
-            background: #eff6ff;
-            color: #1d4ed8;
+            border-color: var(--ink);
+            background: var(--ink);
+            color: #fff;
             font-weight: 600;
         }
 
-        /* Styling inspector layout adjustments to match native inputs in sidebar */
+        /* Django 가 그린 폼 행을 조작판 폭에 맞춰 세로로 편다 */
         .layout-widget-wrapper .style-container .form-row {
-            padding: 8px 0 !important;
-            border-bottom: 1px dashed #e2e8f0 !important;
+            padding: 10px 0 !important;
+            border-bottom: 1px solid var(--line) !important;
             display: none;
             float: none !important;
             width: 100% !important;
@@ -183,7 +219,7 @@
         .layout-widget-wrapper .style-container .form-row.visible-row {
             display: flex !important;
             flex-direction: column !important;
-            gap: 4px !important;
+            gap: 5px !important;
         }
         .layout-widget-wrapper .style-container .form-row.hidden-row {
             display: none !important;
@@ -191,14 +227,14 @@
         .layout-widget-wrapper .style-container .form-row > div {
             display: flex !important;
             flex-direction: column !important;
-            gap: 4px !important;
+            gap: 5px !important;
             width: 100% !important;
             float: none !important;
         }
         .layout-widget-wrapper .style-container label {
-            font-size: 10px !important;
-            font-weight: 700 !important;
-            color: #475569 !important;
+            font-size: 11.5px !important;
+            font-weight: 600 !important;
+            color: var(--ash) !important;
             width: auto !important;
             float: none !important;
         }
@@ -208,25 +244,92 @@
             width: 100% !important;
             max-width: 100% !important;
             min-width: 0 !important;
-            padding: 6px 8px !important;
+            padding: 8px 10px !important;
             box-sizing: border-box !important;
-            font-size: 11px !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 4px !important;
-            background: #ffffff !important;
+            font-family: var(--font-body) !important;
+            font-size: 12.5px !important;
+            color: var(--ink) !important;
+            border: 1px solid var(--line) !important;
+            border-radius: 8px !important;
+            background: #fff !important;
             height: auto !important;
         }
         .layout-widget-wrapper .style-container input[type="file"] {
             width: 100% !important;
             max-width: 100% !important;
             box-sizing: border-box !important;
-            font-size: 11px !important;
+            font-size: 12.5px !important;
         }
         .layout-widget-wrapper .style-container .help {
-            display: none !important; /* Hide long help text for clean UI */
+            display: none !important; /* 긴 도움말은 조작판을 밀어낸다 */
         }
         .layout-widget-wrapper .style-container .clear {
-            display: none !important; /* Hide django clear floats */
+            display: none !important; /* Django 의 float 정리용 빈 요소 */
+        }
+
+        .layout-widget-wrapper .inspect-toggle {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 12.5px;
+            color: var(--ink);
+            cursor: pointer;
+        }
+        .layout-widget-wrapper .inspect-toggle input[type="checkbox"] {
+            accent-color: var(--ink);
+        }
+
+        .layout-widget-wrapper .inspector-hint {
+            font-size: 12.5px;
+            line-height: 1.55;
+            color: var(--ash);
+            text-align: center;
+            padding: 10px 0;
+        }
+        .layout-widget-wrapper .inspector-hint-center {
+            padding: 20px 10px;
+            margin: auto 0;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 목록에서 '보기/숨김'. 손님 화면에 나오는지를 가리키는 상태라
+           강조가 아니다 — 상태색을 쓰고 앰버는 건드리지 않는다. */
+        .layout-widget-wrapper .comp-item-flag {
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .layout-widget-wrapper .comp-item-flag.is-on { color: var(--ok); }
+        .layout-widget-wrapper .comp-item-flag.is-off { color: var(--danger); }
+        /* 고른 줄은 잉크 바탕이라 상태색이 묻힌다. 흰 글씨로 뒤집는다. */
+        .layout-widget-wrapper .comp-item-row.active .comp-item-flag {
+            color: rgba(255,255,255,.8);
+        }
+
+        /* ─── 폰 ────────────────────────────────────────────
+           340px 두 칸이 나란히 설 수 없으니 세로로 쌓는다. 캔버스가 위,
+           조작판이 아래여야 고치는 즉시 결과가 보인다.
+           ─────────────────────────────────────────────────── */
+
+        @media (max-width: 760px) {
+            .layout-widget-wrapper .builder-canvas-area {
+                flex-direction: column;
+                gap: 14px;
+                padding: 14px;
+            }
+            .layout-widget-wrapper .preview-container {
+                min-width: 0;
+                /* 여백을 더 줄이지 않으면 캔버스 오른쪽 5px 이 잘린다. 하필
+                   거기가 크기 조절 손잡이 자리라, 사장님은 상자를 옮길 수는
+                   있는데 크기는 못 바꾸는 상태가 된다. */
+                padding: 8px;
+                overflow-x: auto;
+            }
+            .layout-widget-wrapper .inspector-sidebar {
+                width: 100%;
+            }
         }
     </style>
 
@@ -244,7 +347,7 @@
                 <h4 class="inspector-hdr" id="inspect_title_{{ widget.name }}">선택된 요소 없음</h4>
                 
                 <div id="inspect_form_{{ widget.name }}" style="display: none; flex-direction: column; gap: 8px;">
-                    <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #334155; cursor: pointer;">
+                    <label class="inspect-toggle">
                         <input type="checkbox" id="inspect_visible_{{ widget.name }}"> 화면에 표시
                     </label>
 
@@ -271,7 +374,7 @@
                     </div>
                 </div>
 
-                <div id="inspect_fallback_{{ widget.name }}" style="font-size: 11px; color: #64748b; text-align: center; padding: 10px 0;">
+                <div id="inspect_fallback_{{ widget.name }}" class="inspector-hint">
                     화면의 박스를 마우스로 조절하거나 아래 리스트에서 요소를 클릭해 선택해 주세요.
                 </div>
             </div>
@@ -282,7 +385,7 @@
                 <div class="style-container" id="style_fields_container_{{ widget.name }}" style="display: none; flex: 1;">
                     <!-- Grabbed django style rows will go here -->
                 </div>
-                <div id="style_fallback_{{ widget.name }}" style="font-size: 11px; color: #94a3b8; text-align: center; padding: 20px 10px; margin: auto 0; flex: 1; display: flex; align-items: center; justify-content: center; line-height: 1.4;">
+                <div id="style_fallback_{{ widget.name }}" class="inspector-hint inspector-hint-center">
                     편집할 요소를 선택해 주세요.
                 </div>
             </div>
@@ -514,7 +617,7 @@
             }
             row.innerHTML = `
                 <span>${comp.name}</span>
-                <span style="font-size: 9px; color: ${comp.visible ? '#10b981' : '#ef4444'};">
+                <span class="comp-item-flag ${comp.visible ? 'is-on' : 'is-off'}">
                     ${comp.visible ? '보기' : '숨김'}
                 </span>
             `;

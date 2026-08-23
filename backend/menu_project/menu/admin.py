@@ -9,7 +9,14 @@ from django.shortcuts import redirect
 from django.urls import path, reverse
 from django.utils.html import format_html
 from django.views.decorators.http import require_POST
+from .admin_views import relay_menu_photos
 from .models import Restaurant, UserProfile, Category, MenuItem, SiteSettings, MenuItemPairing, ContactSubmission
+
+# 로그인한 사장님이 도착하는 화면. 기본 index 위에 아직 /<slug>/admin/ 에 남아
+# 있는 주문·결제·QR 로 가는 줄을 얹는다. 이름이 index.html 이 아닌 이유는
+# admin/owner_index.html 의 주석에 적어 뒀다.
+admin.site.index_template = 'admin/owner_index.html'
+
 
 class LayoutBuilderWidget(forms.Textarea):
     template_name = 'admin/widgets/layout_builder_widget.html'
@@ -32,6 +39,32 @@ class UserAdmin(BaseUserAdmin):
 # 기존 UserAdmin 등록 해제 후 새로운 UserAdmin 등록
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
+
+def selected_restaurant_for(request):
+    """
+    지금 화면이 다루는 매장.
+
+    사장님은 계정에 매장이 하나 묶여 있어 고를 일이 없다. 슈퍼유저는 매장이
+    여럿이라 ?restaurant=<id> 로 고르고, 안 고르면 첫 매장을 본다.
+
+    한 군데에 모아 둔 이유: 메뉴 워크스페이스와 그 안의 '사진으로 등록' 버튼이
+    규칙을 따로 쓰면, 고른 매장과 사진이 날아가는 매장이 어긋난다. 그 어긋남은
+    화면에 아무 표시도 남기지 않는다.
+    """
+    if request.user.is_superuser:
+        # isdigit() 로 거르는 이유: 숫자가 아닌 값을 id 로 넘기면 Django 가
+        # ValueError 를 던져 500 이 된다. 주소창을 손으로 고치면 나는 에러이고,
+        # 로그인 도착지가 /admin/ 이 된 뒤로는 첫 화면이 통째로 죽는다.
+        restaurant_id = request.GET.get('restaurant', '')
+        if restaurant_id.isdigit():
+            chosen = Restaurant.objects.filter(id=restaurant_id).first()
+            if chosen:
+                return chosen
+        return Restaurant.objects.order_by('name').first()
+
+    profile = getattr(request.user, 'profile', None)
+    return profile.restaurant if profile else None
+
 
 # 공통 믹스인: 레스토랑별 데이터 격리
 class RestaurantFilterMixin:
@@ -101,25 +134,13 @@ class CategoryAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         return custom_urls + super().get_urls()
 
     def changelist_view(self, request, extra_context=None):
-        # 1. 관리 가능한 레스토랑 목록 가져오기 (Superuser용)
         restaurants = Restaurant.objects.all().order_by('name')
-        
-        # 2. 현재 선택된 레스토랑 가져오기
-        selected_restaurant = None
-        if request.user.is_superuser:
-            restaurant_id = request.GET.get('restaurant')
-            if restaurant_id:
-                selected_restaurant = Restaurant.objects.filter(id=restaurant_id).first()
-            if not selected_restaurant:
-                selected_restaurant = restaurants.first()
-        else:
-            if hasattr(request.user, 'profile') and request.user.profile.restaurant:
-                selected_restaurant = request.user.profile.restaurant
-        
-        # 3. 카테고리 트리 데이터 구성
+        selected_restaurant = selected_restaurant_for(request)
+
+        # 카테고리 트리 데이터 구성
         workspace_data = get_menu_workspace_data(selected_restaurant)
         
-        # 4. 컨텍스트 추가
+        # 컨텍스트 추가
         extra_context = extra_context or {}
         extra_context.update({
             'restaurants': restaurants if request.user.is_superuser else None,
@@ -246,29 +267,47 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
             path('bulk-move/', self.admin_site.admin_view(self.bulk_move_view), name='menuitem-bulk-move'),
             path('<path:object_id>/duplicate/', self.admin_site.admin_view(self.duplicate_view), name='menuitem-duplicate'),
             path('<path:object_id>/toggle-available/', self.admin_site.admin_view(self.toggle_available_view), name='menuitem-toggle-available'),
+            path('import/', self.admin_site.admin_view(self.import_photos_view), name='menuitem-import-photos'),
         ]
         return custom_urls + super().get_urls()
 
-    def changelist_view(self, request, extra_context=None):
-        # 1. 관리 가능한 레스토랑 목록 가져오기 (Superuser용)
-        restaurants = Restaurant.objects.all().order_by('name')
-        
-        # 2. 현재 선택된 레스토랑 가져오기
-        selected_restaurant = None
+    def import_photos_view(self, request):
+        """
+        메뉴판 사진 등록. 화면과 규칙은 /<slug>/admin/ 쪽과 같은 것을 쓴다.
+
+        여기까지 온 계정은 admin_view 를 통과했으니 스태프인 것만 확실하다.
+        매장이 안 묶인 스태프 계정이 실제로 있고, 그 사람에게 조용히 첫 매장을
+        집어 주면 남의 매장 메뉴판이 우리에게 날아온다. 그래서 거절한다.
+        """
+        restaurant = selected_restaurant_for(request)
+        if restaurant is None:
+            raise PermissionDenied('관리할 매장이 없는 계정입니다.')
+
+        workspace = reverse('admin:menu_menuitem_changelist')
+        # 슈퍼유저는 매장을 골라서 들어온다. 그 선택을 안 물고 돌아가면
+        # 고른 매장과 돌아간 매장이 어긋난다.
         if request.user.is_superuser:
-            restaurant_id = request.GET.get('restaurant')
-            if restaurant_id:
-                selected_restaurant = Restaurant.objects.filter(id=restaurant_id).first()
-            if not selected_restaurant:
-                selected_restaurant = restaurants.first()
-        else:
-            if hasattr(request.user, 'profile') and request.user.profile.restaurant:
-                selected_restaurant = request.user.profile.restaurant
-        
-        # 3. 워크스페이스 데이터 구성
+            workspace += f'?restaurant={restaurant.id}'
+        return relay_menu_photos(
+            request,
+            restaurant,
+            'admin/menu_import_admin.html',
+            cancel_url=workspace,
+            success_url=workspace,
+            extra_context={
+                **self.admin_site.each_context(request),
+                'title': '메뉴판 사진으로 등록',
+            },
+        )
+
+    def changelist_view(self, request, extra_context=None):
+        restaurants = Restaurant.objects.all().order_by('name')
+        selected_restaurant = selected_restaurant_for(request)
+
+        # 워크스페이스 데이터 구성
         workspace_data = get_menu_workspace_data(selected_restaurant)
         
-        # 4. 컨텍스트 추가
+        # 컨텍스트 추가
         extra_context = extra_context or {}
         extra_context.update({
             'restaurants': restaurants if request.user.is_superuser else None,

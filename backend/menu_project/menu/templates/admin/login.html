@@ -17,9 +17,24 @@
                     <div class="admin-error">{{ message }}</div>
                 {% endfor %}
             {% endif %}
-            
+
+            {% comment %}
+            이 파일은 admin/login.html 이라 Django admin 의 로그인 화면까지
+            가린다. 그런데 admin 은 실패를 messages 가 아니라 form.errors 로
+            돌려주므로, 아래 블록이 없으면 비밀번호가 틀려도 아무 말 없이 빈
+            폼만 다시 뜬다 — 사장님은 자기가 뭘 잘못했는지 모른 채 같은 걸
+            다시 친다.
+
+            next 를 실어 보내는 것도 같은 이유다. 없으면 로그인은 되는데
+            LOGIN_REDIRECT_URL 기본값인 /accounts/profile/ 로 가서 404 가 뜬다.
+            {% endcomment %}
+            {% if form.errors %}
+                <div class="admin-error">아이디 또는 비밀번호가 올바르지 않습니다.</div>
+            {% endif %}
+
             <form method="post">
                 {% csrf_token %}
+                {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
                 <div class="admin-form-group">
                     <label for="username">아이디</label>
                     <input type="text" id="username" name="username" placeholder="Username" required>
