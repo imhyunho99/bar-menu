@@ -124,9 +124,13 @@
         <div class="container" style="padding: 0 !important; margin: 0 !important; max-width: none !important;">
             {% if site_settings and site_settings.intro_image %}
             <div class="intro-section" style="margin: 0 !important; padding: 0 !important;">
-                {# 첫 화면을 채우는 LCP 요소다. lazy 를 붙이면 브라우저가 레이아웃을
-                   마친 뒤에야 받기 시작해 200~400ms 를 잃는다(2026-05-01 측정).
-                   decoding 도 async 로 두면 디코딩이 뒤로 밀려 첫 페인트가 늦다. #}
+{% comment %}
+첫 화면을 채우는 LCP 요소다. lazy 를 붙이면 브라우저가 레이아웃을 마친 뒤에야
+받기 시작해 200~400ms 를 잃는다(2026-05-01 측정). decoding 도 async 로 두면
+디코딩이 뒤로 밀려 첫 페인트가 늦다. width/height 는 이미지가 도착하기 전에
+자리를 예약해 CLS 를 없앤다 — 비어 있으면 속성이 빈 값으로 나가고 브라우저가
+무시한다(백필 전 상태).
+{% endcomment %}
                 <img src="{{ site_settings.intro_image.url }}" alt="Menu Introduction" class="intro-image"
                     style="margin: 0 !important; padding: 0 !important; display: block;"
                     width="{{ site_settings.intro_image_width|default_if_none:"" }}" height="{{ site_settings.intro_image_height|default_if_none:"" }}"

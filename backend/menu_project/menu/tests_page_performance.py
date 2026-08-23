@@ -402,3 +402,24 @@ class TemplateNeverEmitsNoneTests(TestCase):
                     self.assertIn(
                         'default_if_none', match.group(2),
                         f'{name}: {match.group(0)} 이 None 이면 width="None" 이 나간다')
+
+
+class TemplatesDoNotLeakCommentsTests(TestCase):
+    """
+    Django 의 `{# #}` 는 **한 줄 전용**이다.
+
+    여러 줄에 걸쳐 쓰면 주석이 아니라 그냥 글자라, 개발자 메모가 손님 화면
+    HTML 에 그대로 실려 나간다. 실제로 dev 배포본에서 그렇게 나가는 걸 봤다.
+    여러 줄이 필요하면 {% comment %} 를 쓴다.
+    """
+
+    def test_no_multiline_hash_comments(self):
+        offenders = []
+        for path in (TEMPLATES.parent).rglob('*.html'):
+            source = path.read_text(encoding='utf-8')
+            for match in re.finditer(r'\{#(.*?)#\}', source, re.S):
+                if '\n' in match.group(1):
+                    line = source[:match.start()].count('\n') + 1
+                    offenders.append(f'{path.name}:{line}')
+        self.assertEqual(offenders, [],
+                         f'여러 줄 {{# #}} 는 손님 HTML 로 새어 나간다: {offenders}')
