@@ -476,3 +476,16 @@ body {
         white-space: nowrap;
     }
 }
+
+
+/* 메뉴판 사진 업로드 — 고른 장수 표시.
+   필수 안내가 아니라 확인용이라 조용히 둔다. 한도를 넘겼을 때만 눈에 띈다. */
+.import-picked {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: var(--admin-text-secondary, #6c6c74);
+}
+.import-picked-over {
+    color: var(--admin-danger, #b0341f);
+    font-weight: 600;
+}

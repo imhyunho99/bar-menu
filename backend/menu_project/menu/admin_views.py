@@ -7,7 +7,15 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.views.decorators.http import require_POST
 import json
 from .models import Category, MenuItem, UserProfile, Restaurant, Order, OrderItem, MenuItemPairing, SiteSettings
-from .menu_import import MAX_UPLOAD_BYTES, MenuImportError, parse_menu_image
+from . import notifications
+from .menu_import import (
+    MAX_IMAGES,
+    MAX_TOTAL_UPLOAD_BYTES,
+    MAX_UPLOAD_BYTES,
+    MenuImportError,
+    parse_menu_image,
+    shrink_for_vision,
+)
 
 def check_restaurant_permission(user, restaurant_slug):
     """
@@ -289,35 +297,73 @@ def import_menu(request, restaurant_slug=None):
         return HttpResponseForbidden("권한이 없습니다.")
 
     if request.method != 'POST':
-        return render(request, 'admin/menu_import.html')
+        return render(request, 'admin/menu_import.html', {'max_images': MAX_IMAGES})
 
-    upload = request.FILES.get('menu_image')
-    if not upload:
+    uploads = request.FILES.getlist('menu_image')
+    if not uploads:
         messages.error(request, '메뉴판 사진을 선택해 주세요.')
-        return render(request, 'admin/menu_import.html')
+        return render(request, 'admin/menu_import.html', {'max_images': MAX_IMAGES})
 
-    # read() 로 통째로 메모리에 올리기 전에 크기부터 본다
-    if upload.size and upload.size > MAX_UPLOAD_BYTES:
+    # 조용히 앞의 10장만 쓰면 사장님은 빠진 페이지가 있는 줄 모르고,
+    # 메뉴가 반만 들어온 이유를 우리도 사장님도 찾지 못한다.
+    if len(uploads) > MAX_IMAGES:
         messages.error(
             request,
-            f'사진이 너무 큽니다. {MAX_UPLOAD_BYTES // (1024 * 1024)}MB 이하로 올려 주세요.',
+            f'사진은 한 번에 {MAX_IMAGES}장까지 올릴 수 있습니다. '
+            f'{len(uploads)}장을 선택하셨습니다. 나눠서 올려 주세요.',
         )
-        return render(request, 'admin/menu_import.html')
+        return render(request, 'admin/menu_import.html', {'max_images': MAX_IMAGES})
 
-    try:
-        parsed = parse_menu_image(upload.read())
-    except MenuImportError as e:
-        messages.error(request, str(e))
-        return render(request, 'admin/menu_import.html')
+    # read() 로 통째로 메모리에 올리기 전에 크기부터 본다. 운영 인스턴스는
+    # RAM 이 1GB 미만이라 큰 사진 여러 장을 한꺼번에 펼치면 워커가 죽는다.
+    total = sum(u.size or 0 for u in uploads)
+    for upload in uploads:
+        if upload.size and upload.size > MAX_UPLOAD_BYTES:
+            messages.error(
+                request,
+                f'사진 한 장이 너무 큽니다({upload.name}). '
+                f'{MAX_UPLOAD_BYTES // (1024 * 1024)}MB 이하로 올려 주세요.',
+            )
+            return render(request, 'admin/menu_import.html', {'max_images': MAX_IMAGES})
+    if total > MAX_TOTAL_UPLOAD_BYTES:
+        messages.error(
+            request,
+            f'사진 합계가 너무 큽니다. {MAX_TOTAL_UPLOAD_BYTES // (1024 * 1024)}MB 이하로, '
+            '또는 몇 장씩 나눠 올려 주세요.',
+        )
+        return render(request, 'admin/menu_import.html', {'max_images': MAX_IMAGES})
 
-    if not any(category.items for category in parsed.categories):
-        messages.error(request, '사진에서 메뉴 항목을 찾지 못했습니다. 더 또렷한 사진으로 시도해 주세요.')
-        return render(request, 'admin/menu_import.html')
+    # 한 장씩 줄이고 원본은 바로 버린다. 열 장을 다 펼쳐 놓으면 워커 하나가
+    # 130MB 넘게 쓴다(실측). 브라우저가 이미 줄여 보냈으면 여기선 거의 공짜다.
+    images = []
+    for upload in uploads:
+        try:
+            payload, _ = shrink_for_vision(upload.read())
+        except MenuImportError as e:
+            messages.error(request, f'{upload.name}: {e}')
+            return render(request, 'admin/menu_import.html', {'max_images': MAX_IMAGES})
+        images.append(payload)
 
-    return render(request, 'admin/menu_import_preview.html', {
-        'parsed': parsed,
-        'existing_categories': Category.objects.filter(restaurant=request.restaurant).order_by('priority', 'name'),
-    })
+    # 비동기로 던지지 않는다. 도착 여부를 사장님께 말해야 하기 때문이다 —
+    # 못 갔는데 '받았습니다' 가 뜨면 사장님은 기다리고 우리는 모른다.
+    if not notifications.send_menu_photos(request.restaurant, images):
+        messages.error(
+            request,
+            '사진을 보내지 못했습니다. 잠시 후 다시 시도해 주시고, 계속 안 되면 알려 주세요.',
+        )
+        return render(request, 'admin/menu_import.html', {'max_images': MAX_IMAGES})
+
+    messages.success(
+        request,
+        f'메뉴판 사진 {len(images)}장을 받았습니다. 확인 후 정리해서 넣어 드리겠습니다.',
+    )
+    return redirect('menu:admin_dashboard', restaurant_slug=request.restaurant.slug)
+
+# 자동 인식을 다시 켤 때 필요한 것은 전부 남아 있다: menu_import.parse_menu_image
+# 와 admin/menu_import_preview.html, 그리고 아래 import_menu_commit. 위 함수에서
+# send_menu_photos 대신 parse_menu_image 를 부르고 확인 화면으로 넘기면 된다.
+# 지금 그 경로를 쓰지 않는 이유는 호출 제한이 없어 비용에 상한이 없었고,
+# 정확도도 사장님이 손봐야 하는 수준이었기 때문이다.
 
 
 @login_required

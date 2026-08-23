@@ -26,6 +26,15 @@ MAX_EDGE_PX = 2000
 MAX_PIXELS = 40_000_000
 MAX_UPLOAD_BYTES = 12 * 1024 * 1024
 
+# 한 번에 올릴 수 있는 장수. 사장님께 보이는 규칙은 이것 하나다 — 용량은
+# 폰에서 확인할 방법이 없어서 "10장" 만큼 이해되지 않는다. 합계 용량은
+# 아래 상한이 조용히 막고, Discord 로 보낼 때의 분할은 notifications 가 맡는다.
+MAX_IMAGES = 10
+
+# nginx 의 client_max_body_size 는 20MB 다. 거기서 막히면 사장님은 뜻 모를
+# 413 을 본다. 그 앞에서 우리말로 안내하려고 조금 낮게 잡는다.
+MAX_TOTAL_UPLOAD_BYTES = 18 * 1024 * 1024
+
 # 메뉴판 한 장이 60~80개 항목까지 갈 수 있다. thinking 과 출력이 max_tokens 를
 # 함께 나눠 쓰므로 넉넉히 잡는다.
 MAX_TOKENS = 16000

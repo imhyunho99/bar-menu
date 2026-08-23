@@ -4,6 +4,7 @@
 영향을 주지 않도록, 별도 데몬 스레드에서 처리하고 예외를 삼킨다.
 `DISCORD_WEBHOOK_URL` 환경변수가 없으면(예: 스테이징) 아무것도 하지 않는다.
 """
+import hashlib
 import json
 import logging
 import os
@@ -14,6 +15,10 @@ import urllib.request
 logger = logging.getLogger(__name__)
 
 _TIMEOUT_SECONDS = 5
+
+# 사진 여러 장은 5초 안에 못 올라간다. 이 발송만 요청 스레드를 붙잡으므로
+# 무한정 기다리게 두면 워커 하나가 통째로 묶인다.
+_PHOTO_TIMEOUT_SECONDS = 60
 
 # 같은 에러가 짧은 시간에 반복될 때 Discord 알림이 폭탄이 되지 않도록,
 # (에러종류, 메시지) 단위로 이 창(초) 안에는 한 번만 보낸다. 워커 프로세스별로 관리한다.
@@ -212,3 +217,109 @@ def send_signup_notification(restaurant):
 def send_trial_expired_notification(subscription):
     """체험 종료 알림을 비동기로 발송한다. 웹훅이 없으면 아무것도 하지 않는다."""
     return _send(build_trial_expired_payload(subscription))
+
+
+# ── 메뉴판 사진 중계 ───────────────────────────────────────────────────
+# 비전 API 로 자동 인식하는 대신, 사장님이 올린 사진을 우리에게 그대로 보내고
+# 사람이 정리해 넣는다. 그래서 이 발송만 다른 알림과 다르게 동기로 돈다 —
+# 도착 여부를 호출자가 알아야 하기 때문이다. 다른 알림은 못 가도 로그만 남으면
+# 되지만, 이건 못 갔는데 사장님에게 '받았습니다' 가 뜨면 아무도 눈치채지 못한 채
+# 사장님만 기다린다.
+
+# Discord 기본 업로드 한도는 파일당 10 MiB 다. 메시지 총량은 문서에 없어서
+# 넉넉히 아래로 잡고, 넘으면 거절하지 않고 메시지를 나눠 보낸다 — 몇 MB 인지는
+# 사장님이 알 필요 없는 우리 사정이다.
+_DISCORD_BATCH_BYTES = 8 * 1024 * 1024
+
+
+def build_menu_photo_payload(restaurant, count, part=None, parts=None):
+    """사진과 함께 보낼 설명. 연락처가 없으면 되물을 방법이 없어 반드시 싣는다."""
+    email, phone = _owner_contact(restaurant)
+    title = "🧾 메뉴판 사진이 도착했습니다"
+    if parts and parts > 1:
+        title += f" ({part}/{parts})"
+    return {
+        "embeds": [
+            {
+                "title": title,
+                "description": "사장님이 올린 메뉴판입니다. 정리해서 넣어 준 뒤 사장님께 알려 주세요.",
+                "color": 3447003,
+                "fields": [
+                    {"name": "매장명", "value": restaurant.name or "-", "inline": True},
+                    {"name": "주소", "value": f"/{restaurant.slug}", "inline": True},
+                    {"name": "이메일", "value": email, "inline": False},
+                    {"name": "연락처", "value": phone, "inline": True},
+                    {"name": "장수", "value": f"{count}장", "inline": True},
+                ],
+            }
+        ]
+    }
+
+
+def _multipart(payload, images, start_index):
+    """Discord 가 받는 multipart/form-data 를 만든다. 경계 문자열은 본문에 없어야 한다."""
+    boundary = "----barmenu" + hashlib.sha256(
+        b"".join(img[:64] for img in images) + str(start_index).encode()
+    ).hexdigest()[:24]
+    sep = f"--{boundary}\r\n".encode()
+    body = bytearray()
+    body += sep
+    body += b'Content-Disposition: form-data; name="payload_json"\r\n'
+    body += b"Content-Type: application/json\r\n\r\n"
+    body += json.dumps(payload).encode("utf-8") + b"\r\n"
+    for i, image in enumerate(images):
+        body += sep
+        body += (
+            f'Content-Disposition: form-data; name="files[{i}]"; '
+            f'filename="menu-{start_index + i + 1}.jpg"\r\n'
+        ).encode()
+        body += b"Content-Type: image/jpeg\r\n\r\n"
+        body += image + b"\r\n"
+    body += f"--{boundary}--\r\n".encode()
+    return bytes(body), f"multipart/form-data; boundary={boundary}"
+
+
+def _batch(images):
+    """Discord 한 메시지에 담을 만큼씩 끊는다. 한 장이 한도를 넘어도 혼자는 보낸다."""
+    batches, current, size = [], [], 0
+    for image in images:
+        if current and size + len(image) > _DISCORD_BATCH_BYTES:
+            batches.append(current)
+            current, size = [], 0
+        current.append(image)
+        size += len(image)
+    if current:
+        batches.append(current)
+    return batches
+
+
+def send_menu_photos(restaurant, images) -> bool:
+    """
+    메뉴판 사진을 Discord 로 보낸다. **동기**로 돌고 도착 여부를 돌려준다.
+
+    한 묶음이라도 실패하면 False. 일부만 도착한 채 True 를 주면 우리는
+    나머지 장을 영영 못 보고, 사장님은 메뉴가 반만 들어간 이유를 모른다.
+    """
+    url = os.environ.get("DISCORD_WEBHOOK_URL")
+    if not url:
+        logger.error("메뉴판 사진을 보낼 DISCORD_WEBHOOK_URL 이 없습니다 (매장 %s)", restaurant.slug)
+        return False
+
+    batches = _batch(images)
+    sent = 0
+    for part, group in enumerate(batches, start=1):
+        payload = build_menu_photo_payload(restaurant, len(images), part, len(batches))
+        body, content_type = _multipart(payload, group, sent)
+        request = urllib.request.Request(
+            url,
+            data=body,
+            headers={"Content-Type": content_type, "User-Agent": "bar-menu-contact-webhook/1.0"},
+        )
+        try:
+            urllib.request.urlopen(request, timeout=_PHOTO_TIMEOUT_SECONDS)
+        except Exception:
+            logger.exception("메뉴판 사진 전송 실패 (매장 %s, %d/%d)",
+                             restaurant.slug, part, len(batches))
+            return False
+        sent += len(group)
+    return True

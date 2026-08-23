@@ -1,9 +1,13 @@
 """
-메뉴판 사진 가져오기 — 비전 호출을 제외한 나머지 경로를 검증한다.
+메뉴판 확인 화면 ↔ 저장 뷰의 계약.
 
-Claude 호출 자체는 API 키가 필요하므로 stub 으로 갈음하고,
-확인 화면이 만들어내는 폼 필드 이름과 저장 뷰가 읽는 이름이
-실제로 맞물리는지를 본다. 여기가 어긋나면 조용히 0건 저장된다.
+확인 화면이 만들어내는 폼 필드 이름과 저장 뷰가 읽는 이름이 실제로 맞물리는지
+본다. 여기가 어긋나면 조용히 0건 저장된다.
+
+2026-08 부터 자동 인식을 끄고 사진을 사람에게 넘기므로(tests_menu_photo_relay),
+업로드 화면에서 이 확인 화면으로 가는 길은 지금 닫혀 있다. 하지만 템플릿과
+import_menu_commit 은 자동 인식을 다시 켤 때 그대로 쓸 것이라, 계약은 계속
+고정해 둔다. 그래서 뷰를 거치지 않고 확인 화면을 직접 그린다.
 """
 
 from unittest.mock import patch
@@ -46,19 +50,22 @@ class MenuImportFlowTests(TestCase):
         self.preview_url = f"/{self.restaurant.slug}/admin/menu/import/"
         self.commit_url = f"/{self.restaurant.slug}/admin/menu/import/commit/"
 
-    def _upload(self):
-        from django.core.files.uploadedfile import SimpleUploadedFile
+    def _preview_html(self):
+        """자동 인식이 SAMPLE 을 돌려줬을 때 사장님이 보게 될 확인 화면."""
+        from django.template.loader import render_to_string
+        from django.test import RequestFactory
 
-        with patch("menu.admin_views.parse_menu_image", return_value=SAMPLE):
-            return self.client.post(
-                self.preview_url,
-                {"menu_image": SimpleUploadedFile("menu.jpg", DUMMY_IMAGE, content_type="image/jpeg")},
-            )
+        request = RequestFactory().get(self.preview_url)
+        request.restaurant = self.restaurant
+        request.user = self.user
+        return render_to_string('admin/menu_import_preview.html', {
+            'parsed': SAMPLE,
+            'existing_categories': Category.objects.filter(
+                restaurant=self.restaurant).order_by('priority', 'name'),
+        }, request=request)
 
     def test_preview_renders_every_item_with_matching_field_names(self):
-        response = self._upload()
-        self.assertEqual(response.status_code, 200)
-        html = response.content.decode()
+        html = self._preview_html()
 
         # 키가 빈 문자열로 무너지면 name="_name" 같은 필드가 나온다
         self.assertNotIn('name="_name"', html)
@@ -80,7 +87,7 @@ class MenuImportFlowTests(TestCase):
         """
         import re
 
-        html = self._upload().content.decode()
+        html = self._preview_html()
 
         # <form action=".../commit/"> 안의 input 만 긁는다
         form = html.split('import_menu_commit')[1] if 'import_menu_commit' in html else html
@@ -105,7 +112,6 @@ class MenuImportFlowTests(TestCase):
         self.assertEqual(MenuItem.objects.get(name="모둠 사시미").price, "38,000")
 
     def test_commit_creates_categories_and_items(self):
-        self._upload()
 
         response = self.client.post(self.commit_url, {
             "include": ["c0_i0", "c0_i1", "c1_i0"],
@@ -129,7 +135,6 @@ class MenuImportFlowTests(TestCase):
         self.assertEqual(item.restaurant, self.restaurant)
 
     def test_unchecked_items_are_not_saved(self):
-        self._upload()
 
         self.client.post(self.commit_url, {
             "include": ["c0_i0"],  # 나머지는 체크 해제
@@ -146,7 +151,6 @@ class MenuImportFlowTests(TestCase):
 
     def test_commit_can_target_an_existing_category(self):
         existing = Category.objects.create(name="기존 안주", restaurant=self.restaurant)
-        self._upload()
 
         self.client.post(self.commit_url, {
             "include": ["c0_i0"],
@@ -165,7 +169,6 @@ class MenuImportFlowTests(TestCase):
         """
         other = Restaurant.objects.create(name="남의 매장", slug="rival")
         foreign = Category.objects.create(name="남의 카테고리", restaurant=other)
-        self._upload()
 
         self.client.post(self.commit_url, {
             "include": ["c0_i0"],
