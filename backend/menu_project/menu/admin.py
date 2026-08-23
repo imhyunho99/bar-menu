@@ -136,8 +136,12 @@ class CategoryAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         try:
             data = json.loads(request.body)
             ids = data.get('ids', [])
+            # get_queryset 을 거친다. 화면은 id 만 보내오므로, 그 id 가 누구
+            # 것인지 여기서 안 보면 개발자도구로 숫자만 바꿔 남의 매장을
+            # 건드릴 수 있다. 목록에 안 보이는 것과 못 건드리는 것은 다르다.
+            mine = self.get_queryset(request)
             for index, cat_id in enumerate(ids):
-                Category.objects.filter(id=cat_id).update(priority=float(index))
+                mine.filter(id=cat_id).update(priority=float(index))
             return JsonResponse({'status': 'success'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
@@ -281,8 +285,9 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         try:
             data = json.loads(request.body)
             ids = data.get('ids', [])
+            mine = self.get_queryset(request)   # 남의 매장 id 는 여기서 걸러진다
             for index, menu_id in enumerate(ids):
-                MenuItem.objects.filter(id=menu_id).update(priority=float(index))
+                mine.filter(id=menu_id).update(priority=float(index))
             return JsonResponse({'status': 'success'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
@@ -291,7 +296,7 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         if request.method != 'POST':
             return JsonResponse({'status': 'error', 'message': 'POST only'}, status=405)
         try:
-            original = MenuItem.objects.get(id=object_id)
+            original = self.get_queryset(request).get(id=object_id)
             pairings = list(original.pairings.all())
             original.pk = None
             original.id = None
@@ -332,8 +337,9 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         try:
             data = json.loads(request.body)
             ids = data.get('ids', [])
+            mine = self.get_queryset(request)
             for obj_id in ids:
-                original = MenuItem.objects.get(id=obj_id)
+                original = mine.get(id=obj_id)
                 pairings = list(original.pairings.all())
                 original.pk = None
                 original.id = None
@@ -355,7 +361,9 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         try:
             data = json.loads(request.body)
             ids = data.get('ids', [])
-            MenuItem.objects.filter(id__in=ids).delete()
+            # 가장 되돌리기 어려운 동작이다. 섞여 들어온 남의 매장 id 는
+            # 조용히 빠지고 내 것만 지워진다.
+            self.get_queryset(request).filter(id__in=ids).delete()
             return JsonResponse({'status': 'success'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
@@ -377,7 +385,9 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
                         if category.restaurant != request.user.profile.restaurant:
                             return JsonResponse({'status': 'error', 'message': '권한이 없습니다.'}, status=403)
             
-            MenuItem.objects.filter(id__in=ids).update(category=category)
+            # 고른 카테고리가 내 것인지는 위에서 봤다. 옮기는 대상이 누구
+            # 것인지도 봐야 한다 — 안 그러면 남의 메뉴가 내 카테고리로 온다.
+            self.get_queryset(request).filter(id__in=ids).update(category=category)
             return JsonResponse({'status': 'success'})
         except Category.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': '카테고리를 찾을 수 없습니다.'}, status=404)
