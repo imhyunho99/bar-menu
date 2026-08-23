@@ -1,15 +1,30 @@
 {% comment %}
-결제 전 매장에 띄우는 배너.
+사장님에게 손님 화면의 상태를 알린다.
 
 사장님이 메뉴를 다 채우고 QR 까지 인쇄한 뒤에야 손님이 아무것도 못 본다는
-사실을 알게 되는 사고를 막는다. menu_is_live 를 넘겨주는 화면에서만 뜬다.
+사실을 알게 되는 사고를 막는다. menu_is_live 와 subscription 을 넘겨주는
+화면에서만 뜬다.
+
+알릴 상태가 둘이다. 열려 있지만 며칠 남았다(체험 중), 이미 닫혔다(체험 종료).
+둘을 한 문구로 뭉치면 체험 중인 사장님이 닫힌 줄 알고 놀라거나, 닫힌 사장님이
+아직 열린 줄 알고 개업한다. menu_is_live 가 둘을 가른다 — 게이트가 꺼져 있으면
+미결제 매장도 실제로는 열려 있으므로 '닫혔다' 는 그때 거짓말이 된다.
 {% endcomment %}
 {% if not menu_is_live %}
 <div class="payment-banner">
     <div class="payment-banner-text">
-        <strong>결제해야 손님 화면이 열립니다</strong>
-        <span>지금은 손님이 메뉴판 주소로 들어와도 메뉴가 보이지 않습니다. 관리 화면은 그대로 쓰실 수 있습니다.</span>
+        <strong>무료 체험이 끝나 손님 화면이 닫혔습니다</strong>
+        <span>지금은 손님이 메뉴판 주소로 들어와도 메뉴가 보이지 않습니다. 관리 화면과 등록하신 메뉴는 그대로 남아 있습니다.</span>
     </div>
-    <a class="payment-banner-btn" href="{% url 'menu:billing_home' restaurant_slug=restaurant.slug %}">결제 등록하기</a>
+    {# 결제 대행사가 아직 붙지 않았다. 결제 화면으로 보내면 '준비 중' 만 만난다. #}
+    <a class="payment-banner-btn" href="{{ contact_url }}">연장 문의하기</a>
+</div>
+{% elif subscription.status == 'trialing' and days_left is not None %}
+<div class="payment-banner payment-banner-trial">
+    <div class="payment-banner-text">
+        <strong>무료 체험 {{ days_left }}일 남았습니다</strong>
+        <span>지금은 손님 화면이 정상으로 열려 있습니다. 체험이 끝나면 닫히니, 계속 쓰시려면 미리 연락 주세요.</span>
+    </div>
+    <a class="payment-banner-btn" href="{{ contact_url }}">연장 문의하기</a>
 </div>
 {% endif %}

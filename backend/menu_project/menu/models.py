@@ -1,5 +1,7 @@
 # menu/models.py
 
+from datetime import timedelta
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
@@ -22,7 +24,12 @@ class Restaurant(models.Model):
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     restaurant = models.ForeignKey(Restaurant, on_delete=models.SET_NULL, null=True, blank=True, related_name='managers')
-    
+    # 결제 대행사가 붙기 전까지 청구는 사람이 한다. 그 사람이 연락할 수단을
+    # 가입 때 받아둔다. 필수로 만들면 가입 폼에서 이탈하므로 선택 입력이다 —
+    # 이메일은 username 으로 이미 받고 있어서 연락 자체는 끊기지 않는다.
+    phone = models.CharField(max_length=30, blank=True, default='', verbose_name="연락처")
+
+
     def __str__(self):
         return f"{self.user.username} - {self.restaurant.name if self.restaurant else 'No Restaurant'}"
 
@@ -31,11 +38,21 @@ class UserProfile(models.Model):
 @receiver(post_save, sender=Restaurant)
 def create_restaurant_settings(sender, instance, created, **kwargs):
     if created:
+        from django.utils import timezone
+
         SiteSettings.objects.create(restaurant=instance)
         # 구독 없는 매장은 게이트가 잠그도록 바뀌었다(SubscriptionGateMiddleware).
         # 어드민에서 손으로 매장을 만들고 구독을 깜빡하면 그 집 메뉴판이
         # 이유 없이 캄캄해지므로, 매장이 생기는 모든 경로에서 같이 만든다.
-        Subscription.objects.create(restaurant=instance)
+        #
+        # 체험으로 시작하는 것도 같은 이유다. unpaid 로 만들어 두면 어드민에서
+        # 만든 매장이 게이트가 켜진 순간 캄캄해지는데, 그때 우리는 매장을 만든
+        # 직후라 아무도 손님 화면을 확인하지 않는다. 7일은 그걸 알아챌 시간이다.
+        Subscription.objects.create(
+            restaurant=instance,
+            status='trialing',
+            current_period_end=timezone.now() + timedelta(days=Subscription.TRIAL_DAYS),
+        )
 
 def default_category_layout():
     return {
@@ -489,18 +506,24 @@ class Subscription(models.Model):
         'premium': 39_900,
     }
 
-    # unpaid    : 가입은 했지만 아직 결제 전. 손님 화면은 닫혀 있다
+    # trialing  : 가입 직후 7일. 결제 없이 열려 있다
+    # unpaid    : 체험이 끝났거나 결제 전. 손님 화면은 닫혀 있다
     # active    : 결제까지 정상
     # past_due  : 결제 실패. 유예 기간 동안은 계속 열어 둔다
     # canceled  : 해지됨
     # partner   : 무제한 파트너. 결제도 만료도 없다
     STATUS_CHOICES = [
+        ('trialing', '무료 체험'),
         ('unpaid', '미결제'),
         ('active', '이용 중'),
         ('past_due', '결제 실패'),
         ('canceled', '해지'),
         ('partner', '무제한 파트너'),
     ]
+
+    # 체험 기간. 종료일은 current_period_end 에 넣는다 — 전용 필드를 따로 두면
+    # is_usable·days_left·access_until 이 저마다 어느 날짜를 볼지 갈라진다.
+    TRIAL_DAYS = 7
 
     # 날짜를 아예 보지 않고 통과시키는 상태. 셀프가입 이전부터 쓰던 매장들이
     # 여기 속한다. active 로 올려두면 결제일이 지나는 순간 꺼지므로 따로 둔다.

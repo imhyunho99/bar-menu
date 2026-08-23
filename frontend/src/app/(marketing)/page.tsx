@@ -116,14 +116,14 @@ export default function LandingPage() {
           </p>
           <div className="cta">
             <a href={signupUrl} className="btn btn-solid">
-              무료로 가입하기
+              7일 무료로 시작하기
             </a>
             <a href="#how" className="btn btn-ghost">
               어떻게 쓰는지 보기
             </a>
             <p className="cap cta-note">
-              카드를 등록하지 않습니다. 먼저 이야기부터 나누고 싶으시면{' '}
-              <a href="#contact">문의를 남겨주세요</a>.
+              카드를 등록하지 않습니다. 7일 동안 손님에게 실제로 열리고, 지나면 닫힙니다. 먼저 이야기부터
+              나누고 싶으시면 <a href="#contact">문의를 남겨주세요</a>.
             </p>
           </div>
         </div>

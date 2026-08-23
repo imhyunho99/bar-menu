@@ -81,15 +81,15 @@ export default function GuidePage() {
         <div style={{ padding: '56px 0' }} className="reveal">
           <div className="cta-row">
             <a href={signupUrl} className="btn btn-solid">
-              무료로 가입하기
+              7일 무료로 시작하기
             </a>
             <Link href="/#contact" className="btn btn-ghost">
               먼저 상담받기
             </Link>
           </div>
           <p className="cap cta-note">
-            카드를 등록하지 않습니다. 가입이 끝나면 바로 로그인된 채로 할 일 목록이 열리고, 첫 항목이
-            메뉴 등록입니다.
+            카드를 등록하지 않습니다. 7일 동안 무료로 쓰실 수 있고, 가입이 끝나면 바로 로그인된 채로
+            할 일 목록이 열립니다. 첫 항목이 메뉴 등록입니다.
           </p>
         </div>
       </div>

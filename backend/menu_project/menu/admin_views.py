@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login
@@ -84,9 +85,12 @@ def admin_dashboard(request, restaurant_slug=None):
         'categories': categories,
         'menu_items': menu_items,
         'restaurant': request.restaurant,
-        # 결제 전이면 배너를 띄운다. 사장님이 메뉴를 다 채우고 QR 을 인쇄한 뒤에야
+        # 배너가 쓰는 것들. 사장님이 메뉴를 다 채우고 QR 을 인쇄한 뒤에야
         # 손님 화면이 닫혀 있다는 걸 알게 되는 일을 막는다.
         'menu_is_live': bool(subscription and subscription.menu_is_live()),
+        'subscription': subscription,
+        'days_left': subscription.days_left if subscription else None,
+        'contact_url': f'{settings.MARKETING_SITE_URL}/#contact',
     })
 
 @login_required

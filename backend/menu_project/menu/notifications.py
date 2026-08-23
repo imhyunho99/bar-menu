@@ -128,3 +128,87 @@ def send_error_alert(event, hint=None):
     thread = threading.Thread(target=_deliver, args=(url, payload), daemon=True)
     thread.start()
     return thread
+
+
+# ── 무료 체험 (가입 · 만료) ────────────────────────────────────────────
+# 결제 대행사가 붙기 전까지 청구는 사람이 한다. 그 사람이 움직일 수 있으려면
+# 두 순간을 알아야 한다: 누가 들어왔는가, 누구의 체험이 끝났는가. 그래서
+# 페이로드는 언제나 연락 수단을 싣는다 — 알림을 받고도 연락할 곳이 없으면
+# 알림이 아니라 소음이다.
+
+def _owner_contact(restaurant):
+    """
+    매장 사장님의 이메일과 전화. 없으면 '-'.
+
+    어드민에서 매장만 먼저 만드는 경로가 있어서 관리자가 아직 없을 수 있다.
+    거기서 예외가 나면 매장 생성 자체가 막히므로 조용히 비운다.
+    """
+    profile = restaurant.managers.select_related('user').first()
+    if profile is None:
+        return '-', '-'
+    return (profile.user.email or profile.user.username or '-'), (profile.phone or '-')
+
+
+def build_signup_payload(restaurant):
+    """새로 가입한 매장을 Discord 웹훅 JSON 페이로드로 변환한다."""
+    email, phone = _owner_contact(restaurant)
+    subscription = getattr(restaurant, 'subscription', None)
+    ends_at = getattr(subscription, 'current_period_end', None)
+    return {
+        "embeds": [
+            {
+                "title": "🌱 새 매장 가입 (무료 체험 시작)",
+                "color": 3066993,
+                "fields": [
+                    {"name": "매장명", "value": restaurant.name or "-", "inline": True},
+                    {"name": "주소", "value": f"/{restaurant.slug}", "inline": True},
+                    {"name": "이메일", "value": email, "inline": False},
+                    {"name": "연락처", "value": phone, "inline": True},
+                    {"name": "체험 종료",
+                     "value": f'{ends_at:%Y-%m-%d %H:%M}' if ends_at else "-", "inline": True},
+                ],
+            }
+        ]
+    }
+
+
+def build_trial_expired_payload(subscription):
+    """체험이 끝난 매장을 Discord 웹훅 JSON 페이로드로 변환한다."""
+    restaurant = subscription.restaurant
+    email, phone = _owner_contact(restaurant)
+    return {
+        "embeds": [
+            {
+                "title": "⏰ 무료 체험 종료 — 손님 화면이 닫혔습니다",
+                "description": "결제 안내가 필요합니다. 사장님이 먼저 연락하지 않는 쪽이 보통입니다.",
+                "color": 15105570,
+                "fields": [
+                    {"name": "매장명", "value": restaurant.name or "-", "inline": True},
+                    {"name": "주소", "value": f"/{restaurant.slug}", "inline": True},
+                    {"name": "이메일", "value": email, "inline": False},
+                    {"name": "연락처", "value": phone, "inline": True},
+                    {"name": "요금제", "value": subscription.get_plan_display(), "inline": True},
+                ],
+            }
+        ]
+    }
+
+
+def _send(payload):
+    """제휴 문의와 같은 채널로 보낸다. 둘 다 '사람이 이어받아야 하는 일'이다."""
+    url = os.environ.get("DISCORD_WEBHOOK_URL")
+    if not url:
+        return None
+    thread = threading.Thread(target=_deliver, args=(url, payload), daemon=True)
+    thread.start()
+    return thread
+
+
+def send_signup_notification(restaurant):
+    """가입 알림을 비동기로 발송한다. 웹훅이 없으면 아무것도 하지 않는다."""
+    return _send(build_signup_payload(restaurant))
+
+
+def send_trial_expired_notification(subscription):
+    """체험 종료 알림을 비동기로 발송한다. 웹훅이 없으면 아무것도 하지 않는다."""
+    return _send(build_trial_expired_payload(subscription))

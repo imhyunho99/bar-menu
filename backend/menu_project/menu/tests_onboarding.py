@@ -27,7 +27,7 @@ GOOD_FORM = {
 
 
 class SignupTests(TestCase):
-    def test_signup_creates_all_four_objects_unpaid(self):
+    def test_signup_creates_all_four_objects_on_trial(self):
         response = self.client.post(SIGNUP_URL, GOOD_FORM)
 
         self.assertRedirects(response, '/moonlight/admin/start/')
@@ -44,10 +44,10 @@ class SignupTests(TestCase):
         self.assertEqual(profile.restaurant, restaurant)
 
         subscription = Subscription.objects.get(restaurant=restaurant)
-        self.assertEqual(subscription.status, 'unpaid')
-        self.assertIsNone(subscription.access_until)
-        # 체험이 없으므로 가입 직후 손님 화면은 닫혀 있다.
-        self.assertFalse(subscription.is_usable())
+        self.assertEqual(subscription.status, 'trialing')
+        self.assertIsNotNone(subscription.access_until)
+        # 체험 중에는 손님 화면이 열려 있다. 결제 없이 바로 영업할 수 있다.
+        self.assertTrue(subscription.is_usable())
 
         # Restaurant post_save 시그널이 만드는 것. 여기서 또 만들면 두 개가 된다.
         self.assertEqual(SiteSettings.objects.filter(restaurant=restaurant).count(), 1)
@@ -215,7 +215,8 @@ class OnboardingHomeTests(TestCase):
         self.assertEqual(response.context['menu_count'], 0)
         self.assertEqual(response.context['category_count'], 0)
         self.assertEqual(response.context['done_count'], 0)
-        self.assertIsNone(response.context['days_left'])
+        # 가입 직후는 체험 7일째다. days_left 는 내림하므로 6 으로 보인다.
+        self.assertEqual(response.context['days_left'], 6)
 
     def test_menu_step_flips_on_real_rows(self):
         category = Category.objects.create(name='사시미', restaurant=self.restaurant)
@@ -277,13 +278,18 @@ class OnboardingHomeTests(TestCase):
 @override_settings(ENFORCE_SUBSCRIPTION=True)
 class PaymentBannerTests(TestCase):
     """
-    결제 전에는 손님 화면이 닫혀 있다는 사실을 사장님이 알아야 한다.
+    사장님이 손님 화면의 상태를 알아야 한다.
 
     이 배너가 없으면 사장님은 메뉴를 다 채우고 QR 까지 인쇄한 뒤에야
     손님이 아무것도 못 본다는 걸 알게 된다. 개업 당일에.
+
+    체험이 생기면서 알려야 할 상태가 둘로 늘었다: 아직 열려 있지만 며칠 남았다,
+    그리고 이미 닫혔다. 둘을 같은 문구로 뭉치면 체험 중인 사장님이 닫힌 줄 알고
+    놀라거나, 닫힌 사장님이 아직 열린 줄 알고 개업한다.
     """
 
-    BANNER = '결제해야 손님 화면이 열립니다'
+    CLOSED = '손님 화면이 닫혔습니다'
+    TRIAL = '무료 체험'
 
     def setUp(self):
         self.client.post(SIGNUP_URL, GOOD_FORM)
@@ -291,15 +297,26 @@ class PaymentBannerTests(TestCase):
         self.start_url = '/moonlight/admin/start/'
         self.dashboard_url = '/moonlight/admin/dashboard/'
 
+    def _subscribe(self, **kwargs):
+        sub = self.restaurant.subscription
+        for field, value in kwargs.items():
+            setattr(sub, field, value)
+        sub.save()
+        return sub
+
     def _activate(self):
         from datetime import timedelta
 
         from django.utils import timezone
 
-        sub = self.restaurant.subscription
-        sub.status = 'active'
-        sub.current_period_end = timezone.now() + timedelta(days=30)
-        sub.save()
+        self._subscribe(status='active', current_period_end=timezone.now() + timedelta(days=30))
+
+    def _expire_trial(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        self._subscribe(status='trialing', current_period_end=timezone.now() - timedelta(minutes=1))
 
     def test_no_banner_while_the_gate_is_off(self):
         """
@@ -308,40 +325,45 @@ class PaymentBannerTests(TestCase):
         그때 '손님 화면이 닫혀 있습니다' 라고 하면 사장님이 자기 QR 을 찍어보는
         순간 들통난다. 한 번 그러면 배너를 아무도 믿지 않는다.
         """
+        self._expire_trial()
         with self.settings(ENFORCE_SUBSCRIPTION=False):
             response = self.client.get(self.dashboard_url)
             self.assertTrue(response.context['menu_is_live'])
-            self.assertNotContains(response, self.BANNER)
+            self.assertNotContains(response, self.CLOSED)
 
-    def test_unpaid_store_sees_the_banner_on_the_start_page(self):
+    def test_trialing_store_sees_days_left_not_a_closure_warning(self):
+        """체험 중에는 손님 화면이 실제로 열려 있다. 닫혔다고 하면 거짓말이다."""
+        response = self.client.get(self.dashboard_url)
+        self.assertTrue(response.context['menu_is_live'])
+        self.assertContains(response, self.TRIAL)
+        self.assertNotContains(response, self.CLOSED)
+
+    @override_settings(ENFORCE_SUBSCRIPTION=True)
+    def test_lapsed_trial_sees_the_closure_banner_on_the_start_page(self):
+        self._expire_trial()
         response = self.client.get(self.start_url)
         self.assertFalse(response.context['menu_is_live'])
-        self.assertContains(response, self.BANNER)
+        self.assertContains(response, self.CLOSED)
 
-    def test_unpaid_store_sees_the_banner_on_the_dashboard(self):
+    @override_settings(ENFORCE_SUBSCRIPTION=True)
+    def test_lapsed_trial_sees_the_closure_banner_on_the_dashboard(self):
+        self._expire_trial()
         response = self.client.get(self.dashboard_url)
         self.assertFalse(response.context['menu_is_live'])
-        self.assertContains(response, self.BANNER)
+        self.assertContains(response, self.CLOSED)
 
-    def test_banner_links_to_the_billing_page(self):
+    @override_settings(ENFORCE_SUBSCRIPTION=True)
+    def test_closure_banner_offers_a_way_to_ask_for_an_extension(self):
+        """
+        결제가 아직 없다. 닫혔다고만 알리고 길을 주지 않으면 사장님은
+        관리 화면을 닫고 다시 오지 않는다.
+        """
+        self._expire_trial()
         response = self.client.get(self.dashboard_url)
-        self.assertContains(response, '/moonlight/admin/billing/')
+        self.assertContains(response, '연장 문의')
 
     def test_paid_store_sees_no_banner(self):
         self._activate()
-        for url in (self.start_url, self.dashboard_url):
-            response = self.client.get(url)
-            self.assertTrue(response.context['menu_is_live'])
-            self.assertNotContains(response, self.BANNER)
-
-    def test_partner_store_sees_no_banner(self):
-        """무제한 파트너에게 결제를 조르지 않는다."""
-        Subscription.objects.filter(restaurant=self.restaurant).update(status='partner')
         response = self.client.get(self.dashboard_url)
-        self.assertTrue(response.context['menu_is_live'])
-        self.assertNotContains(response, self.BANNER)
-
-    def test_billing_step_detail_no_longer_mentions_a_trial(self):
-        response = self.client.get(self.start_url)
-        steps = {step['key']: step for step in response.context['steps']}
-        self.assertNotIn('체험', steps['billing']['detail'])
+        self.assertNotContains(response, self.CLOSED)
+        self.assertNotContains(response, self.TRIAL)

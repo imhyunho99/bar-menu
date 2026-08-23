@@ -9,6 +9,7 @@ Restaurant · UserProfile · Subscription 네 덩어리가 한 트랜잭션에�
 
 import re
 
+from django.conf import settings
 from django.contrib.auth import login
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
@@ -19,6 +20,7 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import NoReverseMatch, reverse
 
+from . import notifications
 from .admin_views import check_restaurant_permission
 from .models import Category, MenuItem, Restaurant, Subscription, UserProfile
 
@@ -54,6 +56,7 @@ SLUG_RE = re.compile(r'^[-a-zA-Z0-9_]+$')
 
 SLUG_MAX_LENGTH = Restaurant._meta.get_field('slug').max_length
 NAME_MAX_LENGTH = Restaurant._meta.get_field('name').max_length
+PHONE_MAX_LENGTH = UserProfile._meta.get_field('phone').max_length
 USERNAME_MAX_LENGTH = User._meta.get_field('username').max_length
 
 
@@ -125,11 +128,14 @@ def signup(request):
     email = request.POST.get('email', '').strip().lower()
     password = request.POST.get('password', '')
     name = request.POST.get('name', '').strip()
+    # 선택 입력. 결제 대행사가 붙기 전까지 청구는 사람이 하고, 그 사람에게는
+    # 전화가 이메일보다 잘 닿는다. 필수로 만들면 가입 폼에서 이탈한다.
+    phone = request.POST.get('phone', '').strip()[:PHONE_MAX_LENGTH]
     # 주소는 소문자로 굳힌다. URL 은 대소문자를 구분하니 'Bid' 로 받아두면
     # 인쇄된 QR 이 /bid/ 를 가리키는 순간 404 다.
     slug = request.POST.get('slug', '').strip().lower()
 
-    values = {'email': email, 'name': name, 'slug': slug}
+    values = {'email': email, 'name': name, 'slug': slug, 'phone': phone}
     errors = {}
 
     error = _validate_email_value(email)
@@ -162,9 +168,9 @@ def signup(request):
             )
             restaurant = Restaurant.objects.create(name=name, slug=slug)
             # SiteSettings 와 Subscription 은 Restaurant post_save 시그널이 이미
-            # 만든다. 구독은 미결제 상태로 시작하고, 손님 화면은 결제가 확인되기
-            # 전까지 닫혀 있다.
-            UserProfile.objects.create(user=user, restaurant=restaurant)
+            # 만든다. 구독은 7일 무료 체험으로 시작하고, 체험이 끝나면 손님
+            # 화면이 닫힌다(expire_trials 가 상태를 내리고 우리에게 알린다).
+            UserProfile.objects.create(user=user, restaurant=restaurant, phone=phone)
             # 요금 페이지에서 요금제를 고르고 왔으면 그것으로 맞춰 둔다. 무시하면
             # Premium 을 고른 사장님이 아무 안내 없이 Entry 결제 화면을 만난다.
             # 모르는 값은 조용히 기본값으로 떨군다.
@@ -178,6 +184,10 @@ def signup(request):
         # 유일 제약이 최종 심판이므로 여기서 폼으로 되돌린다.
         errors['slug'] = '방금 다른 분이 같은 주소로 가입했습니다. 다른 주소를 입력해 주세요.'
         return render(request, 'onboarding/signup.html', {'values': values, 'errors': errors}, status=400)
+
+    # 트랜잭션 밖에서 알린다. 안에서 보내면 뒤늦은 롤백이 '가입했다' 는
+    # 알림만 남긴다. 발송은 데몬 스레드라 실패해도 가입을 막지 않는다.
+    notifications.send_signup_notification(restaurant)
 
     login(request, user)
     return redirect('menu:onboarding_home', restaurant_slug=restaurant.slug)
@@ -293,6 +303,8 @@ def onboarding_home(request, restaurant_slug=None):
         'subscription': subscription,
         'days_left': subscription.days_left if subscription else None,
         'menu_is_live': menu_is_live,
+        # 결제 대행사가 붙기 전이라 배너의 행동 버튼은 문의로 간다.
+        'contact_url': f'{settings.MARKETING_SITE_URL}/#contact',
         'menu_count': menu_count,
         'category_count': category_count,
     })

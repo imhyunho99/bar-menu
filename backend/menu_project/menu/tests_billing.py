@@ -64,12 +64,22 @@ class SubscriptionStateTest(TestCase):
 
     def setUp(self):
         self.restaurant = Restaurant.objects.create(name="알파바", slug="alpha")
-        # 매장을 만들면 Restaurant post_save 가 미결제 구독을 붙여 준다.
+        # 매장을 만들면 Restaurant post_save 가 7일 체험 구독을 붙여 준다.
         self.subscription = self.restaurant.subscription
 
-    def test_new_subscription_is_unpaid_and_closed(self):
-        """가입만 한 매장. 결제 전에는 손님 화면이 열리지 않는다."""
-        self.assertEqual(self.subscription.status, 'unpaid')
+    def _clear_dates(self):
+        """날짜 없는 구독으로 되돌린다. 체험이 붙기 전 상태를 보고 싶은 테스트용."""
+        self.subscription.current_period_end = None
+        return self.subscription
+
+    def test_new_subscription_starts_a_trial_and_is_open(self):
+        """가입한 매장은 7일 동안 열려 있다."""
+        self.assertEqual(self.subscription.status, 'trialing')
+        self.assertTrue(self.subscription.is_usable())
+
+    def test_lapsed_trial_is_closed(self):
+        """체험이 끝나면 상태를 내리지 않아도 날짜만으로 닫힌다."""
+        self.subscription.current_period_end = timezone.now() - timedelta(minutes=1)
         self.assertFalse(self.subscription.is_usable())
 
     def test_days_left_truncates_toward_zero(self):
@@ -82,7 +92,7 @@ class SubscriptionStateTest(TestCase):
         self.assertEqual(self.subscription.days_left, 0)
 
     def test_days_left_is_none_without_any_end_date(self):
-        self.assertIsNone(self.subscription.days_left)
+        self.assertIsNone(self._clear_dates().days_left)
 
     def test_access_until_is_the_paid_period(self):
         self.subscription.current_period_end = timezone.now() + timedelta(days=30)
@@ -91,7 +101,7 @@ class SubscriptionStateTest(TestCase):
     def test_partner_is_open_without_any_date(self):
         """무제한 파트너. 결제일도 만료도 보지 않는다."""
         self.subscription.status = 'partner'
-        self.assertIsNone(self.subscription.access_until)
+        self.assertIsNone(self._clear_dates().access_until)
         self.assertTrue(self.subscription.is_usable())
 
     def test_usable_while_active_within_period(self):
@@ -187,6 +197,11 @@ class NullProviderTest(TestCase):
 
     def setUp(self):
         self.restaurant = Restaurant.objects.create(name="알파바", slug="alpha")
+        # 체험이 끝난 뒤를 본다. 여기서 보려는 건 '결제를 눌러도 아무 일이
+        # 일어나지 않는다' 이고, 체험 날짜가 남아 있으면 그 확인이 흐려진다.
+        self.restaurant.subscription.status = 'unpaid'
+        self.restaurant.subscription.current_period_end = None
+        self.restaurant.subscription.save()
         self.owner = User.objects.create_user(username='alpha_owner', password='pw', is_staff=True)
         UserProfile.objects.create(user=self.owner, restaurant=self.restaurant)
         self.client.force_login(self.owner)
@@ -274,6 +289,9 @@ class WebhookTest(TestCase):
         self.other = Restaurant.objects.create(name="베타바", slug="beta")
 
         self.subscription = self.restaurant.subscription
+        # 웹훅이 상태를 바꿨는지 보려면 출발점이 체험이 아니어야 한다.
+        self.subscription.status = 'unpaid'
+        self.subscription.current_period_end = None
         self.subscription.provider = 'stub'
         self.subscription.provider_subscription_id = 'sub_alpha'
         self.subscription.save()
@@ -395,7 +413,7 @@ class WebhookTest(TestCase):
     def test_webhook_cannot_reach_another_providers_subscription(self):
         # 같은 구독 ID 라도 provider 가 다르면 남의 것이다.
         Subscription.objects.filter(restaurant=self.other).update(
-            provider='other', provider_subscription_id='sub_alpha'
+            status='unpaid', provider='other', provider_subscription_id='sub_alpha'
         )
         with stub_registered():
             self._post(self._payload(base.EVENT_SUBSCRIPTION_CANCELED))

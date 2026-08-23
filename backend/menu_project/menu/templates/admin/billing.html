@@ -74,7 +74,15 @@
                                     {% endif %}
                                 </td>
                             </tr>
-                            {% if subscription.status == 'unpaid' %}
+                            {% if subscription.status == 'trialing' %}
+                            <tr>
+                                <th>손님 화면</th>
+                                <td style="color: var(--admin-text-secondary);">
+                                    지금은 정상으로 열려 있습니다. <strong>체험이 끝나면 닫히고</strong>, 등록하신
+                                    메뉴와 디자인은 그대로 남습니다. 계속 쓰시려면 끝나기 전에 연락 주세요.
+                                </td>
+                            </tr>
+                            {% elif subscription.status == 'unpaid' %}
                             <tr>
                                 <th>손님 화면</th>
                                 <td style="color: var(--admin-text-secondary);">

@@ -37,6 +37,11 @@ class KakaoPayCheckoutTests(TestCase):
     def setUp(self):
         self.restaurant = Restaurant.objects.create(name='달빛 이자카야', slug='moonlight')
         self.sub = self.restaurant.subscription
+        # 결제 경로는 체험이 끝난 뒤의 이야기다. 출발점을 미결제로 못박지 않으면
+        # '결제에 실패했는데도 활성화됐는가' 를 확인할 수 없다.
+        self.sub.status = 'unpaid'
+        self.sub.current_period_end = None
+        self.sub.save()
         self.p = KakaoPayProvider()
 
     def test_ready_sends_the_documented_payload(self):
