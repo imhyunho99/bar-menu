@@ -240,8 +240,25 @@ STATICFILES_DIRS = [
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # WhiteNoise 설정 (프로덕션 정적 파일 서빙)
+#
+# STATICFILES_STORAGE 로 지정하면 안 된다. 그 설정은 Django 4.2 에서 폐기되고
+# 5.1 에서 제거됐다 — 제거된 설정은 에러를 내지 않고 그냥 무시된다. 그래서
+# 해싱이 꺼진 채로 배포가 초록불이었고, 파일 이름이 그대로인데 응답에는
+# cache-control: max-age=2592000(30일) 이 붙어 나갔다. CSS 를 고쳐도 사장님
+# 브라우저는 최대 30일 동안 옛 화면을 본다. 2026-08-23 에 실제로 그 상태를
+# 만났다.
+#
+# Manifest 저장소는 파일 이름에 내용 해시를 붙인다(admin.a1b2c3d4.css).
+# 내용이 바뀌면 이름이 바뀌므로 캐시가 길어도 배포가 즉시 보인다.
 if not DEBUG:
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
 
 # Media files (User uploaded files)
 MEDIA_URL = '/media/'
