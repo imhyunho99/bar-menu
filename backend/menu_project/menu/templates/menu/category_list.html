@@ -98,7 +98,9 @@
                         <div class="category-item">
                             {% if sub_category.category_image %}
                                 <!-- 이미지가 있는 경우: 이미지만 표시 -->
-                                <img src="{{ sub_category.category_image.url }}" alt="{{ sub_category.name }}" class="category-only-image">
+                                <img src="{{ sub_category.category_image.url }}" alt="{{ sub_category.name }}" class="category-only-image"
+                                     width="{{ sub_category.category_image_width|default_if_none:"" }}" height="{{ sub_category.category_image_height|default_if_none:"" }}"
+                                     loading="lazy" decoding="async">
                             {% else %}
                                 <!-- 이미지가 없는 경우: 텍스트 표시 (클릭 가능) -->
                                 <a href="{% url 'menu:menu_list' request.restaurant.slug sub_category.id %}" class="category-content">

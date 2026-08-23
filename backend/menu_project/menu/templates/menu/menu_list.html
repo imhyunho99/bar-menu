@@ -229,7 +229,9 @@
                         {% if item.display_mode == 'combined' and item.menu_image %}
                             <!-- combined 모드: 좌측 이미지 + 우측 텍스트 -->
                             <div class="menu-combined-image"{% if item.click_expand %} data-expand="true" data-expand-src="{{ item.menu_image.url }}" data-expand-alt="{{ item.name }}" data-expand-style="{{ item.lightbox_style }}" data-expand-opacity="{{ item.lightbox_opacity|default:35 }}"{% endif %}>
-                                <img src="{{ item.menu_image.url }}" alt="{{ item.name }}" loading="lazy" decoding="async">
+                                <img src="{{ item.menu_image.url }}" alt="{{ item.name }}"
+                                     width="{{ item.menu_image_width|default_if_none:"" }}" height="{{ item.menu_image_height|default_if_none:"" }}"
+                                     loading="lazy" decoding="async">
                             </div>
                             <div class="menu-combined-text">
                                 <div class="menu-title">
@@ -249,7 +251,9 @@
 
                         {% elif item.display_mode == 'image_only' and item.menu_image %}
                             <!-- image_only 모드 -->
-                            <img src="{{ item.menu_image.url }}" alt="{{ item.name }}" class="menu-only-image" loading="lazy" decoding="async"{% if item.click_expand %} data-expand="true" data-expand-src="{{ item.menu_image.url }}" data-expand-alt="{{ item.name }}" data-expand-style="{{ item.lightbox_style }}" data-expand-opacity="{{ item.lightbox_opacity|default:35 }}"{% endif %}>
+                            <img src="{{ item.menu_image.url }}" alt="{{ item.name }}" class="menu-only-image"
+                                     width="{{ item.menu_image_width|default_if_none:"" }}" height="{{ item.menu_image_height|default_if_none:"" }}"
+                                     loading="lazy" decoding="async"{% if item.click_expand %} data-expand="true" data-expand-src="{{ item.menu_image.url }}" data-expand-alt="{{ item.name }}" data-expand-style="{{ item.lightbox_style }}" data-expand-opacity="{{ item.lightbox_opacity|default:35 }}"{% endif %}>
 
                         {% elif item.display_mode == 'text_only' %}
                             <!-- text_only 모드 (이미지 무시) -->
@@ -275,7 +279,9 @@
                         {% else %}
                             <!-- auto 모드 (기존과 동일한 로직) -->
                             {% if item.menu_image %}
-                                <img src="{{ item.menu_image.url }}" alt="{{ item.name }}" class="menu-only-image" loading="lazy" decoding="async"{% if item.click_expand %} data-expand="true" data-expand-src="{{ item.menu_image.url }}" data-expand-alt="{{ item.name }}" data-expand-style="{{ item.lightbox_style }}" data-expand-opacity="{{ item.lightbox_opacity|default:35 }}"{% endif %}>
+                                <img src="{{ item.menu_image.url }}" alt="{{ item.name }}" class="menu-only-image"
+                                     width="{{ item.menu_image_width|default_if_none:"" }}" height="{{ item.menu_image_height|default_if_none:"" }}"
+                                     loading="lazy" decoding="async"{% if item.click_expand %} data-expand="true" data-expand-src="{{ item.menu_image.url }}" data-expand-alt="{{ item.name }}" data-expand-style="{{ item.lightbox_style }}" data-expand-opacity="{{ item.lightbox_opacity|default:35 }}"{% endif %}>
                             {% else %}
                                 <div class="menu-content">
                                     <div class="menu-info">

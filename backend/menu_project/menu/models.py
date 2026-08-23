@@ -6,7 +6,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .utils import optimize_image
+from .utils import optimize_image, record_image_dimensions
 
 class Restaurant(models.Model):
     """
@@ -93,8 +93,19 @@ class SiteSettings(models.Model):
         blank=True,
         null=True,
         verbose_name="인트로 이미지",
-        help_text="메인 페이지에 표시될 인트로 이미지"
+        help_text="메인 페이지에 표시될 인트로 이미지",
     )
+
+    # 브라우저가 이미지 도착 전에 자리를 잡으려면 크기를 알아야 한다. 없으면
+    # 0 으로 잡아 뒀다가 도착하는 순간 아래 내용을 밀어낸다(CLS 0.777).
+    #
+    # Django 의 width_field/height_field 는 쓰지 않는다. 그 방식은 값이 비어
+    # 있는 동안 **행을 읽을 때마다 파일을 연다**(post_init). 메뉴 50개 페이지면
+    # 요청당 50번이고, 사라진 파일이 하나 있으면 목록 전체가 죽는다. 배포 직후
+    # 백필 전까지가 정확히 그 구간이다. 그래서 save() 에서 한 번 계산해 넣고
+    # 읽을 때는 컬럼만 본다.
+    intro_image_width = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    intro_image_height = models.PositiveIntegerField(null=True, blank=True, editable=False)
     intro_video = models.FileField(
         upload_to='site_videos/',
         blank=True,
@@ -119,8 +130,19 @@ class SiteSettings(models.Model):
         blank=True,
         null=True,
         verbose_name="사이드 이미지",
-        help_text="사이드 메뉴 등에 사용될 이미지"
+        help_text="사이드 메뉴 등에 사용될 이미지",
     )
+
+    # 브라우저가 이미지 도착 전에 자리를 잡으려면 크기를 알아야 한다. 없으면
+    # 0 으로 잡아 뒀다가 도착하는 순간 아래 내용을 밀어낸다(CLS 0.777).
+    #
+    # Django 의 width_field/height_field 는 쓰지 않는다. 그 방식은 값이 비어
+    # 있는 동안 **행을 읽을 때마다 파일을 연다**(post_init). 메뉴 50개 페이지면
+    # 요청당 50번이고, 사라진 파일이 하나 있으면 목록 전체가 죽는다. 배포 직후
+    # 백필 전까지가 정확히 그 구간이다. 그래서 save() 에서 한 번 계산해 넣고
+    # 읽을 때는 컬럼만 본다.
+    side_image_width = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    side_image_height = models.PositiveIntegerField(null=True, blank=True, editable=False)
     
     # WiFi 및 결제 설정
     wifi_ssid = models.CharField(max_length=100, blank=True, null=True, verbose_name="WiFi SSID")
@@ -264,8 +286,10 @@ class SiteSettings(models.Model):
             self.logo_image = optimize_image(self.logo_image, max_width=192, quality=90)
         if self.intro_image:
             self.intro_image = optimize_image(self.intro_image, max_width=1200, quality=85)
+            record_image_dimensions(self, "intro_image")
         if self.side_image:
             self.side_image = optimize_image(self.side_image, max_width=800, quality=85)
+            record_image_dimensions(self, "side_image")
         super().save(*args, **kwargs)
 
 class Category(models.Model):
@@ -296,8 +320,19 @@ class Category(models.Model):
         upload_to='category_images/',
         blank=True,
         null=True,
-        verbose_name="카테고리 이미지"
+        verbose_name="카테고리 이미지",
     )
+
+    # 브라우저가 이미지 도착 전에 자리를 잡으려면 크기를 알아야 한다. 없으면
+    # 0 으로 잡아 뒀다가 도착하는 순간 아래 내용을 밀어낸다(CLS 0.777).
+    #
+    # Django 의 width_field/height_field 는 쓰지 않는다. 그 방식은 값이 비어
+    # 있는 동안 **행을 읽을 때마다 파일을 연다**(post_init). 메뉴 50개 페이지면
+    # 요청당 50번이고, 사라진 파일이 하나 있으면 목록 전체가 죽는다. 배포 직후
+    # 백필 전까지가 정확히 그 구간이다. 그래서 save() 에서 한 번 계산해 넣고
+    # 읽을 때는 컬럼만 본다.
+    category_image_width = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    category_image_height = models.PositiveIntegerField(null=True, blank=True, editable=False)
     # 사이드 이미지 숨김 여부
     hide_side_image = models.BooleanField(
         default=False,
@@ -319,6 +354,7 @@ class Category(models.Model):
     def save(self, *args, **kwargs):
         if self.category_image:
             self.category_image = optimize_image(self.category_image, max_width=600, quality=80)
+            record_image_dimensions(self, "category_image")
         super().save(*args, **kwargs)
 
 class MenuItem(models.Model):
@@ -372,8 +408,19 @@ class MenuItem(models.Model):
         upload_to='menu_images/',
         blank=True,
         null=True,
-        verbose_name="메뉴 이미지"
+        verbose_name="메뉴 이미지",
     )
+
+    # 브라우저가 이미지 도착 전에 자리를 잡으려면 크기를 알아야 한다. 없으면
+    # 0 으로 잡아 뒀다가 도착하는 순간 아래 내용을 밀어낸다(CLS 0.777).
+    #
+    # Django 의 width_field/height_field 는 쓰지 않는다. 그 방식은 값이 비어
+    # 있는 동안 **행을 읽을 때마다 파일을 연다**(post_init). 메뉴 50개 페이지면
+    # 요청당 50번이고, 사라진 파일이 하나 있으면 목록 전체가 죽는다. 배포 직후
+    # 백필 전까지가 정확히 그 구간이다. 그래서 save() 에서 한 번 계산해 넣고
+    # 읽을 때는 컬럼만 본다.
+    menu_image_width = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    menu_image_height = models.PositiveIntegerField(null=True, blank=True, editable=False)
 
     # 7. 우선순위
     priority = models.FloatField(
@@ -455,6 +502,7 @@ class MenuItem(models.Model):
     def save(self, *args, **kwargs):
         if self.menu_image:
             self.menu_image = optimize_image(self.menu_image, max_width=800, quality=80)
+            record_image_dimensions(self, "menu_image")
         if self.detail_image:
             self.detail_image = optimize_image(self.detail_image, max_width=1200, quality=85)
         super().save(*args, **kwargs)
