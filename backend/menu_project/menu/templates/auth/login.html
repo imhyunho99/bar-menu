@@ -5,65 +5,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>로그인 — bar-menu</title>
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="{% static 'css/brand.css' %}">
     <style>
-        /* 랜딩(frontend/src/styles/marketing.css)과 같은 팔레트 */
-        :root { --ink: #0a0a0b; --ash: #6c6c74; --line: #e6e6e9; --amber: #a6650b; }
+        /* 사장님이 매일 지나는 입구다. 랜딩에서 가입하고 여기로 돌아오므로
+           두 화면이 같은 제품으로 읽혀야 한다. 값은 brand.css 가 들고 있고
+           여기서는 이 화면만의 배치를 정한다. */
         * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
         body {
-            margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-            background: #fff; color: var(--ink); padding: 24px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
-            word-break: keep-all; -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
         }
+        a { color: inherit; }
+
         .box { width: 100%; max-width: 22rem; }
-        h1 { font-size: 24px; font-weight: 800; letter-spacing: -.04em; margin: 0 0 8px; }
-        .sub { font-size: 14px; color: var(--ash); margin: 0 0 32px; line-height: 1.7; }
-        label { display: block; margin-bottom: 16px; }
-        label span { display: block; font-size: 11.5px; font-weight: 600; margin-bottom: 6px; }
-        input {
-            width: 100%; padding: 13px 16px; font-size: 15px; font-family: inherit;
-            border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink);
+
+        /* 랜딩의 모노 대문자 눈썹. 로고 대신 이걸 쓰면 화면이 조용해지고
+           세 화면(랜딩·로그인·관리)이 같은 장치로 묶인다. */
+        .eyebrow {
+            display: block;
+            margin-bottom: 22px;
+            color: var(--amber);
         }
-        input:focus { outline: none; border-color: var(--ink); }
-        button {
-            width: 100%; margin-top: 8px; padding: 14px; font-size: 15px; font-weight: 700;
-            font-family: inherit; color: #fff; background: var(--ink);
-            border: 0; border-radius: 10px; cursor: pointer;
+
+        .sub {
+            margin: 0 0 32px;
+            color: var(--ash);
         }
-        button:hover { background: var(--ash); }
-        .err {
-            font-size: 13px; color: #b3261e; background: #fdf3f2; border: 1px solid #f5d5d2;
-            border-radius: 8px; padding: 11px 14px; margin-bottom: 20px; line-height: 1.6;
+
+        .submit { width: 100%; margin-top: 4px; padding: 15px 28px; }
+
+        .foot {
+            margin-top: 28px;
+            padding-top: 20px;
+            border-top: 1px solid var(--line);
+            color: var(--ash);
+            text-align: center;
         }
-        .foot { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line);
-                font-size: 13px; color: var(--ash); text-align: center; }
-        .foot a { color: var(--ink); font-weight: 600; }
-        :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+        .foot a { font-weight: 600; color: var(--ink); }
     </style>
 </head>
-<body>
+<body class="brand">
     <div class="box">
+        <span class="eyebrow en">bar-menu</span>
         <h1>로그인</h1>
-        <p class="sub">매장 주소를 몰라도 됩니다. 계정으로 찾아 드립니다.</p>
+        <p class="sub sm">매장 주소를 몰라도 됩니다. 계정으로 찾아 드립니다.</p>
 
         {% if messages %}
-            {% for message in messages %}<div class="err">{{ message }}</div>{% endfor %}
+            {% for message in messages %}
+                <div class="notice notice-error">{{ message }}</div>
+            {% endfor %}
         {% endif %}
 
         <form method="post">
             {% csrf_token %}
-            <label>
-                <span>이메일</span>
-                <input type="email" name="email" value="{{ email }}" autocomplete="username" required autofocus>
-            </label>
-            <label>
-                <span>비밀번호</span>
-                <input type="password" name="password" autocomplete="current-password" required>
-            </label>
-            <button type="submit">로그인</button>
+            <div class="field">
+                <label for="email">이메일</label>
+                <input type="email" id="email" name="email" value="{{ email }}"
+                       autocomplete="username" required autofocus>
+            </div>
+            <div class="field">
+                <label for="password">비밀번호</label>
+                <input type="password" id="password" name="password"
+                       autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="btn btn-solid submit">로그인</button>
         </form>
 
-        <p class="foot">아직 계정이 없으신가요? <a href="{% url 'signup' %}">무료로 시작하기</a></p>
+        <p class="foot cap">
+            아직 매장이 없으신가요? <a href="{% url 'signup' %}">매장 만들기</a>
+        </p>
     </div>
 </body>
 </html>

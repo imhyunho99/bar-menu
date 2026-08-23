@@ -11,224 +11,285 @@
 
 {% block extrastyle %}
 {{ block.super }}
+<link rel="stylesheet" href="{% static 'css/brand.css' %}">
 <style>
-/* ─────────────────────────────────────────────
-   Django Admin 글로벌 네비게이션 사이드바 스타일 오버라이드
-   워크스페이스 디자인 언어와 통일
-   ───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────
+   Django admin 을 랜딩과 같은 언어로 칠한다.
 
-/* 좌측 사이드바 전체 배경 부드럽게 */
+   사장님이 실제로 쓰는 화면이다 — 메뉴판 레이아웃 빌더와 디자인 설정이
+   여기에만 있다. 그런데 가입은 흰 갤러리 톤 랜딩에서 하고 여기로 넘어오면
+   전혀 다른 화면이 나왔다.
+
+   Django 5 의 admin 은 CSS 변수로 테마가 되므로 !important 로 싸우지 않고
+   변수를 갈아끼운다. 예전 오버라이드는 슬레이트 색을 !important 로 덧칠해서
+   Django 가 주는 responsive.css 와도 부딪혔다.
+   ───────────────────────────────────────────────────────────── */
+
+html {
+    --primary: var(--ink);
+    --secondary: var(--ink);
+    --accent: var(--amber);
+    --primary-fg: #fff;
+
+    --body-fg: var(--ink);
+    --body-bg: #fff;
+    --body-quiet-color: var(--ash);
+    --body-loud-color: var(--ink);
+
+    --header-color: #fff;
+    --header-branding-color: #fff;
+    --header-bg: var(--ink);
+    --header-link-color: #fff;
+
+    --breadcrumbs-fg: var(--ash);
+    --breadcrumbs-link-fg: var(--ink);
+    --breadcrumbs-bg: var(--paper);
+
+    --link-fg: var(--ink);
+    --link-hover-color: var(--amber);
+    --link-selected-fg: var(--amber);
+
+    --hairline-color: var(--line);
+    --border-color: var(--line);
+
+    --error-fg: var(--danger);
+    --message-success-bg: #f2f8f5;
+    --message-warning-bg: #fdf8ef;
+    --message-error-bg: var(--danger-bg);
+
+    --darkened-bg: var(--paper);
+    --selected-bg: var(--paper);
+    --selected-row: #fdf8ef;
+
+    --button-fg: #fff;
+    --button-bg: var(--ink);
+    --button-hover-bg: var(--ash);
+    --default-button-bg: var(--ink);
+    --default-button-hover-bg: var(--ash);
+    --close-button-bg: var(--ash);
+    --close-button-hover-bg: var(--ink);
+    --delete-button-bg: var(--danger);
+    --delete-button-hover-bg: #8f1e17;
+
+    --font-family-primary: var(--font-body);
+    --font-family-monospace: var(--font-mono);
+}
+
+/* 어둠 테마도 같은 브랜드로 뒤집는다. 헤더의 토글이 살아 있으므로
+   손대지 않으면 누르는 순간 Django 기본 파랑으로 돌아간다. */
+@media (prefers-color-scheme: dark) {
+    html[data-theme="auto"] {
+        --body-bg: #0a0a0b;
+        --body-fg: #f2f2f4;
+        --body-quiet-color: #9a9aa2;
+        --header-bg: #141416;
+        --breadcrumbs-bg: #141416;
+        --darkened-bg: #141416;
+        --selected-bg: #1b1b1e;
+        --hairline-color: #2a2a2e;
+        --border-color: #2a2a2e;
+        --link-fg: #f2f2f4;
+        --button-bg: #f2f2f4;
+        --button-fg: #0a0a0b;
+        --default-button-bg: #f2f2f4;
+    }
+}
+html[data-theme="dark"] {
+    --body-bg: #0a0a0b;
+    --body-fg: #f2f2f4;
+    --body-quiet-color: #9a9aa2;
+    --header-bg: #141416;
+    --breadcrumbs-bg: #141416;
+    --darkened-bg: #141416;
+    --selected-bg: #1b1b1e;
+    --hairline-color: #2a2a2e;
+    --border-color: #2a2a2e;
+    --link-fg: #f2f2f4;
+    --button-bg: #f2f2f4;
+    --button-fg: #0a0a0b;
+    --default-button-bg: #f2f2f4;
+}
+
+body {
+    font-family: var(--font-body);
+    word-break: keep-all;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ─── 헤더 ─────────────────────────────────────────────── */
+
+#header {
+    padding: 14px 24px;
+    border-bottom: 0;
+}
+#branding h1,
+#branding h1 a {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+}
+
+/* ─── 브레드크럼 ────────────────────────────────────────── */
+
+div.breadcrumbs {
+    padding: 11px 24px;
+    font-size: 12.5px;
+    border-bottom: 1px solid var(--line);
+}
+
+/* ─── 사이드바 ─────────────────────────────────────────── */
+
 #nav-sidebar {
-    background: #f8fafc !important;
-    border-right: 1px solid #e2e8f0 !important;
-    box-shadow: 1px 0 4px rgba(0,0,0,0.03) !important;
+    background: var(--paper);
+    border-right: 1px solid var(--line);
 }
-
-/* 사이드바 내부 모듈 */
-#nav-sidebar .module {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    margin: 0 !important;
-    padding: 0 8px !important;
-}
-
-/* 앱 그룹 제목 */
 #nav-sidebar .module caption,
 #nav-sidebar .module h2 {
-    font-size: 0.7rem !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.06em !important;
-    color: #94a3b8 !important;
-    padding: 16px 12px 6px !important;
-    background: transparent !important;
+    /* 라틴 라벨은 모노 대문자. 랜딩에서 가장 특징적인 장치이고,
+       구획 제목에 그대로 옮겨 세 화면을 하나로 읽히게 한다. */
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ash);
+    background: transparent;
+    padding: 18px 14px 7px;
 }
-
-/* 사이드바 링크 항목들 */
-#nav-sidebar .module th,
-#nav-sidebar .module td {
-    padding: 0 !important;
-    border: none !important;
-}
-
 #nav-sidebar .module th a,
 #nav-sidebar .module td a {
-    display: block !important;
-    padding: 8px 14px !important;
-    margin: 2px 4px !important;
-    border-radius: 6px !important;
-    color: #475569 !important;
-    font-weight: 600 !important;
-    font-size: 0.85rem !important;
-    text-decoration: none !important;
-    transition: all 0.15s ease !important;
+    display: block;
+    padding: 9px 14px;
+    margin: 1px 6px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    color: var(--body-fg);
 }
-
 #nav-sidebar .module th a:hover,
 #nav-sidebar .module td a:hover {
-    background: #e2e8f0 !important;
-    color: #1e293b !important;
+    background: rgba(10, 10, 11, 0.05);
+}
+#nav-sidebar .current-model a {
+    background: var(--ink);
+    color: #fff;
 }
 
-#nav-sidebar .module th a.current,
-#nav-sidebar .module td a.current {
-    background: #eff6ff !important;
-    color: #2563eb !important;
-    border-left: 3px solid #3b82f6 !important;
+/* ─── 면 ──────────────────────────────────────────────
+   그림자 대신 선. 랜딩의 절제를 따른다.
+   ------------------------------------------------- */
+
+.module,
+.inline-group,
+#changelist,
+.dashboard .module {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: none;
+}
+.module h2,
+.module caption,
+.inline-group h2 {
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    border-bottom: 1px solid var(--line);
 }
 
-/* 사이드바 필터 (검색 입력) */
-#nav-sidebar #nav-filter {
-    margin: 8px !important;
-    padding: 8px 12px !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 8px !important;
-    font-size: 0.85rem !important;
-    background: #ffffff !important;
-    outline: none !important;
-    width: calc(100% - 16px) !important;
-    box-sizing: border-box !important;
+/* ─── 버튼 ────────────────────────────────────────────
+   알약. 랜딩·사장님 화면과 형태를 맞춘다.
+   ------------------------------------------------- */
+
+.button,
+input[type="submit"],
+input[type="button"],
+.submit-row input,
+a.button {
+    border-radius: var(--pill);
+    padding: 11px 22px;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    box-shadow: none;
+}
+.submit-row { border-radius: var(--radius); background: var(--paper); border: 1px solid var(--line); }
+
+/* ─── 입력 ────────────────────────────────────────── */
+
+input[type="text"], input[type="password"], input[type="email"],
+input[type="url"], input[type="number"], input[type="tel"],
+textarea, select, .vTextField {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 14px;
+}
+input:focus, textarea:focus, select:focus, .vTextField:focus {
+    outline: none;
+    border-color: var(--ink);
 }
 
-#nav-sidebar #nav-filter:focus {
-    border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 2px rgba(59,130,246,0.15) !important;
-}
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 
-/* 사이드바 테이블 레이아웃 */
-#nav-sidebar table {
-    border-collapse: separate !important;
-    border-spacing: 0 !important;
-    width: 100% !important;
-}
+/* ─── 모바일 ──────────────────────────────────────────
+   여기가 없어서 사장님이 가게에서 폰으로 레이아웃 빌더를 못 썼다.
+   Django 가 주는 responsive.css 위에 브랜드 값만 얹는다.
+   ------------------------------------------------- */
 
-#nav-sidebar table tr {
-    background: transparent !important;
-}
+@media (max-width: 767px) {
+    #header { padding: 12px 16px; }
+    div.breadcrumbs { padding: 10px 16px; }
+    #content { padding: 16px; }
 
-/* ─────────────────────────────────────────────
-   상단 헤더 소프트닝
-   ───────────────────────────────────────────── */
-#header {
-    background: #1e293b !important;
-    border-bottom: 1px solid #334155 !important;
-}
+    /* 폼 라벨과 입력을 위아래로. 좁은 화면에서 나란히 두면 입력칸이
+       손가락보다 좁아진다. */
+    .form-row > div,
+    .aligned label {
+        display: block;
+        width: auto;
+        float: none;
+        padding: 0 0 6px;
+    }
+    .aligned input, .aligned select, .aligned textarea,
+    input[type="text"], input[type="password"], input[type="email"],
+    input[type="url"], input[type="number"], textarea, select {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        /* iOS 는 16px 미만 입력에 자동으로 확대한다. 한 칸 칠 때마다
+           화면이 튀면 폰에서 못 쓴다. */
+        font-size: 16px;
+    }
 
-#header a:link, #header a:visited {
-    color: #e2e8f0 !important;
-}
+    /* 저장 버튼 줄은 화면 아래 고정. 긴 폼에서 끝까지 스크롤해야
+       저장할 수 있으면 중간에 포기한다. */
+    .submit-row {
+        position: sticky;
+        bottom: 0;
+        z-index: 20;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 12px;
+        margin: 16px -16px -16px;
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+        border-bottom: 0;
+    }
+    .submit-row input, .submit-row a { flex: 1 1 auto; text-align: center; }
 
-#branding h1 {
-    font-weight: 700 !important;
-    font-size: 1.1rem !important;
-}
+    /* 목록 표는 가로로 넘긴다. 억지로 줄이면 글자가 뭉개진다. */
+    #changelist .results { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-/* 브레드크럼 */
-div.breadcrumbs {
-    background: #f1f5f9 !important;
-    border-bottom: 1px solid #e2e8f0 !important;
-    padding: 10px 40px !important;
-    font-size: 0.85rem !important;
-    color: #64748b !important;
-}
-
-div.breadcrumbs a {
-    color: #3b82f6 !important;
-}
-
-/* ─────────────────────────────────────────────
-   컨텐츠 영역 기본 소프트닝
-   ───────────────────────────────────────────── */
-#content {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-}
-
-/* 대시보드 앱 목록 모듈 */
-#content-main .app-menu_project .module,
-#content-main .module {
-    border-radius: 8px !important;
-    border: 1px solid #e2e8f0 !important;
-    overflow: hidden !important;
-}
-
-#content-main .module caption,
-#content-main .module h2 {
-    background: #f8fafc !important;
-    color: #334155 !important;
-    font-weight: 700 !important;
-    font-size: 0.85rem !important;
-    border-bottom: 1px solid #e2e8f0 !important;
-}
-
-/* 인덱스 페이지 모델 링크들 */
-#content-main .module th a {
-    color: #3b82f6 !important;
-    font-weight: 600 !important;
-}
-
-#content-main .module th a:hover {
-    color: #2563eb !important;
-}
-
-/* 최근 활동 섹션 */
-#recent-actions-module {
-    border-radius: 8px !important;
-    border: 1px solid #e2e8f0 !important;
-}
-
-/* 토글 사이드바 버튼 */
-#toggle-nav-sidebar {
-    background: #f1f5f9 !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 4px !important;
-    margin: 8px !important;
-}
-
-/* 폼 요소 및 버튼 디자인 개선 (딱딱한 기본 디자인 해제) */
-input[type="text"], input[type="password"], input[type="email"], input[type="number"], select, textarea {
-    border: 1px solid #cbd5e1 !important;
-    border-radius: 6px !important;
-    padding: 6px 12px !important;
-    font-size: 0.85rem !important;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.02) !important;
-    transition: all 0.15s ease !important;
-}
-
-input[type="text"]:focus, select:focus, textarea:focus {
-    border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
-    outline: none !important;
-}
-
-.button, input[type="submit"], input[type="button"], .submit-row a.deletelink {
-    border: none !important;
-    border-radius: 6px !important;
-    padding: 8px 16px !important;
-    font-size: 0.85rem !important;
-    font-weight: 600 !important;
-    cursor: pointer !important;
-    transition: all 0.15s ease !important;
-}
-
-.button.default, input[type="submit"].default {
-    background: #2563eb !important;
-    color: #ffffff !important;
-}
-
-.button.default:hover, input[type="submit"].default:hover {
-    background: #1d4ed8 !important;
-}
-
-.button, input[type="submit"], input[type="button"] {
-    background: #f1f5f9 !important;
-    color: #475569 !important;
-    border: 1px solid #e2e8f0 !important;
-}
-
-.button:hover, input[type="submit"]:hover, input[type="button"]:hover {
-    background: #e2e8f0 !important;
-    color: #1e293b !important;
+    /* 레이아웃 빌더 — 캔버스와 인스펙터를 위아래로 쌓는다 */
+    .layout-widget-wrapper .builder-canvas-area { flex-direction: column; }
+    .layout-widget-wrapper .preview-container { min-width: 0; width: 100%; }
+    .layout-widget-wrapper .inspector-sidebar { width: 100%; }
 }
 </style>
 {% endblock %}

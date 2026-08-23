@@ -7,7 +7,7 @@
     <title>관리자 로그인 - {{ request.restaurant.name|default:"bar-menu" }}</title>
     <link rel="stylesheet" href="{% static 'css/admin.css' %}">
 </head>
-<body>
+<body class="brand">
     <div class="admin-login-container">
         <div class="admin-login-form">
             <h2>{{ request.restaurant.name|default:"bar-menu" }} Admin Login</h2>

@@ -1,0 +1,264 @@
+@import url('pretendard.css');
+
+/* ─────────────────────────────────────────────────────────────
+   bar-menu 브랜드 토큰
+
+   랜딩(frontend/src/styles/marketing.css)의 디자인 언어를 사장님 화면으로
+   가져온다. 새로 만드는 게 아니라 옮기는 것이므로 값은 그쪽과 글자 그대로
+   같아야 한다 — 하나라도 어긋나면 가입 화면과 관리 화면이 다른 제품처럼
+   보이고, 그건 사장님이 "여기가 맞나" 하고 멈추는 지점이 된다.
+
+   가져오기 전 팔레트가 셋으로 갈려 있었다:
+     랜딩          #0a0a0b / #6c6c74 / #e6e6e9 / #a6650b  (흰 갤러리)
+     사장님 관리화면  #0f172a 슬레이트 다크 + 파랑 #3b82f6
+     Django admin  #f8fafc 슬레이트 라이트 + Django 기본값
+
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  --ink: #0a0a0b;      /* 본문·제목. 검정이 아니라 아주 어두운 회색이다 */
+  --ash: #6c6c74;      /* 보조 설명. 본문과 충분히 벌어져 위계가 생긴다 */
+  --line: #e6e6e9;     /* 실선. 그림자 대신 선으로 면을 나눈다 */
+  --amber: #a6650b;    /* 유일한 강조색. 아껴 쓸수록 강해진다 */
+  --paper: #fbfbfc;    /* 흰 배경 위에 얹는 면 */
+  --white: #fff;
+
+  /* 상태색. 랜딩에는 없지만 관리 화면에는 필요하다. 채도를 낮춰
+     amber 옆에 놓아도 튀지 않게 맞췄다. */
+  --danger: #b3261e;
+  --danger-bg: #fdf3f2;
+  --danger-line: #f5d5d2;
+  --ok: #1f6d4a;
+
+  --font-body: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+               'Apple SD Gothic Neo', system-ui, sans-serif;
+  /* 라틴·숫자 라벨 전용. 한글에는 쓰지 않는다 — 글리프가 없어 폴백되면서
+     자간만 남아 흩어져 보인다. 랜딩의 원칙을 그대로 가져왔다. */
+  --font-mono: ui-monospace, 'SF Mono', 'IBM Plex Mono', Menlo, monospace;
+
+  /* 디스플레이 타입 — 프리텐다드 800, 자간을 크게 조인다 */
+  --dls: -0.048em;
+  --dlh: 1.07;
+
+  --radius: 12px;
+  --pill: 999px;
+}
+
+/* ─── 바탕 ───────────────────────────────────────────────── */
+
+.brand,
+body.brand {
+  background: var(--white);
+  color: var(--ink);
+  font-family: var(--font-body);
+  word-break: keep-all;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.brand ::selection {
+  background: var(--ink);
+  color: var(--white);
+}
+
+/* 키보드로 다니는 사람에게 지금 어디인지 보여준다. 마우스 클릭에는 안 뜬다. */
+.brand :focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* ─── 작은 글씨 체계 (랜딩과 같은 6단계) ───────────────────
+   10 / 11.5 / 12.5 / 14 / 16 / 17
+   ------------------------------------------------------- */
+
+/* 라틴·숫자 눈썹 라벨. 랜딩에서 가장 특징적인 장치이고, 관리 화면의
+   구획 제목에 그대로 옮긴다 — 세 화면을 하나로 읽히게 하는 실이다. */
+.brand .en {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--ash);
+}
+
+.brand .cap { font-size: 12.5px; line-height: 1.65; letter-spacing: -0.005em; }
+.brand .sm  { font-size: 14px;   line-height: 1.75; letter-spacing: -0.008em; }
+.brand .bd  { font-size: 16px;   line-height: 1.8;  letter-spacing: -0.01em; }
+
+/* 금액·수량은 자릿수가 흔들리면 표에서 눈이 튄다 */
+.brand .num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+.brand h1,
+.brand .h1 {
+  font-size: clamp(24px, 5vw, 32px);
+  font-weight: 800;
+  letter-spacing: var(--dls);
+  line-height: var(--dlh);
+  margin: 0 0 10px;
+}
+
+.brand h2,
+.brand .h2 {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0 0 8px;
+}
+
+/* ─── 버튼 ───────────────────────────────────────────────
+   알약 모양은 랜딩의 형태 언어다. 관리 화면이 사각 버튼을 쓰면
+   같은 제품으로 안 읽힌다.
+   ------------------------------------------------------- */
+
+.brand .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: var(--pill);
+  padding: 13px 26px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.25s, border-color 0.25s, color 0.25s;
+}
+
+.brand .btn-solid {
+  background: var(--ink);
+  color: var(--white);
+  border: 1px solid var(--ink);
+}
+.brand .btn-solid:hover { background: var(--ash); border-color: var(--ash); }
+
+.brand .btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.brand .btn-ghost:hover { border-color: var(--ink); }
+
+.brand .btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger-line);
+}
+.brand .btn-danger:hover { background: var(--danger-bg); }
+
+.brand .btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+
+/* ─── 입력 ───────────────────────────────────────────── */
+
+.brand input[type='text'],
+.brand input[type='email'],
+.brand input[type='password'],
+.brand input[type='tel'],
+.brand input[type='number'],
+.brand input[type='url'],
+.brand input[type='file'],
+.brand select,
+.brand textarea {
+  width: 100%;
+  padding: 13px 15px;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  transition: border-color 0.2s;
+}
+
+.brand input:focus,
+.brand select:focus,
+.brand textarea:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+
+.brand input::placeholder,
+.brand textarea::placeholder { color: #b6b6bd; }
+
+.brand label { display: block; }
+
+.brand .field { margin-bottom: 20px; }
+.brand .field > label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+
+.brand .hint {
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--ash);
+}
+
+/* ─── 면 ─────────────────────────────────────────────────
+   그림자를 쓰지 않는다. 랜딩이 선으로만 면을 나누고, 그 절제가
+   갤러리 같은 인상을 만든다.
+   ------------------------------------------------------- */
+
+.brand .card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px;
+}
+
+.brand .card-quiet { background: var(--paper); }
+
+.brand .notice {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 13px 16px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  margin-bottom: 16px;
+}
+
+.brand .notice-error {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: var(--danger-line);
+}
+
+.brand .notice-accent {
+  border-left: 2px solid var(--amber);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+/* ─── 표 ─────────────────────────────────────────────── */
+
+.brand table { width: 100%; border-collapse: collapse; }
+.brand th,
+.brand td {
+  text-align: left;
+  padding: 13px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.brand th { font-weight: 600; color: var(--ash); font-size: 12.5px; }
+
+/* ─── 폭 ─────────────────────────────────────────────── */
+
+.brand .wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+@media (max-width: 640px) {
+  .brand .wrap { padding: 0 16px; }
+  .brand .btn { padding: 12px 20px; }
+  .brand .card { padding: 18px; }
+}

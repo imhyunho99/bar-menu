@@ -1,0 +1,239 @@
+- generic [active] [ref=f3e1]:
+  - link "메인 콘텐츠로 이동" [ref=f3e2] [cursor=pointer]:
+    - /url: "#content-start"
+  - generic [ref=f3e3]:
+    - banner [ref=f3e4]:
+      - heading [level=1] [ref=f3e6]:
+        - link "bar-menu 통합 관리 시스템" [ref=f3e7] [cursor=pointer]:
+          - /url: /admin/
+      - generic [ref=f3e8]:
+        - text: 환영합니다,
+        - strong [ref=f3e9]: e2e@barmenu.test
+        - text: .
+        - link "사이트 보기" [ref=f3e10] [cursor=pointer]:
+          - /url: /
+        - text: /
+        - link "비밀번호 변경" [ref=f3e11] [cursor=pointer]:
+          - /url: /admin/password_change/
+        - text: /
+        - button "로그아웃" [ref=f3e13] [cursor=pointer]
+        - button "테마 토글 (현재 테마:자동)" [ref=f3e14] [cursor=pointer]
+    - navigation "사용자 위치" [ref=f3e18]:
+      - generic [ref=f3e19]:
+        - link "홈" [ref=f3e20] [cursor=pointer]:
+          - /url: /admin/
+        - text: ›
+        - link "Menu" [ref=f3e21] [cursor=pointer]:
+          - /url: /admin/menu/
+        - text: ›
+        - link "사이트 설정" [ref=f3e22] [cursor=pointer]:
+          - /url: /admin/menu/sitesettings/
+        - text: › 사이트 설정 - 2026-08-23
+    - generic [ref=f3e23]:
+      - button "토글 메뉴" [ref=f3e24] [cursor=pointer]: «
+      - navigation "사이드바" [ref=f3e25]:
+        - searchbox "탐색 항목 필터링" [ref=f3e26]
+        - table [ref=f3e28]:
+          - caption [ref=f3e29]:
+            - link "Menu" [ref=f3e30] [cursor=pointer]:
+              - /url: /admin/menu/
+          - rowgroup [ref=f3e31]:
+            - row [ref=f3e32]:
+              - columnheader "모델 이름" [ref=f3e33]
+              - columnheader "링크 추가" [ref=f3e34]
+              - columnheader "변경 또는 표시 링크" [ref=f3e35]
+          - rowgroup [ref=f3e36]:
+            - row [ref=f3e37]:
+              - rowheader [ref=f3e38]:
+                - link "메뉴 카테고리" [ref=f3e39] [cursor=pointer]:
+                  - /url: /admin/menu/category/
+              - cell [ref=f3e40]:
+                - link "추가" [ref=f3e41] [cursor=pointer]:
+                  - /url: /admin/menu/category/add/
+            - row [ref=f3e42]:
+              - rowheader [ref=f3e43]:
+                - link "메뉴 항목" [ref=f3e44] [cursor=pointer]:
+                  - /url: /admin/menu/menuitem/
+              - cell [ref=f3e45]:
+                - link "추가" [ref=f3e46] [cursor=pointer]:
+                  - /url: /admin/menu/menuitem/add/
+            - row [ref=f3e47]:
+              - rowheader [ref=f3e48]:
+                - link "사이트 설정" [ref=f3e49] [cursor=pointer]:
+                  - /url: /admin/menu/sitesettings/
+              - cell [ref=f3e50]
+      - main [ref=f3e51]:
+        - generic [ref=f3e52]:
+          - heading "사이트 설정 변경" [level=1] [ref=f3e53]
+          - heading "사이트 설정 - 2026-08-23" [level=2] [ref=f3e54]
+          - generic [ref=f3e55]:
+            - list [ref=f3e56]:
+              - listitem [ref=f3e57]:
+                - link "히스토리" [ref=f3e58] [cursor=pointer]:
+                  - /url: /admin/menu/sitesettings/6/history/
+            - generic [ref=f3e60]:
+              - group [ref=f3e61]:
+                - heading "카드 레이아웃 커스터마이징 설정" [level=2] [ref=f3e62]
+                - generic [ref=f3e64]:
+                  - generic [ref=f3e65]:
+                    - generic [ref=f3e66]: "카테고리 카드 레이아웃 JSON:"
+                    - generic [ref=f3e68]:
+                      - generic [ref=f3e70]:
+                        - generic [ref=f3e71]: 카테고리 이미지
+                        - generic [ref=f3e73]: 카테고리명 (한글)
+                        - generic [ref=f3e75]: 카테고리명 (영문)
+                      - generic [ref=f3e77]:
+                        - generic [ref=f3e78]:
+                          - heading "선택된 요소 없음" [level=4] [ref=f3e79]
+                          - generic [ref=f3e80]: 화면의 박스를 마우스로 조절하거나 아래 리스트에서 요소를 클릭해 선택해 주세요.
+                        - generic [ref=f3e81]:
+                          - heading "스타일 설정" [level=4] [ref=f3e82]
+                          - generic [ref=f3e83]: 편집할 요소를 선택해 주세요.
+                        - generic [ref=f3e84]:
+                          - heading "구성 요소 목록" [level=4] [ref=f3e85]
+                          - generic [ref=f3e86]:
+                            - generic [ref=f3e87] [cursor=pointer]:
+                              - generic [ref=f3e88]: 카테고리 이미지
+                              - generic [ref=f3e89]: 보기
+                            - generic [ref=f3e90] [cursor=pointer]:
+                              - generic [ref=f3e91]: 카테고리명 (한글)
+                              - generic [ref=f3e92]: 보기
+                            - generic [ref=f3e93] [cursor=pointer]:
+                              - generic [ref=f3e94]: 카테고리명 (영문)
+                              - generic [ref=f3e95]: 보기
+                  - generic [ref=f3e96]: 카테고리 카드의 컴포넌트 배치 및 보임 설정 JSON
+                - generic [ref=f3e99]:
+                  - generic [ref=f3e100]:
+                    - generic [ref=f3e101]: "메뉴 카드 레이아웃 JSON:"
+                    - generic [ref=f3e103]:
+                      - generic [ref=f3e105]:
+                        - generic [ref=f3e106]: 메뉴 이미지
+                        - generic [ref=f3e108]: 메뉴명 (한글)
+                        - generic [ref=f3e110]: 메뉴명 (영문)
+                        - generic [ref=f3e112]: 가격
+                        - generic [ref=f3e114]: 메뉴 설명
+                      - generic [ref=f3e116]:
+                        - generic [ref=f3e117]:
+                          - heading "선택된 요소 없음" [level=4] [ref=f3e118]
+                          - generic [ref=f3e119]: 화면의 박스를 마우스로 조절하거나 아래 리스트에서 요소를 클릭해 선택해 주세요.
+                        - generic [ref=f3e120]:
+                          - heading "스타일 설정" [level=4] [ref=f3e121]
+                          - generic [ref=f3e122]: 편집할 요소를 선택해 주세요.
+                        - generic [ref=f3e123]:
+                          - heading "구성 요소 목록" [level=4] [ref=f3e124]
+                          - generic [ref=f3e125]:
+                            - generic [ref=f3e126] [cursor=pointer]:
+                              - generic [ref=f3e127]: 메뉴 이미지
+                              - generic [ref=f3e128]: 보기
+                            - generic [ref=f3e129] [cursor=pointer]:
+                              - generic [ref=f3e130]: 메뉴명 (한글)
+                              - generic [ref=f3e131]: 보기
+                            - generic [ref=f3e132] [cursor=pointer]:
+                              - generic [ref=f3e133]: 메뉴명 (영문)
+                              - generic [ref=f3e134]: 보기
+                            - generic [ref=f3e135] [cursor=pointer]:
+                              - generic [ref=f3e136]: 가격
+                              - generic [ref=f3e137]: 보기
+                            - generic [ref=f3e138] [cursor=pointer]:
+                              - generic [ref=f3e139]: 메뉴 설명
+                              - generic [ref=f3e140]: 보기
+                  - generic [ref=f3e141]: 메뉴 카드의 컴포넌트 배치 및 보임 설정 JSON
+              - group [ref=f3e143]:
+                - heading "기본 설정" [level=2] [ref=f3e144]
+                - generic [ref=f3e146]:
+                  - generic [ref=f3e147]:
+                    - generic [ref=f3e148]: "로고 이미지:"
+                    - button "로고 이미지:" [ref=f3e149]
+                  - generic [ref=f3e150]: 파비콘(Favicon)으로 사용될 로고 이미지
+                - generic [ref=f3e153]:
+                  - generic [ref=f3e154]:
+                    - generic [ref=f3e155]: "인트로 이미지:"
+                    - button "인트로 이미지:" [ref=f3e156]
+                  - generic [ref=f3e157]: 메인 페이지에 표시될 인트로 이미지
+                - generic [ref=f3e160]:
+                  - generic [ref=f3e161]:
+                    - generic [ref=f3e162]: "로딩 비디오:"
+                    - button "로딩 비디오:" [ref=f3e163]
+                  - generic [ref=f3e164]: 첫 번째로 표시될 로딩 비디오 (MP4 파일)
+                - generic [ref=f3e167]:
+                  - generic [ref=f3e168]:
+                    - generic [ref=f3e169]: "로딩 비디오2:"
+                    - button "로딩 비디오2:" [ref=f3e170]
+                  - generic [ref=f3e171]: 첫 번째 로딩 비디오 이후 재생될 두 번째 로딩 비디오 (화면 터치 시 스킵 가능)
+                - generic [ref=f3e174]:
+                  - generic [ref=f3e175]:
+                    - checkbox "메뉴 설명서 카드 표시" [ref=f3e176]
+                    - generic [ref=f3e177]: 메뉴 설명서 카드 표시
+                  - generic [ref=f3e178]: 체크 시 메인 화면(인트로 이미지 밑)에 두 번째 로딩 비디오와 동일한 영상을 보여주는 카드가 표시됩니다.
+                - generic [ref=f3e181]:
+                  - generic [ref=f3e182]:
+                    - generic [ref=f3e183]: "사이드 이미지:"
+                    - button "사이드 이미지:" [ref=f3e184]
+                  - generic [ref=f3e185]: 사이드 메뉴 등에 사용될 이미지
+              - group [ref=f3e187]:
+                - heading "와이파이 및 결제 연동 설정" [level=2] [ref=f3e188]
+                - generic [ref=f3e191]:
+                  - checkbox "WiFi 안내 활성화" [ref=f3e192]
+                  - generic [ref=f3e193]: WiFi 안내 활성화
+                - generic [ref=f3e196]:
+                  - generic [ref=f3e197]: "WiFi SSID:"
+                  - textbox "WiFi SSID:" [ref=f3e198]
+                - generic [ref=f3e201]:
+                  - generic [ref=f3e202]: "WiFi 비밀번호:"
+                  - textbox "WiFi 비밀번호:" [ref=f3e203]
+                - generic [ref=f3e206]:
+                  - generic [ref=f3e207]: "WiFi 보안 설정:"
+                  - combobox "WiFi 보안 설정:" [ref=f3e208]:
+                    - option "WPA/WPA2" [selected]
+                    - option "WEP"
+                    - option "Open"
+                - generic [ref=f3e210]:
+                  - generic [ref=f3e211]:
+                    - checkbox "매장 WiFi(IP) 접속 제한 활성화" [ref=f3e212]
+                    - generic [ref=f3e213]: 매장 WiFi(IP) 접속 제한 활성화
+                  - generic [ref=f3e214]: 체크 시 설정된 매장 공인 IP에서 접속하지 않은 고객의 접속을 제한합니다.
+                - generic [ref=f3e217]:
+                  - generic [ref=f3e218]:
+                    - generic [ref=f3e219]: "매장 공인 IP 주소:"
+                    - textbox "매장 공인 IP 주소:" [ref=f3e220]
+                  - generic [ref=f3e221]: "매장의 공인 IP 주소 (예: 123.45.67.89)"
+                - generic [ref=f3e225]:
+                  - generic [ref=f3e226]: "매장 공인 IP 동기화:"
+                  - generic [ref=f3e227]:
+                    - link "현재 접속 IP로 동기화" [ref=f3e228] [cursor=pointer]:
+                      - /url: /admin/menu/sitesettings/6/sync-store-ip/
+                    - generic [ref=f3e229]: "저장된 매장 IP: (미설정)"
+                    - paragraph [ref=f3e230]: 매장 와이파이에 연결한 기기에서 이 버튼을 누르면 현재 공인 IP가 매장 IP로 저장됩니다. 위 공인 IP 접속 제한이 켜져 있으면, 이 IP로 접속할 때만 메뉴판이 보입니다.
+                - generic [ref=f3e232]:
+                  - generic [ref=f3e233]:
+                    - checkbox "매장 WiFi SSID 접속 제한 활성화" [ref=f3e234]
+                    - generic [ref=f3e235]: 매장 WiFi SSID 접속 제한 활성화
+                  - generic [ref=f3e236]: 체크 시 테이블 QR 코드로 접속하지 않았거나 매장 와이파이 SSID 정보가 다르면 접속을 제한합니다.
+                - generic [ref=f3e239]:
+                  - generic [ref=f3e240]:
+                    - checkbox "스크린샷 금지 활성화" [ref=f3e241]
+                    - generic [ref=f3e242]: 스크린샷 금지 활성화
+                  - generic [ref=f3e243]: 활성화 시 고객 메뉴판 사이트에서 스크린샷 및 화면 캡쳐(프린트 등)를 방지합니다.
+                - generic [ref=f3e247]:
+                  - checkbox "페이히어 결제 활성화" [ref=f3e248]
+                  - generic [ref=f3e249]: 페이히어 결제 활성화
+                - generic [ref=f3e251]:
+                  - generic [ref=f3e252]:
+                    - checkbox "장바구니 활성화" [ref=f3e253]
+                    - generic [ref=f3e254]: 장바구니 활성화
+                  - generic [ref=f3e255]: 체크 시 고객 메뉴판 사이트에서 장바구니 추가 버튼 및 장바구니 버튼이 표시됩니다.
+                - generic [ref=f3e259]:
+                  - generic [ref=f3e260]: "페이히어 상점 ID:"
+                  - textbox "페이히어 상점 ID:" [ref=f3e261]
+                - generic [ref=f3e263]:
+                  - generic [ref=f3e264]:
+                    - generic [ref=f3e265]: "페이히어 API Key:"
+                    - textbox "페이히어 API Key:" [ref=f3e266]
+                  - generic [ref=f3e267]: 페이히어 POS 연동 API Key
+              - group [ref=f3e269]:
+                - group [ref=f3e270]:
+                  - heading "색상 설정" [level=2] [ref=f3e272] [cursor=pointer]
+              - generic [ref=f3e273]:
+                - button "저장" [ref=f3e274] [cursor=pointer]
+                - button "저장 및 편집 계속" [ref=f3e275] [cursor=pointer]
+    - contentinfo
