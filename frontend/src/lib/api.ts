@@ -32,6 +32,19 @@ export function isMenuClosed(error: unknown): boolean {
   return error instanceof ApiError && error.status === 402;
 }
 
+/**
+ * 미리보기 토큰을 주소 뒤에 붙인다. 없으면 그대로 둔다.
+ *
+ * 서버 컴포넌트는 api.server.ts 를 거쳐 토큰을 넘긴다. 클라이언트에서
+ * 부르는 것들(검색·장바구니·QR)은 토큰 없이 그대로 돈다 — 그쪽은 이미
+ * 공개된 매장에서만 쓰이는 기능이다.
+ */
+export function withPreview(path: string, previewToken?: string): string {
+  if (!previewToken) return path;
+  const joiner = path.includes('?') ? '&' : '?';
+  return `${path}${joiner}preview=${encodeURIComponent(previewToken)}`;
+}
+
 async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}/api/v1${path}`, {
     ...options,
@@ -52,22 +65,22 @@ export async function getRestaurants(): Promise<Restaurant[]> {
   return fetchAPI('/restaurants/');
 }
 
-export async function getRestaurant(slug: string): Promise<RestaurantDetail> {
-  return fetchAPI(`/restaurants/${slug}/`);
+export async function getRestaurant(slug: string, previewToken?: string): Promise<RestaurantDetail> {
+  return fetchAPI(withPreview(`/restaurants/${slug}/`, previewToken));
 }
 
 // --- Category ---
 
-export async function getCategories(slug: string): Promise<Category[]> {
-  return fetchAPI(`/restaurants/${slug}/categories/`);
+export async function getCategories(slug: string, previewToken?: string): Promise<Category[]> {
+  return fetchAPI(withPreview(`/restaurants/${slug}/categories/`, previewToken));
 }
 
-export async function getCategoryDetail(slug: string, categoryId: number): Promise<CategoryDetail> {
-  return fetchAPI(`/restaurants/${slug}/categories/${categoryId}/`);
+export async function getCategoryDetail(slug: string, categoryId: number, previewToken?: string): Promise<CategoryDetail> {
+  return fetchAPI(withPreview(`/restaurants/${slug}/categories/${categoryId}/`, previewToken));
 }
 
-export async function getCategoryTree(slug: string): Promise<CategoryTree[]> {
-  return fetchAPI(`/restaurants/${slug}/category-tree/`);
+export async function getCategoryTree(slug: string, previewToken?: string): Promise<CategoryTree[]> {
+  return fetchAPI(withPreview(`/restaurants/${slug}/category-tree/`, previewToken));
 }
 
 // --- Search ---

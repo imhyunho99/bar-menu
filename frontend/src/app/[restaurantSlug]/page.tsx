@@ -1,4 +1,4 @@
-import { getRestaurant, getCategories, isMenuClosed } from '@/lib/api';
+import { getRestaurant, getCategories, isMenuClosed } from '@/lib/api.server';
 import MenuNotOpen from '@/components/MenuNotOpen';
 import TopBar from '@/components/TopBar';
 import SideMenu from '@/components/SideMenu';

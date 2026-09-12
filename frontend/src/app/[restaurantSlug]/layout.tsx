@@ -1,5 +1,6 @@
-import { getRestaurant, getCategoryTree, isMenuClosed } from '@/lib/api';
+import { getRestaurant, getCategoryTree, isMenuClosed, previewToken } from '@/lib/api.server';
 import MenuNotOpen from '@/components/MenuNotOpen';
+import PreviewBanner from '@/components/PreviewBanner';
 import { buildCSSVariables, buildFontFaces } from '@/lib/styles';
 import type { RestaurantDetail, CategoryTree } from '@/lib/types';
 import { RestaurantProvider } from './context';
@@ -22,6 +23,10 @@ export default async function RestaurantLayout({
   if (restaurantSlug === 'admin') {
     redirect('http://localhost:8000/admin/');
   }
+
+  // 402 분기보다 먼저 읽어야 한다. 미리보기로 들어왔는지는 그 분기에서도
+  // 필요하고, layout 은 searchParams 를 못 받아 헤더가 유일한 통로다.
+  const isPreview = (await previewToken()).length > 0;
 
   let restaurant: RestaurantDetail;
   let categoryTree: CategoryTree[];
@@ -82,6 +87,7 @@ export default async function RestaurantLayout({
 
   return (
     <>
+      {isPreview && <PreviewBanner />}
       {(cssVars || fontFaces) && (
         <style dangerouslySetInnerHTML={{ __html: `${fontFaces}\n${cssVars}` }} />
       )}

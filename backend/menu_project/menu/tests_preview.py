@@ -8,7 +8,9 @@
 
 from django.test import TestCase, override_settings
 
-from menu.models import Restaurant
+from django.contrib.auth.models import User
+
+from menu.models import Restaurant, UserProfile
 from menu.preview import (
     PREVIEW_MAX_AGE_SECONDS,
     check_preview_token,
@@ -92,3 +94,45 @@ class PreviewOpensTheGateTests(TestCase):
         QR 발행과 입금 확인까지 함께 열린다.
         """
         self.assertFalse(self.restaurant.subscription.is_usable())
+
+
+class OwnerGetsAPreviewLinkTests(TestCase):
+    """사장님이 그 링크를 어디서 받는가."""
+
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name='미결제 바', slug='unpaid-bar')
+        self.user = User.objects.create_user('owner@example.com', password='pw-12345678')
+        UserProfile.objects.create(user=self.user, restaurant=self.restaurant)
+        self.client.force_login(self.user)
+
+    def test_dashboard_hands_out_a_working_preview_link(self):
+        response = self.client.get('/unpaid-bar/admin/dashboard/')
+        self.assertEqual(response.status_code, 200)
+        preview_url = response.context['preview_url']
+        self.assertIn('preview=', preview_url)
+
+        token = preview_url.split('preview=')[1]
+        self.assertTrue(check_preview_token('unpaid-bar', token))
+
+    def test_the_link_is_signed_fresh_not_stored(self):
+        """
+        누를 때마다 그 자리에서 서명한다. 어제 열어 둔 탭의 링크가 오늘
+        죽어 있어도 사장님은 다시 누르면 된다.
+
+        '두 번 부르면 다른 문자열' 로는 확인할 수 없다 — signing 의 타임스탬프가
+        초 단위라 같은 초에 부른 둘은 같은 값이다. 방금 서명됐다는 것 자체를
+        아주 짧은 max_age 로 본다.
+        """
+        preview_url = self.client.get('/unpaid-bar/admin/dashboard/').context['preview_url']
+        token = preview_url.split('preview=')[1]
+        self.assertTrue(check_preview_token('unpaid-bar', token, max_age=5))
+
+    def test_the_link_points_at_the_customer_site_not_django(self):
+        """
+        손님이 실제로 보는 화면은 Next.js 다. Django 가 그리는 /<slug>/ 를
+        주면 사장님은 손님이 볼 것과 다른 화면을 확인하게 된다.
+        """
+        from django.conf import settings
+
+        response = self.client.get('/unpaid-bar/admin/dashboard/')
+        self.assertTrue(response.context['preview_url'].startswith(settings.CUSTOMER_SITE_URL))
