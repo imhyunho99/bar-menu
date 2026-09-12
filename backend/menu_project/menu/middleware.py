@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils.deprecation import MiddlewareMixin
 from .models import Restaurant
+from .preview import PREVIEW_QUERY_PARAM, check_preview_token
 
 class RestaurantMiddleware(MiddlewareMixin):
     def process_view(self, request, view_func, view_args, view_kwargs):
@@ -74,6 +75,12 @@ class SubscriptionGateMiddleware(MiddlewareMixin):
         # 모든 경로에서 구독이 따라오도록 Restaurant post_save 가 보장한다.
         subscription = getattr(restaurant, 'subscription', None)
         if subscription is not None and subscription.is_usable():
+            return None
+
+        # 사장님이 입금 전에 자기 화면을 확인하는 통로. 구독 상태를 바꾸지
+        # 않고 이 요청 하나만 통과시킨다 — 미리보기가 '결제됨' 으로 번지면
+        # QR 발행까지 열린다. 워터마크는 화면 쪽이 그린다.
+        if check_preview_token(restaurant.slug, request.GET.get(PREVIEW_QUERY_PARAM)):
             return None
 
         # 한 번도 연 적 없는 매장과 열었다 닫은 매장은 손님에게 다르게 읽혀야 한다.

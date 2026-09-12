@@ -6,8 +6,9 @@
 박혀 있어야 한다.
 """
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
+from menu.models import Restaurant
 from menu.preview import (
     PREVIEW_MAX_AGE_SECONDS,
     check_preview_token,
@@ -53,3 +54,41 @@ class PreviewTokenTests(TestCase):
         token = make_preview_token('bid')
         with self.settings(SECRET_KEY='a-completely-different-key'):
             self.assertFalse(check_preview_token('bid', token))
+
+
+@override_settings(ENFORCE_SUBSCRIPTION=True)
+class PreviewOpensTheGateTests(TestCase):
+    """게이트가 켜진 상태에서 토큰 하나가 어디까지 여는가."""
+
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name='미결제 바', slug='unpaid-bar')
+        # 시그널이 unpaid 로 만들어 둔다. 여기서 다시 만들지 않는다.
+        self.token = make_preview_token('unpaid-bar')
+
+    def test_unpaid_store_is_closed_without_a_token(self):
+        response = self.client.get('/api/v1/restaurants/unpaid-bar/')
+        self.assertEqual(response.status_code, 402)
+
+    def test_a_valid_token_opens_the_api(self):
+        response = self.client.get(f'/api/v1/restaurants/unpaid-bar/?preview={self.token}')
+        self.assertEqual(response.status_code, 200)
+
+    def test_a_valid_token_opens_the_html_page(self):
+        response = self.client.get(f'/unpaid-bar/?preview={self.token}')
+        self.assertNotEqual(response.status_code, 402)
+
+    def test_another_stores_token_does_not_open_it(self):
+        other = make_preview_token('some-other-bar')
+        response = self.client.get(f'/api/v1/restaurants/unpaid-bar/?preview={other}')
+        self.assertEqual(response.status_code, 402)
+
+    def test_a_forged_token_does_not_open_it(self):
+        response = self.client.get('/api/v1/restaurants/unpaid-bar/?preview=nope')
+        self.assertEqual(response.status_code, 402)
+
+    def test_preview_does_not_make_the_store_usable(self):
+        """
+        미리보기는 화면을 열어 줄 뿐 구독 상태가 아니다. 여기가 섞이면
+        QR 발행과 입금 확인까지 함께 열린다.
+        """
+        self.assertFalse(self.restaurant.subscription.is_usable())
