@@ -20,6 +20,12 @@
 - 새 Discord 환경변수를 만들지 않는다. 기존 `DISCORD_WEBHOOK_URL` 을 재사용한다.
 - 커밋 메시지는 한 줄 요약 + 왜 그렇게 했는지. 기존 커밋 어조를 따른다(사용자 관점의 사실, 예: `fix: 사장님이 남의 매장 메뉴를 지우고 복제할 수 있던 것`).
 - 마이그레이션 번호는 `0053_owner_admin_group` 다음부터 이어진다.
+- **사장님이 로그인해서 도착하는 곳은 Django `/admin/` 이다** (`auth_views.py` 가
+  `redirect('admin:index')`). `/<slug>/admin/dashboard/` 는 더 이상 일상 경로가
+  아니다. 사장님에게 보여야 하는 것(배너·안내·링크)을 커스텀 템플릿에만 넣으면
+  **아무도 보지 못한다.** `/admin/` 첫 화면은 `admin/owner_index.html` 이고,
+  거기서 매장을 정하는 것은 `owner_nav` 의 `{% owner_restaurant %}` 다.
+  주문·결제·QR 만 `/<slug>/admin/` 에 남아 있고 owner_index 가 바로가기로 잇는다.
 
 ---
 
@@ -989,7 +995,20 @@ EOF
 **Files:**
 - Modify: `backend/menu_project/menu/onboarding_views.py` (`onboarding_home` 의 `steps`)
 - Modify: `backend/menu_project/menu/templates/admin/_payment_banner.html`
+- Modify: `backend/menu_project/menu/templates/admin/owner_index.html` (배너를 여기에도)
+- Modify: `backend/menu_project/menu/templatetags/owner_nav.py` (배너가 쓸 상태)
 - Modify: `backend/menu_project/menu/tests_onboarding.py`
+- Modify: `backend/menu_project/menu/tests_preview.py`
+
+**배너는 Django `/admin/` 에도 떠야 한다.** 사장님이 로그인해서 도착하는 곳이
+거기다. 커스텀 템플릿(dashboard·start)에만 넣으면 이 기능에서 제일 중요한
+문장("아직 공개되지 않았습니다")을 아무도 보지 못한다. 아래 Step 4 에서 같은
+`_payment_banner.html` 을 `owner_index.html` 에도 include 하고, 거기서 쓸
+`menu_is_live`·`subscription`·`billing_url` 을 `owner_nav` 태그로 넘긴다
+(owner_index 는 뷰가 우리 것이 아니라 컨텍스트를 직접 못 넣는다).
+
+또한 Task 1 에서 이쪽으로 미뤄 둔 테스트가 있다 — 가입만 한 매장이 '닫혔다'
+는 말을 듣지 않는지 보는 것이다. Step 1 에 포함한다.
 
 **Interfaces:**
 - Consumes: Task 1, Task 5 (`preview_url`), Task 6 (QR 잠금)
