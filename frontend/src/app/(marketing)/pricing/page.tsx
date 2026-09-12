@@ -37,8 +37,8 @@ export default function PricingPage() {
           없습니다
         </h1>
         <p className="bd">
-          태블릿을 사거나 빌리지 않습니다. 손님 폰이 곧 메뉴판입니다. 가입하시면 7일 동안 무료로,
-          손님에게 실제로 열린 채로 써 보실 수 있습니다. 아래 표는 각 요금제에 실제로 포함되는 기능입니다.
+          태블릿을 사거나 빌리지 않습니다. 손님 폰이 곧 메뉴판입니다. 가입하시면 기한 없이 메뉴판을 만들고
+          미리보기로 확인해 보실 수 있고, 손님에게 공개하실 때부터 아래 요금이 시작됩니다.
         </p>
       </header>
 
@@ -133,15 +133,15 @@ export default function PricingPage() {
         <div style={{ padding: '56px 0' }} className="reveal">
           <div className="cta-row">
             <a href={signupUrl} className="btn btn-solid">
-              7일 무료로 시작하기
+              무료로 메뉴판 만들어보기
             </a>
             <Link href="/#contact" className="btn btn-ghost">
               요금 문의하기
             </Link>
           </div>
           <p className="cap cta-note">
-            가입에는 카드가 필요 없습니다. 7일 동안은 결제 없이 손님에게 열리고, 지나면 닫힙니다.
-            등록하신 메뉴와 디자인은 그대로 남습니다.
+            가입에는 카드가 필요 없습니다. 만들어 보고 미리보기로 확인하는 데까지 기한이 없고,
+            손님에게 공개하실 때 계좌이체로 받습니다.
           </p>
         </div>
       </div>
