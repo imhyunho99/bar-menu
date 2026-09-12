@@ -27,7 +27,7 @@ GOOD_FORM = {
 
 
 class SignupTests(TestCase):
-    def test_signup_creates_all_four_objects_on_trial(self):
+    def test_signup_creates_all_four_objects_as_a_free_account(self):
         response = self.client.post(SIGNUP_URL, GOOD_FORM)
 
         self.assertRedirects(response, '/moonlight/admin/start/')
@@ -44,10 +44,11 @@ class SignupTests(TestCase):
         self.assertEqual(profile.restaurant, restaurant)
 
         subscription = Subscription.objects.get(restaurant=restaurant)
-        self.assertEqual(subscription.status, 'trialing')
-        self.assertIsNotNone(subscription.access_until)
-        # 체험 중에는 손님 화면이 열려 있다. 결제 없이 바로 영업할 수 있다.
-        self.assertTrue(subscription.is_usable())
+        self.assertEqual(subscription.status, 'unpaid')
+        self.assertIsNone(subscription.access_until)
+        # 가입은 무료 미리보기로 시작한다. 메뉴 등록과 디자인은 열려 있고
+        # 손님 공개만 입금 확인 뒤다.
+        self.assertFalse(subscription.is_usable())
 
         # Restaurant post_save 시그널이 만드는 것. 여기서 또 만들면 두 개가 된다.
         self.assertEqual(SiteSettings.objects.filter(restaurant=restaurant).count(), 1)
@@ -215,8 +216,8 @@ class OnboardingHomeTests(TestCase):
         self.assertEqual(response.context['menu_count'], 0)
         self.assertEqual(response.context['category_count'], 0)
         self.assertEqual(response.context['done_count'], 0)
-        # 가입 직후는 체험 7일째다. days_left 는 내림하므로 6 으로 보인다.
-        self.assertEqual(response.context['days_left'], 6)
+        # 무료 계정은 만료일이 없다. 남은 날을 세면 없는 시한을 만들어 낸다.
+        self.assertIsNone(response.context['days_left'])
 
     def test_menu_step_flips_on_real_rows(self):
         category = Category.objects.create(name='사시미', restaurant=self.restaurant)
@@ -283,13 +284,12 @@ class PaymentBannerTests(TestCase):
     이 배너가 없으면 사장님은 메뉴를 다 채우고 QR 까지 인쇄한 뒤에야
     손님이 아무것도 못 본다는 걸 알게 된다. 개업 당일에.
 
-    체험이 생기면서 알려야 할 상태가 둘로 늘었다: 아직 열려 있지만 며칠 남았다,
-    그리고 이미 닫혔다. 둘을 같은 문구로 뭉치면 체험 중인 사장님이 닫힌 줄 알고
-    놀라거나, 닫힌 사장님이 아직 열린 줄 알고 개업한다.
+    알려야 할 상태가 둘이다: 아직 공개 전(무료 미리보기)과, 공개했다가 기간이
+    끝난 것. 둘을 같은 문구로 뭉치면 아직 시작도 안 한 사장님이 고장인 줄 알고
+    놀란다.
     """
 
     CLOSED = '손님 화면이 닫혔습니다'
-    TRIAL = '무료 체험'
 
     def setUp(self):
         self.client.post(SIGNUP_URL, GOOD_FORM)
@@ -311,12 +311,12 @@ class PaymentBannerTests(TestCase):
 
         self._subscribe(status='active', current_period_end=timezone.now() + timedelta(days=30))
 
-    def _expire_trial(self):
+    def _expire_paid_period(self):
         from datetime import timedelta
 
         from django.utils import timezone
 
-        self._subscribe(status='trialing', current_period_end=timezone.now() - timedelta(minutes=1))
+        self._subscribe(status='active', current_period_end=timezone.now() - timedelta(minutes=1))
 
     def test_no_banner_while_the_gate_is_off(self):
         """
@@ -325,29 +325,22 @@ class PaymentBannerTests(TestCase):
         그때 '손님 화면이 닫혀 있습니다' 라고 하면 사장님이 자기 QR 을 찍어보는
         순간 들통난다. 한 번 그러면 배너를 아무도 믿지 않는다.
         """
-        self._expire_trial()
+        self._expire_paid_period()
         with self.settings(ENFORCE_SUBSCRIPTION=False):
             response = self.client.get(self.dashboard_url)
             self.assertTrue(response.context['menu_is_live'])
             self.assertNotContains(response, self.CLOSED)
 
-    def test_trialing_store_sees_days_left_not_a_closure_warning(self):
-        """체험 중에는 손님 화면이 실제로 열려 있다. 닫혔다고 하면 거짓말이다."""
-        response = self.client.get(self.dashboard_url)
-        self.assertTrue(response.context['menu_is_live'])
-        self.assertContains(response, self.TRIAL)
-        self.assertNotContains(response, self.CLOSED)
-
     @override_settings(ENFORCE_SUBSCRIPTION=True)
     def test_lapsed_trial_sees_the_closure_banner_on_the_start_page(self):
-        self._expire_trial()
+        self._expire_paid_period()
         response = self.client.get(self.start_url)
         self.assertFalse(response.context['menu_is_live'])
         self.assertContains(response, self.CLOSED)
 
     @override_settings(ENFORCE_SUBSCRIPTION=True)
     def test_lapsed_trial_sees_the_closure_banner_on_the_dashboard(self):
-        self._expire_trial()
+        self._expire_paid_period()
         response = self.client.get(self.dashboard_url)
         self.assertFalse(response.context['menu_is_live'])
         self.assertContains(response, self.CLOSED)
@@ -358,7 +351,7 @@ class PaymentBannerTests(TestCase):
         결제가 아직 없다. 닫혔다고만 알리고 길을 주지 않으면 사장님은
         관리 화면을 닫고 다시 오지 않는다.
         """
-        self._expire_trial()
+        self._expire_paid_period()
         response = self.client.get(self.dashboard_url)
         self.assertContains(response, '연장 문의')
 
@@ -366,4 +359,3 @@ class PaymentBannerTests(TestCase):
         self._activate()
         response = self.client.get(self.dashboard_url)
         self.assertNotContains(response, self.CLOSED)
-        self.assertNotContains(response, self.TRIAL)

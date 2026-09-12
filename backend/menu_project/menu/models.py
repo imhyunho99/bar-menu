@@ -1,7 +1,5 @@
 # menu/models.py
 
-from datetime import timedelta
-
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
@@ -38,21 +36,16 @@ class UserProfile(models.Model):
 @receiver(post_save, sender=Restaurant)
 def create_restaurant_settings(sender, instance, created, **kwargs):
     if created:
-        from django.utils import timezone
-
         SiteSettings.objects.create(restaurant=instance)
         # 구독 없는 매장은 게이트가 잠그도록 바뀌었다(SubscriptionGateMiddleware).
         # 어드민에서 손으로 매장을 만들고 구독을 깜빡하면 그 집 메뉴판이
         # 이유 없이 캄캄해지므로, 매장이 생기는 모든 경로에서 같이 만든다.
         #
-        # 체험으로 시작하는 것도 같은 이유다. unpaid 로 만들어 두면 어드민에서
-        # 만든 매장이 게이트가 켜진 순간 캄캄해지는데, 그때 우리는 매장을 만든
-        # 직후라 아무도 손님 화면을 확인하지 않는다. 7일은 그걸 알아챌 시간이다.
-        Subscription.objects.create(
-            restaurant=instance,
-            status='trialing',
-            current_period_end=timezone.now() + timedelta(days=Subscription.TRIAL_DAYS),
-        )
+        # unpaid 로 시작한다. 이건 '고장' 이 아니라 무료 미리보기 계정이다 —
+        # 메뉴 등록과 디자인은 열려 있고, 손님 공개와 QR 만 입금 확인 뒤에 열린다.
+        # 날짜를 채우지 않는 것이 중요하다. 채우면 is_usable 의 마지막 날짜
+        # 분기로 떨어져 손님 화면이 공짜로 열린다.
+        Subscription.objects.create(restaurant=instance, status='unpaid')
 
 def default_category_layout():
     return {
@@ -554,24 +547,20 @@ class Subscription(models.Model):
         'premium': 39_900,
     }
 
-    # trialing  : 가입 직후 7일. 결제 없이 열려 있다
-    # unpaid    : 체험이 끝났거나 결제 전. 손님 화면은 닫혀 있다
-    # active    : 결제까지 정상
+    # unpaid    : 아직 공개 전이거나 기간이 끝난 매장. 손님 화면은 닫혀 있고
+    #             메뉴 등록·디자인·미리보기는 기한 없이 열려 있다. 고장이 아니라
+    #             무료 티어다
+    # active    : 입금 확인까지 끝나 손님에게 공개된 상태
     # past_due  : 결제 실패. 유예 기간 동안은 계속 열어 둔다
     # canceled  : 해지됨
     # partner   : 무제한 파트너. 결제도 만료도 없다
     STATUS_CHOICES = [
-        ('trialing', '무료 체험'),
         ('unpaid', '미결제'),
         ('active', '이용 중'),
         ('past_due', '결제 실패'),
         ('canceled', '해지'),
         ('partner', '무제한 파트너'),
     ]
-
-    # 체험 기간. 종료일은 current_period_end 에 넣는다 — 전용 필드를 따로 두면
-    # is_usable·days_left·access_until 이 저마다 어느 날짜를 볼지 갈라진다.
-    TRIAL_DAYS = 7
 
     # 날짜를 아예 보지 않고 통과시키는 상태. 셀프가입 이전부터 쓰던 매장들이
     # 여기 속한다. active 로 올려두면 결제일이 지나는 순간 꺼지므로 따로 둔다.

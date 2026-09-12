@@ -134,11 +134,21 @@ class SubscriptionModelTests(TestCase):
         sub.save()
         return sub
 
-    def test_new_subscription_starts_a_trial(self):
-        """가입한 매장은 7일 체험으로 시작한다."""
+    def test_new_restaurant_starts_unpaid_with_no_date(self):
+        """
+        가입은 무료 미리보기로 시작한다. 체험이 아니다.
+
+        날짜를 채워 두면 '상태 먼저, 날짜 나중' 의 두 번째 분기로 떨어져
+        손님 화면이 열린다. 무료의 경계는 미리보기까지다.
+        """
         sub = self.restaurant.subscription
-        self.assertEqual(sub.status, 'trialing')
-        self.assertTrue(sub.is_usable())
+        self.assertEqual(sub.status, 'unpaid')
+        self.assertIsNone(sub.current_period_end)
+        self.assertFalse(sub.is_usable())
+
+    def test_trialing_is_no_longer_a_known_status(self):
+        """체험은 폐지됐다. 상태가 남아 있으면 admin 에서 다시 고를 수 있다."""
+        self.assertNotIn('trialing', dict(Subscription.STATUS_CHOICES))
 
     def test_unpaid_is_not_usable(self):
         """이번 작업의 핵심. 결제 전에는 손님 화면이 열리지 않는다."""
@@ -175,23 +185,12 @@ class SubscriptionModelTests(TestCase):
         self.assertTrue(sub.is_usable())
         self.assertEqual(sub.access_until, sub.current_period_end)
 
-    # ── 체험 (2026-08-23 부활) ────────────────────────────────────
-    # 전용 trial_ends_at 필드를 만들지 않고 current_period_end 를 재사용한다.
-    # is_usable 이 trialing 을 특별히 알지 못하고 날짜 분기로 떨어뜨리는 덕분인데,
-    # 그 성질은 눈에 보이지 않으므로 여기서 못박는다.
-
-    def test_trialing_is_usable_until_the_date_passes(self):
-        sub = self._sub(status='trialing', current_period_end=timezone.now() + timedelta(days=3))
-        self.assertTrue(sub.is_usable())
-
-    def test_lapsed_trial_is_not_usable(self):
-        """상태를 unpaid 로 내리기 전에도 날짜만으로 닫힌다. cron 이 늦어도 안 샌다."""
-        sub = self._sub(status='trialing', current_period_end=timezone.now() - timedelta(minutes=1))
-        self.assertFalse(sub.is_usable())
-
-    def test_trialing_without_a_date_is_not_usable(self):
-        """날짜 없는 체험은 만료를 판정할 근거가 없다. 열어 두면 영원한 무료가 된다."""
-        sub = self._sub(status='trialing', current_period_end=None)
+    def test_a_lapsed_paid_period_is_not_usable(self):
+        """
+        상태를 unpaid 로 내리기 전에도 날짜만으로 닫힌다. sweep cron 이
+        늦어도 하루치가 공짜로 새지 않는다.
+        """
+        sub = self._sub(status='active', current_period_end=timezone.now() - timedelta(minutes=1))
         self.assertFalse(sub.is_usable())
 
 

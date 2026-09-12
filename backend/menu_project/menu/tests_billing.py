@@ -68,17 +68,19 @@ class SubscriptionStateTest(TestCase):
         self.subscription = self.restaurant.subscription
 
     def _clear_dates(self):
-        """날짜 없는 구독으로 되돌린다. 체험이 붙기 전 상태를 보고 싶은 테스트용."""
+        """날짜 없는 구독으로 되돌린다. 갓 가입한 무료 계정의 모양이다."""
         self.subscription.current_period_end = None
         return self.subscription
 
-    def test_new_subscription_starts_a_trial_and_is_open(self):
-        """가입한 매장은 7일 동안 열려 있다."""
-        self.assertEqual(self.subscription.status, 'trialing')
-        self.assertTrue(self.subscription.is_usable())
+    def test_new_subscription_starts_free_and_closed(self):
+        """가입은 무료 미리보기다. 손님 화면은 입금 확인 전까지 닫혀 있다."""
+        self.assertEqual(self.subscription.status, 'unpaid')
+        self.assertIsNone(self.subscription.current_period_end)
+        self.assertFalse(self.subscription.is_usable())
 
-    def test_lapsed_trial_is_closed(self):
-        """체험이 끝나면 상태를 내리지 않아도 날짜만으로 닫힌다."""
+    def test_lapsed_paid_period_is_closed(self):
+        """기간이 끝나면 상태를 내리지 않아도 날짜만으로 닫힌다."""
+        self.subscription.status = 'active'
         self.subscription.current_period_end = timezone.now() - timedelta(minutes=1)
         self.assertFalse(self.subscription.is_usable())
 
