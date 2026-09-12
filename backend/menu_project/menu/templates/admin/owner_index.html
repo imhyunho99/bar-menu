@@ -20,7 +20,12 @@ Django 기본 index 위에 '아직 여기 없는 것들' 로 가는 줄을 얹�
     <a href="{% url 'menu:admin_orders' restaurant_slug=shop.slug %}">주문 관리</a>
     <a href="{% url 'menu:billing_home' restaurant_slug=shop.slug %}">결제 · 구독</a>
     <a href="{% url 'menu:qr_code' restaurant_slug=shop.slug %}">QR 코드</a>
+    {% owner_preview_url shop as preview_url %}
+    {% if preview_url %}
+    <a href="{{ preview_url }}" target="_blank" rel="noopener">미리보기 열기</a>
+    {% else %}
     <a href="{% url 'menu:menu_main' restaurant_slug=shop.slug %}" target="_blank" rel="noopener">손님 화면 보기</a>
+    {% endif %}
   </div>
 </div>
 {% endif %}

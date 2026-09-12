@@ -136,3 +136,43 @@ class OwnerGetsAPreviewLinkTests(TestCase):
 
         response = self.client.get('/unpaid-bar/admin/dashboard/')
         self.assertTrue(response.context['preview_url'].startswith(settings.CUSTOMER_SITE_URL))
+
+
+@override_settings(ENFORCE_SUBSCRIPTION=True)
+class DjangoAdminHomeOffersThePreviewTests(TestCase):
+    """
+    로그인한 사장님이 실제로 도착하는 곳은 Django /admin/ 이다
+    (auth_views 가 admin:index 로 보낸다). 미리보기 링크가 커스텀
+    대시보드에만 있으면 아무도 보지 못한다.
+
+    게이트를 켜고 본다. 꺼져 있으면 미결제 매장도 실제로 열려 있어서
+    미리보기를 권하는 쪽이 거짓말이 된다 — menu_is_live 가 그걸 가른다.
+    """
+
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name='미결제 바', slug='unpaid-bar')
+        self.user = User.objects.create_superuser('me@example.com', password='pw-12345678')
+        self.client.force_login(self.user)
+
+    def test_an_unopened_store_is_offered_a_preview_link(self):
+        response = self.client.get('/admin/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'preview=')
+        self.assertContains(response, '미리보기 열기')
+
+    def test_an_unopened_store_is_not_sent_to_the_locked_screen(self):
+        """
+        '손님 화면 보기' 는 공개 전 매장에서 402 잠금 화면으로 간다.
+        사장님이 자기 메뉴판을 보려고 누르는 바로 그 버튼이다.
+        """
+        response = self.client.get('/admin/')
+        self.assertNotContains(response, '손님 화면 보기')
+
+    def test_an_open_store_gets_the_real_link(self):
+        subscription = self.restaurant.subscription
+        subscription.status = 'partner'
+        subscription.save(update_fields=['status'])
+
+        response = self.client.get('/admin/')
+        self.assertContains(response, '손님 화면 보기')
+        self.assertNotContains(response, 'preview=')

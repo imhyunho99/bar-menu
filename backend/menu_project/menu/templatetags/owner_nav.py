@@ -25,3 +25,31 @@ def owner_restaurant(context):
     if request is None or not request.user.is_authenticated:
         return None
     return selected_restaurant_for(request)
+
+
+@register.simple_tag
+def owner_preview_url(shop):
+    """
+    공개 전 매장의 미리보기 주소. 이미 공개된 매장이면 빈 문자열.
+
+    '손님 화면 보기' 를 그대로 두면 공개 전 매장에서 402 잠금 화면으로 간다.
+    사장님이 자기 메뉴판을 확인하려고 누르는 바로 그 버튼이라, 거기서 막히면
+    만들어 둔 메뉴판을 볼 방법이 없다.
+
+    빈 문자열을 돌려주는 것으로 '미리보기가 필요한 상태인가' 까지 알린다.
+    템플릿이 상태를 따로 묻지 않게 하려는 것이다 — 두 군데서 물으면 링크는
+    미리보기인데 문구는 '손님 화면 보기' 인 조합이 생긴다.
+    """
+    from django.conf import settings
+
+    from ..preview import make_preview_token
+
+    if shop is None:
+        return ''
+    subscription = getattr(shop, 'subscription', None)
+    if subscription is not None and subscription.menu_is_live():
+        return ''
+    return (
+        f'{settings.CUSTOMER_SITE_URL}/{shop.slug}'
+        f'?preview={make_preview_token(shop.slug)}'
+    )
