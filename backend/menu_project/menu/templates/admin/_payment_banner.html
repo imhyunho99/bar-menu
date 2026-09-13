@@ -5,26 +5,30 @@
 사실을 알게 되는 사고를 막는다. menu_is_live 와 subscription 을 넘겨주는
 화면에서만 뜬다.
 
-알릴 상태가 둘이다. 열려 있지만 며칠 남았다(체험 중), 이미 닫혔다(체험 종료).
-둘을 한 문구로 뭉치면 체험 중인 사장님이 닫힌 줄 알고 놀라거나, 닫힌 사장님이
-아직 열린 줄 알고 개업한다. menu_is_live 가 둘을 가른다 — 게이트가 꺼져 있으면
-미결제 매장도 실제로는 열려 있으므로 '닫혔다' 는 그때 거짓말이 된다.
+체험이 폐지되면서 알릴 상태가 둘로 줄었다. 아직 공개 전(무료 미리보기)과,
+공개했다가 기간이 끝난 것이다. 둘을 한 문구로 뭉치면 아직 시작도 안 한
+사장님이 '닫혔다' 는 말을 듣고 고장인 줄 안다 — 그 사장님은 아무것도 잘못한
+게 없고 할 일은 '열기' 지 '되살리기' 가 아니다.
+
+menu_is_live 가 먼저다. 게이트가 꺼져 있으면 미결제 매장도 실제로는 열려
+있으므로, 그때 무슨 말이든 하면 사장님이 자기 QR 을 찍어보는 순간 들통난다.
 {% endcomment %}
 {% if not menu_is_live %}
-<div class="payment-banner">
-    <div class="payment-banner-text">
-        <strong>무료 체험이 끝나 손님 화면이 닫혔습니다</strong>
-        <span>지금은 손님이 메뉴판 주소로 들어와도 메뉴가 보이지 않습니다. 관리 화면과 등록하신 메뉴는 그대로 남아 있습니다.</span>
+    {% if subscription.status == 'unpaid' and not subscription.current_period_end %}
+    <div class="payment-banner">
+        <div class="payment-banner-text">
+            <strong>아직 손님에게 공개되지 않았습니다</strong>
+            <span>메뉴 등록과 디자인은 기한 없이 무료입니다. 미리보기로 실제 화면을 확인하시고, 공개할 준비가 되시면 입금 안내를 눌러 주세요.</span>
+        </div>
+        <a class="payment-banner-btn" href="{{ billing_url }}">입금 안내 보기</a>
     </div>
-    {# 결제 대행사가 아직 붙지 않았다. 결제 화면으로 보내면 '준비 중' 만 만난다. #}
-    <a class="payment-banner-btn" href="{{ contact_url }}">연장 문의하기</a>
-</div>
-{% elif subscription.status == 'trialing' and days_left is not None %}
-<div class="payment-banner payment-banner-trial">
-    <div class="payment-banner-text">
-        <strong>무료 체험 {{ days_left }}일 남았습니다</strong>
-        <span>지금은 손님 화면이 정상으로 열려 있습니다. 체험이 끝나면 닫히니, 계속 쓰시려면 미리 연락 주세요.</span>
+    {% else %}
+    <div class="payment-banner">
+        <div class="payment-banner-text">
+            <strong>이용 기간이 끝나 손님 화면이 닫혔습니다</strong>
+            <span>지금은 손님이 메뉴판 주소로 들어와도 메뉴가 보이지 않습니다. 관리 화면과 등록하신 메뉴는 그대로 남아 있습니다.</span>
+        </div>
+        <a class="payment-banner-btn" href="{{ billing_url }}">연장 입금 안내</a>
     </div>
-    <a class="payment-banner-btn" href="{{ contact_url }}">연장 문의하기</a>
-</div>
+    {% endif %}
 {% endif %}

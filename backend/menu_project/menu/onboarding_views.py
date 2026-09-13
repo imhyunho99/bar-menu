@@ -24,6 +24,7 @@ from django.urls import NoReverseMatch, reverse
 from . import notifications
 from .admin_views import check_restaurant_permission
 from .models import Category, MenuItem, Restaurant, Subscription, UserProfile
+from .preview import make_preview_token
 
 logger = logging.getLogger(__name__)
 
@@ -183,8 +184,8 @@ def signup(request):
                 logger.error('%s 그룹이 없어 사장님에게 admin 권한을 주지 못했습니다', OWNER_GROUP_NAME)
             restaurant = Restaurant.objects.create(name=name, slug=slug)
             # SiteSettings 와 Subscription 은 Restaurant post_save 시그널이 이미
-            # 만든다. 구독은 7일 무료 체험으로 시작하고, 체험이 끝나면 손님
-            # 화면이 닫힌다(expire_trials 가 상태를 내리고 우리에게 알린다).
+            # 만든다. 구독은 unpaid 로 시작한다 — 고장이 아니라 무료 미리보기
+            # 계정이고, 손님 공개와 QR 만 입금 확인 뒤에 열린다.
             UserProfile.objects.create(user=user, restaurant=restaurant, phone=phone)
             # 요금 페이지에서 요금제를 고르고 왔으면 그것으로 맞춰 둔다. 무시하면
             # Premium 을 고른 사장님이 아무 안내 없이 Entry 결제 화면을 만난다.
@@ -276,12 +277,16 @@ def onboarding_home(request, restaurant_slug=None):
             'key': 'qr',
             'title': 'QR 받기',
             # QR 은 내려받아도 DB 에 아무 흔적이 남지 않는다. 그래서 완료로
-            # 표시할 근거가 없고, 대신 메뉴가 생겼는지로 준비 여부만 알린다.
+            # 표시할 근거가 없고, 대신 준비가 됐는지만 알린다.
             'done': False,
-            'locked': menu_count == 0,
+            # 메뉴가 없어도, 입금 확인 전이어도 잠긴다. 둘 중 먼저 걸리는 쪽을
+            # 이유로 말해 준다 — '왜 잠겼는지' 가 다르면 할 일도 다르다.
+            'locked': menu_count == 0 or not menu_is_live,
             'detail': (
-                '테이블에 붙일 QR을 내려받으세요.'
-                if menu_count else '메뉴를 먼저 등록하면 QR이 의미가 생깁니다.'
+                '메뉴를 먼저 등록하면 QR이 의미가 생깁니다.' if menu_count == 0
+                else '입금이 확인되면 QR을 발행해 드립니다. 그전까지는 미리보기로 확인하세요.'
+                if not menu_is_live
+                else '테이블에 붙일 QR을 내려받으세요.'
             ),
             'primary_url': reverse('menu:qr_code', kwargs={'restaurant_slug': restaurant.slug}),
             'primary_label': 'QR 코드 보기',
@@ -299,14 +304,14 @@ def onboarding_home(request, restaurant_slug=None):
         },
         {
             'key': 'billing',
-            'title': '결제 등록',
+            'title': '손님에게 공개하기',
             'done': paid,
             'detail': (
-                '결제가 등록되어 있습니다.'
-                if paid else '결제를 등록해야 손님이 메뉴판을 볼 수 있습니다.'
+                '입금이 확인되어 손님에게 공개되어 있습니다.'
+                if paid else '입금이 확인되면 손님 화면과 QR이 열립니다.'
             ),
             'primary_url': reverse('menu:billing_home', kwargs={'restaurant_slug': restaurant.slug}),
-            'primary_label': '결제 등록하기',
+            'primary_label': '입금 안내 보기',
         },
     ]
 
@@ -318,8 +323,13 @@ def onboarding_home(request, restaurant_slug=None):
         'subscription': subscription,
         'days_left': subscription.days_left if subscription else None,
         'menu_is_live': menu_is_live,
-        # 결제 대행사가 붙기 전이라 배너의 행동 버튼은 문의로 간다.
-        'contact_url': f'{settings.MARKETING_SITE_URL}/#contact',
+        'billing_url': reverse('menu:billing_home', kwargs={'restaurant_slug': restaurant.slug}),
+        # 공개 전에는 손님 주소가 잠겨 있다. 사장님이 자기 메뉴판을 확인할
+        # 유일한 통로라 체크리스트에서도 준다.
+        'preview_url': (
+            f'{settings.CUSTOMER_SITE_URL}/{restaurant.slug}'
+            f'?preview={make_preview_token(restaurant.slug)}'
+        ),
         'menu_count': menu_count,
         'category_count': category_count,
     })

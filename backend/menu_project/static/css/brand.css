@@ -262,3 +262,62 @@ body.brand {
   .brand .btn { padding: 12px 20px; }
   .brand .card { padding: 18px; }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   결제 전 매장에 띄우는 배너 (admin/_payment_banner.html).
+
+   admin.css 가 아니라 여기 있는 이유: 이 배너는 커스텀 관리 화면과
+   Django /admin/ **양쪽**에 떠야 한다. 로그인 도착지가 /admin/ 이라
+   커스텀 쪽에만 있으면 사장님은 이 문장을 영영 보지 못한다. Django admin 은
+   brand.css 만 불러오고 admin.css 는 안 불러온다.
+
+   그래서 --admin-* 토큰을 쓰지 않는다. 그건 admin.css 에 정의되어 있어서
+   Django admin 에서는 값이 없고, 없는 변수는 조용히 무시된다.
+
+   빨강이 아니라 주황인 이유: 잘못된 상태가 아니라 아직 안 끝난 절차다.
+   ───────────────────────────────────────────────────────────── */
+.payment-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  background-color: rgba(166, 101, 11, 0.08);
+  border: 1px solid rgba(166, 101, 11, 0.3);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.payment-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 240px;
+  flex: 1;
+}
+
+.payment-banner-text strong {
+  color: var(--amber);
+  font-size: 1rem;
+}
+
+.payment-banner-text span {
+  color: var(--ash);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.payment-banner-btn {
+  flex-shrink: 0;
+  background-color: var(--amber);
+  color: #fff;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  text-decoration: none;
+}
+
+.payment-banner-btn:hover {
+  background-color: #8a5409;
+}

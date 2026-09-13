@@ -14,6 +14,8 @@ Django 기본 index 위에 '아직 여기 없는 것들' 로 가는 줄을 얹�
 {% block content %}
 {% owner_restaurant as shop %}
 {% if shop %}
+{% owner_banner_context shop as banner %}
+{% include "admin/_payment_banner.html" with menu_is_live=banner.menu_is_live subscription=banner.subscription billing_url=banner.billing_url %}
 <div class="owner-shortcuts">
   <p class="owner-shortcuts-label"><span class="owner-shortcuts-eyebrow">Store</span>{{ shop.name }}</p>
   <div class="owner-shortcuts-row">

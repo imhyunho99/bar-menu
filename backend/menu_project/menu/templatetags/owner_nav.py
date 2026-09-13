@@ -28,6 +28,31 @@ def owner_restaurant(context):
 
 
 @register.simple_tag
+def owner_banner_context(shop):
+    """
+    결제 배너가 쓰는 값들.
+
+    커스텀 화면은 뷰가 컨텍스트를 채워 주지만 Django /admin/ 첫 화면은
+    뷰가 우리 것이 아니다. 그래도 배너는 거기 떠야 한다 — 로그인 도착지가
+    /admin/ 이라, 커스텀 쪽에만 넣으면 '아직 공개되지 않았습니다' 를
+    사장님이 영영 보지 못한다.
+
+    같은 _payment_banner.html 을 쓰므로 키 이름을 뷰 쪽과 맞춘다. 갈리면
+    한쪽 화면에서만 배너가 조용히 사라진다.
+    """
+    from django.urls import reverse
+
+    if shop is None:
+        return {}
+    subscription = getattr(shop, 'subscription', None)
+    return {
+        'menu_is_live': bool(subscription and subscription.menu_is_live()),
+        'subscription': subscription,
+        'billing_url': reverse('menu:billing_home', kwargs={'restaurant_slug': shop.slug}),
+    }
+
+
+@register.simple_tag
 def owner_preview_url(shop):
     """
     공개 전 매장의 미리보기 주소. 이미 공개된 매장이면 빈 문자열.

@@ -282,57 +282,6 @@ body {
     text-align: center;
 }
 
-/*
- * 결제 전 매장에 띄우는 배너 (admin/_payment_banner.html).
- * admin-error 의 빨강은 '뭔가 잘못됐다' 로 읽힌다. 여기는 잘못된 상태가
- * 아니라 아직 안 끝난 절차라서 주황을 쓴다.
- */
-.payment-banner {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px 20px;
-    background-color: rgba(166, 101, 11, 0.08);
-    border: 1px solid rgba(166, 101, 11, 0.3);
-    border-radius: var(--admin-radius);
-    padding: 16px 20px;
-    margin-bottom: 24px;
-}
-
-.payment-banner-text {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 240px;
-    flex: 1;
-}
-
-.payment-banner-text strong {
-    color: var(--amber);
-    font-size: 1rem;
-}
-
-.payment-banner-text span {
-    color: var(--admin-text-secondary);
-    font-size: 0.875rem;
-    line-height: 1.5;
-}
-
-.payment-banner-btn {
-    flex-shrink: 0;
-    background-color: var(--amber);
-    color: var(--ink);
-    font-weight: 600;
-    padding: 10px 18px;
-    border-radius: var(--admin-radius);
-    text-decoration: none;
-    transition: var(--admin-transition);
-}
-
-.payment-banner-btn:hover {
-    background-color: var(--admin-primary-hover);
-}
 
 /*
  * 결제 화면 (admin/billing.html).

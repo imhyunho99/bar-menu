@@ -176,3 +176,46 @@ class DjangoAdminHomeOffersThePreviewTests(TestCase):
         response = self.client.get('/admin/')
         self.assertContains(response, '손님 화면 보기')
         self.assertNotContains(response, 'preview=')
+
+
+@override_settings(ENFORCE_SUBSCRIPTION=True)
+class DjangoAdminHomeCarriesTheBannerTests(TestCase):
+    """
+    배너는 로그인 도착지에 떠야 한다.
+
+    커스텀 대시보드에만 넣으면 이 기능에서 제일 중요한 문장("아직 공개되지
+    않았습니다")을 사장님이 영영 보지 못한다 — 로그인하면 /admin/ 으로 가고
+    커스텀 대시보드는 일상 경로가 아니다.
+    """
+
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name='미결제 바', slug='unpaid-bar')
+        self.user = User.objects.create_superuser('me@example.com', password='pw-12345678')
+        self.client.force_login(self.user)
+
+    def test_an_unopened_store_sees_the_banner(self):
+        response = self.client.get('/admin/')
+        self.assertContains(response, '아직 손님에게 공개되지 않았습니다')
+        self.assertContains(response, '/unpaid-bar/admin/billing/')
+
+    def test_a_lapsed_store_is_told_it_closed(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        subscription = self.restaurant.subscription
+        subscription.status = 'active'
+        subscription.current_period_end = timezone.now() - timedelta(days=1)
+        subscription.save()
+
+        response = self.client.get('/admin/')
+        self.assertContains(response, '손님 화면이 닫혔습니다')
+
+    def test_an_open_store_sees_no_banner(self):
+        subscription = self.restaurant.subscription
+        subscription.status = 'partner'
+        subscription.save(update_fields=['status'])
+
+        response = self.client.get('/admin/')
+        self.assertNotContains(response, '아직 손님에게 공개되지 않았습니다')
+        self.assertNotContains(response, '손님 화면이 닫혔습니다')

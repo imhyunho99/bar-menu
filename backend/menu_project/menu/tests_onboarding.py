@@ -346,6 +346,23 @@ class PaymentBannerTests(TestCase):
         self.assertContains(response, self.CLOSED)
 
     @override_settings(ENFORCE_SUBSCRIPTION=True)
+    def test_a_never_opened_store_is_not_told_its_screen_closed(self):
+        """
+        가입만 한 매장은 '닫힌' 것이 아니라 아직 시작하지 않은 것이다.
+        닫혔다고 하면 아무것도 안 했는데 고장 난 줄 안다.
+        """
+        response = self.client.get(self.dashboard_url)
+        self.assertFalse(response.context['menu_is_live'])
+        self.assertNotContains(response, self.CLOSED)
+        self.assertContains(response, '아직 손님에게 공개되지 않았습니다')
+
+    @override_settings(ENFORCE_SUBSCRIPTION=True)
+    def test_a_never_opened_store_is_pointed_at_the_deposit_guide(self):
+        """문의 창구가 아니라 입금 안내로 보낸다. 이제 낼 방법이 있다."""
+        response = self.client.get(self.dashboard_url)
+        self.assertContains(response, '/moonlight/admin/billing/')
+
+    @override_settings(ENFORCE_SUBSCRIPTION=True)
     def test_closure_banner_offers_a_way_to_ask_for_an_extension(self):
         """
         결제가 아직 없다. 닫혔다고만 알리고 길을 주지 않으면 사장님은
@@ -353,9 +370,57 @@ class PaymentBannerTests(TestCase):
         """
         self._expire_paid_period()
         response = self.client.get(self.dashboard_url)
-        self.assertContains(response, '연장 문의')
+        self.assertContains(response, '연장 입금 안내')
 
     def test_paid_store_sees_no_banner(self):
         self._activate()
         response = self.client.get(self.dashboard_url)
         self.assertNotContains(response, self.CLOSED)
+
+
+class ChecklistFollowsThePaymentGateTests(TestCase):
+    """
+    체크리스트가 못 하는 일을 권하면 사장님은 거기까지 갔다가 잠긴 화면을
+    만난다. 잠긴 것은 잠겼다고 먼저 말해야 한다.
+    """
+
+    def setUp(self):
+        self.client.post(SIGNUP_URL, GOOD_FORM)
+        self.restaurant = Restaurant.objects.get(slug='moonlight')
+        self.start_url = '/moonlight/admin/start/'
+        category = Category.objects.create(name='사시미', restaurant=self.restaurant)
+        MenuItem.objects.create(name='모둠 사시미', price='38,000', description='',
+                                category=category, restaurant=self.restaurant)
+
+    def _step(self, response, key):
+        return next(s for s in response.context['steps'] if s['key'] == key)
+
+    @override_settings(ENFORCE_SUBSCRIPTION=True)
+    def test_qr_step_is_locked_until_payment(self):
+        qr_step = self._step(self.client.get(self.start_url), 'qr')
+        self.assertTrue(qr_step['locked'])
+        self.assertIn('입금', qr_step['detail'])
+
+    @override_settings(ENFORCE_SUBSCRIPTION=True)
+    def test_qr_step_blames_the_missing_menu_first(self):
+        """
+        메뉴도 없고 입금도 없으면 '메뉴부터' 라고 해야 한다. 순서가 반대면
+        입금부터 하고 와서도 여전히 잠긴 걸 보게 된다.
+        """
+        MenuItem.objects.all().delete()
+        qr_step = self._step(self.client.get(self.start_url), 'qr')
+        self.assertTrue(qr_step['locked'])
+        self.assertIn('메뉴를 먼저', qr_step['detail'])
+
+    @override_settings(ENFORCE_SUBSCRIPTION=True)
+    def test_checklist_offers_a_preview_before_payment(self):
+        response = self.client.get(self.start_url)
+        self.assertIn('preview=', response.context['preview_url'])
+
+    def test_qr_step_opens_once_the_store_is_live(self):
+        subscription = self.restaurant.subscription
+        subscription.status = 'partner'
+        subscription.save(update_fields=['status'])
+
+        qr_step = self._step(self.client.get(self.start_url), 'qr')
+        self.assertFalse(qr_step['locked'])
