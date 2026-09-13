@@ -184,7 +184,8 @@ BANK_ACCOUNT=000000-00-000000
 BANK_HOLDER=예금주명
 
 # 손님 화면(Next.js) 주소. 미리보기 링크를 이걸로 만든다.
-# 없으면 MARKETING_SITE_URL 로 떨어지는데, develop 에서는 그게 운영을 가리킨다.
+# 비어 있으면 링크를 아예 만들지 않고 관리 화면이 '미설정' 이라고 말한다.
+# (운영은 https://bar-menu.ddnsfree.com)
 CUSTOMER_SITE_URL=https://develop.bar-menu.ddnsfree.com
 
 # ENFORCE_SUBSCRIPTION 은 이제 기본이 True 다. 끄면 전원이 공짜가 된다.

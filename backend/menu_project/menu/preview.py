@@ -45,3 +45,24 @@ def check_preview_token(slug, token, max_age=PREVIEW_MAX_AGE_SECONDS):
     except signing.BadSignature:
         return False
     return signed_slug == slug
+
+
+def preview_url_for(restaurant):
+    """
+    사장님에게 줄 미리보기 주소. 만들 수 없으면 빈 문자열.
+
+    네 화면(대시보드·온보딩·QR 잠금·admin 첫 화면)이 같은 f-string 을 각자
+    복사해 쓰고 있었다. 주소 모양이 바뀌면 세 곳만 고치고 한 곳을 빠뜨린다.
+
+    CUSTOMER_SITE_URL 이 비어 있으면 주소를 만들지 않는다. 예전에는
+    MARKETING_SITE_URL 로 떨어졌는데 그 값은 운영을 가리킨다 — 운영에서는
+    우연히 맞고 develop 에서만 틀리는 폴백이라, 정작 테스트하는 곳에서만
+    깨지고 깨진 줄도 모른 채 운영 주소를 연다. 빈 값을 돌려주면 화면이
+    '설정이 없다' 고 말할 수 있다.
+    """
+    from django.conf import settings
+
+    base = (getattr(settings, 'CUSTOMER_SITE_URL', '') or '').rstrip('/')
+    if not base:
+        return ''
+    return f'{base}/{restaurant.slug}?preview={make_preview_token(restaurant.slug)}'

@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 import json
 from .models import Category, MenuItem, UserProfile, Restaurant, Order, OrderItem, MenuItemPairing, SiteSettings
 from . import notifications
-from .preview import make_preview_token
+from .preview import preview_url_for
 from .menu_import import (
     MAX_IMAGES,
     MAX_TOTAL_UPLOAD_BYTES,
@@ -103,10 +103,7 @@ def admin_dashboard(request, restaurant_slug=None):
         'billing_url': reverse('menu:billing_home', kwargs={'restaurant_slug': request.restaurant.slug}),
         # 누를 때마다 새로 만든다. 저장하지 않으니 회전을 신경 쓸 일이 없고,
         # 어제 열어 둔 탭의 링크가 죽어 있어도 다시 누르면 된다.
-        'preview_url': (
-            f'{settings.CUSTOMER_SITE_URL}/{request.restaurant.slug}'
-            f'?preview={make_preview_token(request.restaurant.slug)}'
-        ),
+        'preview_url': preview_url_for(request.restaurant),
     })
 
 @login_required

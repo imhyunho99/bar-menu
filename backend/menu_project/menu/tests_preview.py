@@ -96,6 +96,7 @@ class PreviewOpensTheGateTests(TestCase):
         self.assertFalse(self.restaurant.subscription.is_usable())
 
 
+@override_settings(CUSTOMER_SITE_URL='https://develop.example.com')
 class OwnerGetsAPreviewLinkTests(TestCase):
     """사장님이 그 링크를 어디서 받는가."""
 
@@ -131,14 +132,17 @@ class OwnerGetsAPreviewLinkTests(TestCase):
         """
         손님이 실제로 보는 화면은 Next.js 다. Django 가 그리는 /<slug>/ 를
         주면 사장님은 손님이 볼 것과 다른 화면을 확인하게 된다.
+
+        빈 문자열과 대조하면 무엇이든 통과하므로 주소를 직접 적는다.
         """
-        from django.conf import settings
-
         response = self.client.get('/unpaid-bar/admin/dashboard/')
-        self.assertTrue(response.context['preview_url'].startswith(settings.CUSTOMER_SITE_URL))
+        self.assertTrue(
+            response.context['preview_url'].startswith('https://develop.example.com/unpaid-bar'),
+            response.context['preview_url'],
+        )
 
 
-@override_settings(ENFORCE_SUBSCRIPTION=True)
+@override_settings(ENFORCE_SUBSCRIPTION=True, CUSTOMER_SITE_URL='https://develop.example.com')
 class DjangoAdminHomeOffersThePreviewTests(TestCase):
     """
     로그인한 사장님이 실제로 도착하는 곳은 Django /admin/ 이다
@@ -262,3 +266,48 @@ class TheApiTellsTheFrontWhetherItIsLiveTests(TestCase):
             / 'frontend' / 'src' / 'app' / '[restaurantSlug]' / 'layout.tsx'
         ).read_text(encoding='utf-8')
         self.assertIn('!restaurant.menu_is_live', layout)
+
+
+class PreviewUrlNeedsExplicitConfigTests(TestCase):
+    """
+    CUSTOMER_SITE_URL 이 없으면 미리보기 주소를 만들지 않는다.
+
+    예전에는 MARKETING_SITE_URL 로 떨어졌는데, 그 값은 운영을 가리킨다.
+    운영에서는 우연히 맞고 develop 에서만 틀리는 폴백이라 제일 나쁘다 —
+    테스트하는 곳에서만 깨지고, 깨진 줄도 모른 채 운영 주소를 연다.
+    """
+
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name='미결제 바', slug='unpaid-bar')
+
+    def test_a_configured_site_gives_a_working_link(self):
+        from menu.preview import preview_url_for
+
+        with self.settings(CUSTOMER_SITE_URL='https://develop.example.com'):
+            url = preview_url_for(self.restaurant)
+
+        self.assertTrue(url.startswith('https://develop.example.com/unpaid-bar?preview='))
+        self.assertTrue(check_preview_token('unpaid-bar', url.split('preview=')[1]))
+
+    def test_an_unset_site_gives_nothing_rather_than_a_wrong_link(self):
+        from menu.preview import preview_url_for
+
+        with self.settings(CUSTOMER_SITE_URL=''):
+            self.assertEqual(preview_url_for(self.restaurant), '')
+
+    def test_a_trailing_slash_does_not_double_up(self):
+        from menu.preview import preview_url_for
+
+        with self.settings(CUSTOMER_SITE_URL='https://develop.example.com/'):
+            self.assertIn('.com/unpaid-bar?preview=', preview_url_for(self.restaurant))
+
+    @override_settings(CUSTOMER_SITE_URL='')
+    def test_the_admin_says_it_is_missing_instead_of_linking_to_production(self):
+        user = User.objects.create_superuser('me@example.com', password='pw-12345678')
+        self.client.force_login(user)
+
+        with self.settings(ENFORCE_SUBSCRIPTION=True):
+            response = self.client.get('/admin/')
+
+        self.assertNotContains(response, 'preview=')
+        self.assertContains(response, 'CUSTOMER_SITE_URL')

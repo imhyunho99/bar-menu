@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw
 
 from .admin_views import check_restaurant_permission
 from .models import SiteSettings, Restaurant
-from .preview import make_preview_token
+from .preview import preview_url_for
 
 
 @login_required
@@ -36,10 +36,7 @@ def generate_qr_code(request, restaurant_slug=None):
     if subscription is None or not subscription.menu_is_live():
         return render(request, 'menu/qr_locked.html', {
             'restaurant': restaurant,
-            'preview_url': (
-                f'{settings.CUSTOMER_SITE_URL}/{restaurant.slug}'
-                f'?preview={make_preview_token(restaurant.slug)}'
-            ),
+            'preview_url': preview_url_for(restaurant),
         })
 
     # 현재 서버 URL 가져오기

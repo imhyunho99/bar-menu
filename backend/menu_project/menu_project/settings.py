@@ -326,7 +326,10 @@ TERMS_URL = f'{MARKETING_SITE_URL}/terms'
 # Django 가 그리는 /<slug>/ 를 주면 사장님은 손님이 볼 것과 다른 화면을
 # 확인하게 된다. 지금은 마케팅과 같은 도메인이라 기본값을 그것으로 두지만,
 # 갈라질 수 있으므로 이름을 따로 둔다.
-CUSTOMER_SITE_URL = os.environ.get('CUSTOMER_SITE_URL', MARKETING_SITE_URL).rstrip('/')
+# 비어 있으면 미리보기 주소를 만들지 않는다. MARKETING_SITE_URL 로 떨어뜨리면
+# 운영에서는 우연히 맞고 develop 에서만 운영 주소를 가리킨다 — 정작 테스트하는
+# 곳에서만 깨지고, 깨진 줄도 모른 채 운영을 연다.
+CUSTOMER_SITE_URL = os.environ.get('CUSTOMER_SITE_URL', '').rstrip('/')
 
 
 # ── 카카오페이 ────────────────────────────────────────────────────────

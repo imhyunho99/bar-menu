@@ -65,16 +65,11 @@ def owner_preview_url(shop):
     템플릿이 상태를 따로 묻지 않게 하려는 것이다 — 두 군데서 물으면 링크는
     미리보기인데 문구는 '손님 화면 보기' 인 조합이 생긴다.
     """
-    from django.conf import settings
-
-    from ..preview import make_preview_token
+    from ..preview import preview_url_for
 
     if shop is None:
         return ''
     subscription = getattr(shop, 'subscription', None)
     if subscription is not None and subscription.menu_is_live():
         return ''
-    return (
-        f'{settings.CUSTOMER_SITE_URL}/{shop.slug}'
-        f'?preview={make_preview_token(shop.slug)}'
-    )
+    return preview_url_for(shop)

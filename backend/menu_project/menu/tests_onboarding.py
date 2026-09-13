@@ -415,7 +415,7 @@ class ChecklistFollowsThePaymentGateTests(TestCase):
         self.assertTrue(qr_step['locked'])
         self.assertIn('메뉴를 먼저', qr_step['detail'])
 
-    @override_settings(ENFORCE_SUBSCRIPTION=True)
+    @override_settings(ENFORCE_SUBSCRIPTION=True, CUSTOMER_SITE_URL='https://develop.example.com')
     def test_checklist_offers_a_preview_before_payment(self):
         response = self.client.get(self.start_url)
         self.assertIn('preview=', response.context['preview_url'])

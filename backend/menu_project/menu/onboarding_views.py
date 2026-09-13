@@ -24,7 +24,7 @@ from django.urls import NoReverseMatch, reverse
 from . import notifications
 from .admin_views import check_restaurant_permission
 from .models import Category, MenuItem, Restaurant, Subscription, UserProfile
-from .preview import make_preview_token
+from .preview import preview_url_for
 
 logger = logging.getLogger(__name__)
 
@@ -326,10 +326,7 @@ def onboarding_home(request, restaurant_slug=None):
         'billing_url': reverse('menu:billing_home', kwargs={'restaurant_slug': restaurant.slug}),
         # 공개 전에는 손님 주소가 잠겨 있다. 사장님이 자기 메뉴판을 확인할
         # 유일한 통로라 체크리스트에서도 준다.
-        'preview_url': (
-            f'{settings.CUSTOMER_SITE_URL}/{restaurant.slug}'
-            f'?preview={make_preview_token(restaurant.slug)}'
-        ),
+        'preview_url': preview_url_for(restaurant),
         'menu_count': menu_count,
         'category_count': category_count,
     })
