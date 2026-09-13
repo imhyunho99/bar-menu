@@ -177,15 +177,15 @@ def build_signup_payload(restaurant):
     }
 
 
-def build_trial_expired_payload(subscription):
-    """체험이 끝난 매장을 Discord 웹훅 JSON 페이로드로 변환한다."""
+def build_subscription_expired_payload(subscription):
+    """이용 기간이 끝난 매장을 Discord 웹훅 JSON 페이로드로 변환한다."""
     restaurant = subscription.restaurant
     email, phone = _owner_contact(restaurant)
     return {
         "embeds": [
             {
-                "title": "⏰ 무료 체험 종료 — 손님 화면이 닫혔습니다",
-                "description": "결제 안내가 필요합니다. 사장님이 먼저 연락하지 않는 쪽이 보통입니다.",
+                "title": "⏰ 이용 기간 종료 — 손님 화면이 닫혔습니다",
+                "description": "연장 안내가 필요합니다. 사장님이 먼저 연락하지 않는 쪽이 보통입니다.",
                 "color": 15105570,
                 "fields": [
                     {"name": "매장명", "value": restaurant.name or "-", "inline": True},
@@ -243,9 +243,35 @@ def send_signup_notification(restaurant):
     return _send(build_signup_payload(restaurant))
 
 
-def send_trial_expired_notification(subscription):
-    """체험 종료 알림을 비동기로 발송한다. 웹훅이 없으면 아무것도 하지 않는다."""
-    return _send(build_trial_expired_payload(subscription))
+def build_expiring_soon_payload(subscription, days_left):
+    """곧 끝나는 매장. 끝나고 알리면 이미 손님 화면이 닫힌 뒤다."""
+    restaurant = subscription.restaurant
+    email, phone = _owner_contact(restaurant)
+    return {
+        "embeds": [
+            {
+                "title": f"🔔 이용 기간 {days_left}일 남음",
+                "description": "연장 입금을 안내할 시점입니다.",
+                "color": 16776960,
+                "fields": [
+                    {"name": "매장명", "value": restaurant.name or "-", "inline": True},
+                    {"name": "주소", "value": f"/{restaurant.slug}", "inline": True},
+                    {"name": "이메일", "value": email, "inline": False},
+                    {"name": "연락처", "value": phone, "inline": True},
+                ],
+            }
+        ]
+    }
+
+
+def send_subscription_expired_notification(subscription):
+    """기간 종료 알림을 비동기로 발송한다. 웹훅이 없으면 아무것도 하지 않는다."""
+    return _send(build_subscription_expired_payload(subscription))
+
+
+def send_expiring_soon_notification(subscription, days_left):
+    """만료 예고 알림을 비동기로 발송한다. 웹훅이 없으면 아무것도 하지 않는다."""
+    return _send(build_expiring_soon_payload(subscription, days_left))
 
 
 # ── 메뉴판 사진 중계 ───────────────────────────────────────────────────
