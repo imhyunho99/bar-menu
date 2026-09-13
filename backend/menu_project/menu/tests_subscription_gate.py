@@ -1,9 +1,12 @@
 """
 구독 게이트 미들웨어.
 
-가장 중요한 성질은 '켜지 않으면 아무것도 막지 않는다' 이다. 결제 대행사가
-붙기 전에 이게 켜지면, 체험이 끝난 사장님은 돈 낼 방법도 없이 손님 화면만
-꺼진다. 그래서 기본 꺼짐과, 켜졌을 때도 사장님 경로는 열려 있음을 못박는다.
+2026-09 에 기본값이 켜짐으로 뒤집혔다. 꺼져 있으면 menu_is_live 가 무조건
+True 라 전원이 공짜이기 때문이다. 예전에 기본 꺼짐이었던 이유는 '사장님이
+돈 낼 방법도 없이 메뉴판만 꺼진다' 였는데, 계좌이체가 생기면서 전제가 바뀌었다.
+
+그래도 못박아 둘 것은 그대로다: 켜져 있어도 사장님이 되살리러 들어오는 길은
+열려 있어야 하고, 파트너 매장은 날짜와 무관하게 절대 닫히지 않아야 한다.
 """
 
 from datetime import timedelta
@@ -35,6 +38,7 @@ class SubscriptionGateTests(TestCase):
         return sub
 
     # ── 기본값: 꺼져 있다 ──────────────────────────────────────────
+    @override_settings(ENFORCE_SUBSCRIPTION=False)
     def test_unpaid_store_stays_open_while_enforcement_is_off(self):
         self._subscribe(status='unpaid')
         self.assertNotEqual(self.client.get(self.menu_url).status_code, 402)

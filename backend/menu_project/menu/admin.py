@@ -444,10 +444,15 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
 class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
     list_display = ('restaurant', 'created_at')
     readonly_fields = ('sync_ip_button',)
+    # 카드 레이아웃 빌더는 여기 없다. 저장과 API 전송까지는 되는데 손님 화면이
+    # 그 JSON 을 읽지 않아서(frontend 에 참조 0건), 사장님이 배치를 옮기고
+    # 저장해도 아무 일도 일어나지 않는다. 연결은 별도 스펙에서 만든다
+    # (docs/superpowers/specs/2026-09-12-layout-renderer-design.md).
+    # 그때까지 열어 두면 무료 티어의 핵심 화면이 조용히 거짓말을 한다.
+    #
+    # formfield_for_dbfield 의 LayoutBuilderWidget 분기는 그대로 둔다 —
+    # 필드를 다시 노출하는 날 위젯이 같이 살아나야 한다.
     fieldsets = (
-        ('카드 레이아웃 커스터마이징 설정', {
-            'fields': ('category_card_layout_json', 'menu_card_layout_json'),
-        }),
         ('기본 설정', {
             'fields': ('restaurant', 'logo_image', 'intro_image', 'intro_video', 'loading_video_2', 'show_manual_card', 'side_image')
         }),

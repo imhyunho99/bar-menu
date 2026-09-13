@@ -62,6 +62,7 @@ class QrNeedsPaymentTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'menu/qr_code.html')
 
+    @override_settings(ENFORCE_SUBSCRIPTION=False)
     def test_the_gate_being_off_does_not_lock_the_qr(self):
         """
         게이트가 꺼져 있으면 미결제 매장의 메뉴판도 실제로 열려 있다.

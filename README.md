@@ -172,6 +172,36 @@ rsync -avz backend/menu_project/ server:/path/to/menu_project/
 ssh server "touch /path/to/reload.txt"
 ```
 
+### 계좌이체 게이트 (2026-09)
+
+손님 공개와 QR 발행이 입금 확인 뒤로 옮겨졌다. 배포할 때 **서버에서 손으로**
+해야 하는 것들:
+
+```bash
+# .env — 계좌 정보가 없으면 결제 화면이 폼 대신 '준비 중' 을 보여준다
+BANK_NAME=국민
+BANK_ACCOUNT=000000-00-000000
+BANK_HOLDER=예금주명
+
+# 손님 화면(Next.js) 주소. 미리보기 링크를 이걸로 만든다.
+# 없으면 MARKETING_SITE_URL 로 떨어지는데, develop 에서는 그게 운영을 가리킨다.
+CUSTOMER_SITE_URL=https://develop.bar-menu.ddnsfree.com
+
+# ENFORCE_SUBSCRIPTION 은 이제 기본이 True 다. 끄면 전원이 공짜가 된다.
+
+# cron — expire_trials 는 삭제됐다. 남아 있으면 지운다.
+0 9 * * *  cd ~/bar_menu/backend/menu_project && ../venv/bin/python manage.py sweep_subscriptions
+```
+
+마이그레이션 3개(`0054`~`0056`)가 돈다. `0054` 는 남아 있는 `trialing` 매장을
+`unpaid` 로 내린다 — 상태로만 고르므로 파트너 매장은 건드리지 않는다.
+
+배포 전 확인:
+
+- `DISCORD_WEBHOOK_URL` 이 살아 있는가 (사진 중계와 입금 알림이 둘 다 쓴다)
+- 파트너 매장(`bid`·`sorok`)이 `partner` 상태 그대로인가 — 여기가 틀리면
+  영업 중인 가게가 꺼진다
+
 ---
 
 ## 보안

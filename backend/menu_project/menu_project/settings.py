@@ -297,7 +297,12 @@ CORS_ALLOW_CREDENTIALS = True
 # 구독이 끝난 매장의 손님 화면을 잠글지. 결제 대행사가 붙어서 사장님이
 # 실제로 돈을 낼 수 있게 된 다음에 켠다. 그 전에 켜면 체험이 끝난 매장은
 # 되살릴 방법 없이 메뉴판만 꺼진다.
-ENFORCE_SUBSCRIPTION = os.environ.get('ENFORCE_SUBSCRIPTION', 'False') == 'True'
+# 손님 화면을 구독 상태로 잠근다. 기본이 True 인 이유는, 꺼져 있으면
+# menu_is_live() 가 무조건 True 를 줘서 전원이 공짜이기 때문이다. 예전에는
+# '사장님이 돈 낼 방법도 없이 메뉴판만 꺼진다' 가 기본값을 False 로 둔
+# 이유였는데, 계좌이체가 생기면서 전제가 바뀌었다 — 무료로 쓸 사람은
+# 미리보기로 산다.
+ENFORCE_SUBSCRIPTION = os.environ.get('ENFORCE_SUBSCRIPTION', 'True') == 'True'
 
 
 # 결제 화면의 이의신청 창구와 이용약관 주소.

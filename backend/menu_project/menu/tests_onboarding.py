@@ -230,8 +230,11 @@ class OnboardingHomeTests(TestCase):
         self.assertEqual(response.context['category_count'], 1)
         steps = {step['key']: step for step in response.context['steps']}
         self.assertTrue(steps['menu']['done'])
-        self.assertFalse(steps['qr']['locked'])
         self.assertEqual(response.context['done_count'], 1)
+        # 메뉴가 생겨도 QR 은 아직 잠겨 있다. 이유가 '메뉴 없음' 에서
+        # '입금 전' 으로 바뀌었을 뿐이다.
+        self.assertTrue(steps['qr']['locked'])
+        self.assertIn('입금', steps['qr']['detail'])
 
     def test_counts_ignore_other_restaurants_rows(self):
         other = Restaurant.objects.create(name='남의 가게', slug='other')
