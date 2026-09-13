@@ -1,5 +1,7 @@
 # menu/models.py
 
+from datetime import timedelta
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
@@ -648,6 +650,93 @@ class Subscription(models.Model):
 
         until = self.access_until
         return until is not None and until > timezone.now()
+
+
+class PaymentRequest(models.Model):
+    """
+    사장님이 "입금했습니다" 하고 남기는 줄.
+
+    통장에는 입금자명만 찍힌다. 상호와 다른 경우가 대부분이라, 그 이름을
+    매장에 이어 붙일 근거가 없으면 누가 보낸 돈인지 알 수 없다. 이 모델이
+    그 근거다.
+
+    상태를 바꾸는 일은 confirm() 하나로 모은다. admin 액션이 네 개(1·3·6·12
+    개월)지만 하는 일은 기간만 다르고 같다.
+    """
+
+    STATUS_CHOICES = [
+        ('pending', '확인 대기'),
+        ('confirmed', '확인됨'),
+        ('rejected', '반려'),
+    ]
+
+    restaurant = models.ForeignKey(
+        Restaurant, on_delete=models.CASCADE,
+        related_name='payment_requests', verbose_name="매장",
+    )
+    plan = models.CharField(max_length=20, choices=Subscription.PLAN_CHOICES, verbose_name="요금제")
+    depositor_name = models.CharField(max_length=50, verbose_name="입금자명")
+    amount = models.PositiveIntegerField(verbose_name="입금액")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="상태",
+    )
+    note = models.TextField(blank=True, default='', verbose_name="메모")
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="신청 일시")
+    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name="확인 일시")
+    confirmed_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        verbose_name="확인한 사람",
+    )
+
+    class Meta:
+        verbose_name = "입금 신청"
+        verbose_name_plural = "입금 신청 목록"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.restaurant.name} · {self.depositor_name} · {self.amount:,}원"
+
+    def confirm(self, months, user):
+        """
+        입금을 확인하고 매장을 연다.
+
+        기존 만료일이 남아 있으면 거기에 더한다. 오늘부터 세면 만료 전에
+        미리 낸 사람의 남은 날을 먹는다. 반대로 이미 지난 만료일에 더하면
+        여전히 과거라서, 둘 중 나중 것을 기준으로 잡는다.
+
+        이미 확인된 신청은 아무것도 하지 않는다 — 목록에서 두 번 누르는
+        일이 실제로 일어나고, 그때 기간이 두 배가 되면 안 된다.
+
+        파트너는 상태를 내리지 않는다. active 로 바꾸면 한 달 뒤 영구
+        무제한이어야 할 가게가 꺼진다.
+
+        한 달은 달력이 아니라 30일이다. dateutil 을 얹지 않으려고 그랬다 —
+        청구가 수동이라 며칠 오차는 문제가 되지 않고, RAM 1GB 미만인 운영
+        인스턴스에 패키지를 하나 더 얹는 값이 더 비싸다.
+        """
+        from django.utils import timezone
+
+        subscription = self.restaurant.subscription
+        if self.status == 'confirmed':
+            return subscription
+
+        now = timezone.now()
+
+        if subscription.status != Subscription.UNLIMITED_STATUS:
+            base = subscription.current_period_end
+            if base is None or base < now:
+                base = now
+            subscription.status = 'active'
+            subscription.plan = self.plan
+            subscription.current_period_end = base + timedelta(days=30 * months)
+            subscription.save(update_fields=['status', 'plan', 'current_period_end', 'updated_at'])
+
+        self.status = 'confirmed'
+        self.confirmed_at = now
+        self.confirmed_by = user
+        self.save(update_fields=['status', 'confirmed_at', 'confirmed_by'])
+        return subscription
 
 
 class ContactSubmission(models.Model):
