@@ -96,7 +96,22 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'name_en', 'priority', 'parent', 'category_image', 'hide_side_image', 'sub_categories']
 
     def get_sub_categories(self, obj):
-        children = obj.sub_categories.all().order_by('priority', 'name')
+        """
+        자식 카테고리. 미리 받아 둔 묶음이 있으면 그걸 쓴다.
+
+        예전에는 여기서 obj.sub_categories.all().order_by(...) 를 불렀다.
+        .order_by() 는 prefetch 캐시를 버리기 때문에 카테고리마다 쿼리가
+        한 번씩 나갔다 — 24개짜리 매장에서 29번. 코드만 봐서는 prefetch 가
+        걸려 있으니 괜찮아 보이는 게 이 함정의 고약한 점이다.
+
+        children_by_parent 가 없을 때의 폴백은 남겨 둔다. 느리지만 틀리지는
+        않는다 — 이 직렬화기를 다른 곳에서 쓰게 되는 날 조용히 비는 것보다 낫다.
+        """
+        children_by_parent = self.context.get('children_by_parent')
+        if children_by_parent is None:
+            children = obj.sub_categories.all().order_by('priority', 'name')
+        else:
+            children = children_by_parent.get(obj.id, [])
         return CategoryTreeSerializer(children, many=True, context=self.context).data
 
 

@@ -38,7 +38,11 @@ class RestaurantDetailView(APIView):
     """GET /api/v1/restaurants/<slug>/ — 레스토랑 상세 (SiteSettings 포함)"""
 
     def get(self, request, slug):
-        restaurant = get_object_or_404(Restaurant, slug=slug)
+        # 구독을 같이 끌어온다. 직렬화기가 menu_is_live 를 위해 보므로,
+        # 안 걸면 손님 요청마다 쿼리가 한 번 더 나간다.
+        restaurant = get_object_or_404(
+            Restaurant.objects.select_related('subscription'), slug=slug
+        )
         serializer = RestaurantDetailSerializer(restaurant, context={'request': request})
         return Response(serializer.data)
 
@@ -110,11 +114,22 @@ class CategoryTreeView(APIView):
 
     def get(self, request, slug):
         restaurant = get_object_or_404(Restaurant, slug=slug)
-        top_categories = Category.objects.filter(
-            parent=None,
-            restaurant=restaurant
-        ).prefetch_related('sub_categories').distinct().order_by('priority', 'name')
-        serializer = CategoryTreeSerializer(top_categories, many=True, context={'request': request})
+
+        # 이 매장 카테고리를 한 번에 다 읽고 트리는 파이썬에서 세운다.
+        # 손님이 메뉴판을 열 때마다 도는 경로라 건수가 카테고리 수를 따라가면
+        # 안 된다. 깊이가 늘어도 쿼리는 그대로다.
+        categories = list(
+            Category.objects.filter(restaurant=restaurant).order_by('priority', 'name')
+        )
+        children_by_parent = {}
+        for category in categories:
+            children_by_parent.setdefault(category.parent_id, []).append(category)
+
+        serializer = CategoryTreeSerializer(
+            children_by_parent.get(None, []),
+            many=True,
+            context={'request': request, 'children_by_parent': children_by_parent},
+        )
         return Response(serializer.data)
 
 

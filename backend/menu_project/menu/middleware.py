@@ -37,9 +37,9 @@ class SubscriptionGateMiddleware(MiddlewareMixin):
     받아 간다. 그쪽 URL 인자는 restaurant_slug 가 아니라 slug 라서
     RestaurantMiddleware 가 request.restaurant 를 채우지 않으므로 여기서 직접 본다.
 
-    기본값은 '잠그지 않음' 이다. 결제 대행사가 아직 안 붙어서, 지금 잠그면
-    사장님은 돈을 낼 방법도 없이 메뉴판만 꺼진다. 결제가 실제로 돌기 시작하면
-    settings 에 ENFORCE_SUBSCRIPTION = True 를 켠다.
+    2026-09 부터 기본값이 '잠금' 이다. 꺼 두면 menu_is_live() 가 무조건 True 를
+    줘서 전원이 공짜가 된다. 예전에 기본 꺼짐이던 이유는 '사장님이 돈 낼 방법도
+    없이 메뉴판만 꺼진다' 였는데, 계좌이체가 생기면서 전제가 바뀌었다.
     RestaurantMiddleware 다음에 놓아야 request.restaurant 를 볼 수 있다.
     """
 
@@ -121,4 +121,6 @@ class SubscriptionGateMiddleware(MiddlewareMixin):
         slug = view_kwargs.get('slug')
         if not slug:
             return None
-        return Restaurant.objects.filter(slug=slug).first()
+        # 구독을 같이 끌어온다. 바로 아래에서 is_usable() 을 부르므로 따로
+        # 두면 손님 요청마다 쿼리가 한 번 더 나간다.
+        return Restaurant.objects.filter(slug=slug).select_related('subscription').first()
