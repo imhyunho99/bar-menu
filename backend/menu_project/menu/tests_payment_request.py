@@ -119,3 +119,96 @@ class ConfirmingAPaymentOpensTheStoreTests(TestCase):
 
         self.assertEqual(self._subscription().status, Subscription.UNLIMITED_STATUS)
         self.assertTrue(self._subscription().is_usable())
+
+
+class OwnerSubmitsAPaymentRequestTests(TestCase):
+    def setUp(self):
+        from menu.models import UserProfile
+
+        self.restaurant = Restaurant.objects.create(name='미결제 바', slug='unpaid-bar')
+        self.user = User.objects.create_user('owner@example.com', password='pw-12345678')
+        UserProfile.objects.create(user=self.user, restaurant=self.restaurant)
+        self.client.force_login(self.user)
+        self.url = '/unpaid-bar/admin/billing/request/'
+
+    def test_submitting_creates_a_pending_request(self):
+        response = self.client.post(self.url, {'depositor_name': '홍길동', 'plan': 'entry'})
+        self.assertEqual(response.status_code, 302)
+
+        request = PaymentRequest.objects.get(restaurant=self.restaurant)
+        self.assertEqual(request.depositor_name, '홍길동')
+        self.assertEqual(request.amount, Subscription.PLAN_PRICES['entry'])
+        self.assertEqual(request.status, 'pending')
+
+    def test_the_amount_comes_from_the_server_not_the_form(self):
+        """
+        금액을 폼에서 받으면 사장님이 1원을 보내고 1원이라고 적을 수 있다.
+        요금제만 받고 금액은 서버가 정한다.
+        """
+        self.client.post(self.url, {'depositor_name': '홍길동', 'plan': 'pro', 'amount': '1'})
+        request = PaymentRequest.objects.get(restaurant=self.restaurant)
+        self.assertEqual(request.amount, Subscription.PLAN_PRICES['pro'])
+
+    def test_a_second_request_is_refused_while_one_is_waiting(self):
+        """같은 입금이 두 줄로 남으면 통장과 대조할 때 헷갈린다."""
+        payload = {'depositor_name': '홍길동', 'plan': 'entry'}
+        self.client.post(self.url, payload)
+        self.client.post(self.url, payload)
+
+        self.assertEqual(PaymentRequest.objects.filter(restaurant=self.restaurant).count(), 1)
+
+    def test_an_empty_depositor_name_is_refused(self):
+        self.client.post(self.url, {'depositor_name': '   ', 'plan': 'entry'})
+        self.assertEqual(PaymentRequest.objects.count(), 0)
+
+    def test_an_unknown_plan_is_refused(self):
+        self.client.post(self.url, {'depositor_name': '홍길동', 'plan': 'free-forever'})
+        self.assertEqual(PaymentRequest.objects.count(), 0)
+
+    def test_another_owner_cannot_submit_for_our_store(self):
+        from menu.models import UserProfile
+
+        intruder = User.objects.create_user('other@example.com', password='pw-12345678')
+        other = Restaurant.objects.create(name='남의 바', slug='other-bar')
+        UserProfile.objects.create(user=intruder, restaurant=other)
+        self.client.force_login(intruder)
+
+        response = self.client.post(self.url, {'depositor_name': '나쁜사람', 'plan': 'entry'})
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(PaymentRequest.objects.count(), 0)
+
+    def test_the_billing_page_shows_the_bank_account(self):
+        with self.settings(BANK_NAME='국민', BANK_ACCOUNT='123-45-678', BANK_HOLDER='나현호'):
+            response = self.client.get('/unpaid-bar/admin/billing/')
+        self.assertContains(response, '123-45-678')
+
+    def test_a_waiting_request_replaces_the_form(self):
+        self.client.post(self.url, {'depositor_name': '홍길동', 'plan': 'entry'})
+        with self.settings(BANK_NAME='국민', BANK_ACCOUNT='123-45-678', BANK_HOLDER='나현호'):
+            response = self.client.get('/unpaid-bar/admin/billing/')
+        self.assertContains(response, '확인 중입니다')
+        self.assertContains(response, '홍길동')
+
+
+class PaymentRequestNotificationTests(TestCase):
+    def setUp(self):
+        from menu.models import UserProfile
+
+        self.restaurant = Restaurant.objects.create(name='미결제 바', slug='unpaid-bar')
+        self.user = User.objects.create_user('owner@example.com', password='pw-12345678')
+        UserProfile.objects.create(user=self.user, restaurant=self.restaurant, phone='010-1111-2222')
+        self.request = PaymentRequest.objects.create(
+            restaurant=self.restaurant, plan='entry',
+            depositor_name='홍길동', amount=9900,
+        )
+
+    def test_payload_carries_what_we_need_to_match_the_bank_line(self):
+        from menu.notifications import build_payment_request_payload
+
+        text = str(build_payment_request_payload(self.request))
+
+        self.assertIn('홍길동', text)
+        self.assertIn('9,900', text)
+        self.assertIn('unpaid-bar', text)
+        self.assertIn('owner@example.com', text)
+        self.assertIn('010-1111-2222', text)

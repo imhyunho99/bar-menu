@@ -21,7 +21,8 @@ from .admin_views import check_restaurant_permission
 from .billing import base
 from .billing.base import PaymentError, PaymentNotConfigured
 from .billing.registry import get_provider, get_provider_by_name
-from .models import Subscription
+from . import notifications
+from .models import PaymentRequest, Subscription
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,52 @@ def _subscription_for(restaurant):
     """
     subscription, _ = Subscription.objects.get_or_create(restaurant=restaurant)
     return subscription
+
+
+@login_required
+@require_POST
+def submit_payment_request(request, restaurant_slug=None):
+    """
+    "입금했습니다" 를 줄로 남기고 우리에게 알린다.
+
+    금액은 폼에서 받지 않는다. 받으면 1원을 보내고 1원이라고 적을 수 있다.
+    요금제만 받고 금액은 PLAN_PRICES 가 정한다 — 요금 페이지에 적힌 값과
+    여기가 갈리면 그 자체가 사고다.
+    """
+    if not check_restaurant_permission(request.user, restaurant_slug):
+        return HttpResponseForbidden("권한이 없습니다.")
+
+    restaurant = request.restaurant
+    depositor_name = (request.POST.get('depositor_name') or '').strip()
+    plan = request.POST.get('plan') or ''
+
+    if not depositor_name:
+        messages.error(request, '입금자명을 입력해 주세요. 통장에 찍힌 이름과 같아야 합니다.')
+        return redirect('menu:billing_home', restaurant_slug=restaurant.slug)
+
+    if plan not in Subscription.PLAN_PRICES:
+        messages.error(request, '요금제를 골라 주세요.')
+        return redirect('menu:billing_home', restaurant_slug=restaurant.slug)
+
+    # 대기 중인 신청이 있으면 또 만들지 않는다. 같은 입금이 두 줄로 남으면
+    # 통장과 대조할 때 어느 쪽이 진짜인지 알 수 없다.
+    if PaymentRequest.objects.filter(restaurant=restaurant, status='pending').exists():
+        messages.info(request, '이미 확인을 기다리는 신청이 있습니다. 확인되면 알려 드리겠습니다.')
+        return redirect('menu:billing_home', restaurant_slug=restaurant.slug)
+
+    payment_request = PaymentRequest.objects.create(
+        restaurant=restaurant,
+        plan=plan,
+        depositor_name=depositor_name,
+        amount=Subscription.PLAN_PRICES[plan],
+    )
+    notifications.send_payment_request_notification(payment_request)
+
+    messages.success(
+        request,
+        '입금 신청을 받았습니다. 통장을 확인하는 대로 손님 화면과 QR을 열어 드리겠습니다.',
+    )
+    return redirect('menu:billing_home', restaurant_slug=restaurant.slug)
 
 
 @login_required
@@ -70,6 +117,14 @@ def billing_home(request, restaurant_slug=None):
         # 결제 연동 여부를 화면에 그대로 드러낸다. 사장님이 버튼을 누르고
         # 나서야 알게 되는 것보다 낫다.
         'payment_configured': provider.name != 'null',
+        # 계좌이체로 받는다. 계좌가 비어 있으면 폼 대신 '준비 중' 을 보여준다 —
+        # 어디로 보낼지 모르는 채 '입금했습니다' 를 누르게 할 수는 없다.
+        'bank_name': settings.BANK_NAME,
+        'bank_account': settings.BANK_ACCOUNT,
+        'bank_holder': settings.BANK_HOLDER,
+        'pending_request': PaymentRequest.objects.filter(
+            restaurant=request.restaurant, status='pending',
+        ).first(),
         'terms_url': settings.TERMS_URL,
         'contact_url': f'{settings.MARKETING_SITE_URL}/#contact',
         'support_email': settings.SUPPORT_EMAIL,

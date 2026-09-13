@@ -26,13 +26,67 @@
             </div>
         {% endif %}
 
-        {% if not payment_configured %}
-            <div style="background-color: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.35); color: var(--admin-text-primary); padding: 14px; border-radius: var(--admin-radius); margin-bottom: 20px;">
-                <strong>결제 연동을 준비하고 있습니다.</strong>
-                <span style="color: var(--admin-text-secondary);">
-                    지금은 어떤 요금도 청구되지 않습니다. 연동이 끝나면 이 화면에서 바로 결제하실 수 있고,
-                    준비되는 대로 안내드리겠습니다.
-                </span>
+        {% comment %}
+        계좌이체로 받고 확인은 사람이 한다. 자동 결제(카카오페이)는 코드가 잠들어
+        있고, 심사를 받게 되면 이 화면 아래에 나란히 붙는다.
+        {% endcomment %}
+        {% if pending_request %}
+            <div class="admin-section">
+                <div class="admin-card">
+                    <h2>확인 중입니다</h2>
+                    <p style="color: var(--admin-text-secondary); line-height: 1.6;">
+                        <strong style="color: var(--amber);">{{ pending_request.depositor_name }}</strong> 이름으로
+                        {{ pending_request.amount|floatformat:0 }}원 입금 신청을 받았습니다.
+                        통장을 확인하는 대로 손님 화면과 QR을 열어 드리겠습니다.
+                    </p>
+                    <p style="color: var(--admin-text-secondary); font-size: 0.875rem;">
+                        입금자명이 통장에 찍힌 이름과 다르면 확인이 늦어질 수 있습니다.
+                        다르게 보내셨다면 알려 주세요.
+                    </p>
+                </div>
+            </div>
+        {% elif bank_account %}
+            <div class="admin-section">
+                <div class="admin-card">
+                    <h2>입금 안내</h2>
+                    <p style="font-size: 1.05rem; color: var(--admin-text-primary);">
+                        {{ bank_name }} <strong>{{ bank_account }}</strong> (예금주 {{ bank_holder }})
+                    </p>
+                    <p style="color: var(--admin-text-secondary); line-height: 1.6;">
+                        입금하신 뒤 아래에 <strong>통장에 찍힐 이름</strong>을 적어 주세요.
+                        상호와 달라도 괜찮습니다 — 그 이름으로 대조합니다.
+                    </p>
+                    <form method="post" action="{% url 'menu:billing_request' request.restaurant.slug %}">
+                        {% csrf_token %}
+                        <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-top: 16px;">
+                            <label style="display: flex; flex-direction: column; gap: 6px;">
+                                <span style="font-size: 0.875rem; color: var(--admin-text-secondary);">입금자명</span>
+                                <input type="text" name="depositor_name" maxlength="50" required
+                                       style="padding: 10px 12px; border-radius: var(--admin-radius); border: 1px solid var(--line);">
+                            </label>
+                            <label style="display: flex; flex-direction: column; gap: 6px;">
+                                <span style="font-size: 0.875rem; color: var(--admin-text-secondary);">요금제</span>
+                                <select name="plan" style="padding: 10px 12px; border-radius: var(--admin-radius); border: 1px solid var(--line);">
+                                    {% for plan in plans %}
+                                    <option value="{{ plan.value }}" {% if plan.current %}selected{% endif %}>
+                                        {{ plan.label }} · 월 {{ plan.price }}원
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <button type="submit" class="admin-btn admin-btn-primary">입금했습니다</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% else %}
+            <div class="admin-section">
+                <div class="admin-card">
+                    <h2>입금 안내를 준비하고 있습니다</h2>
+                    <p style="color: var(--admin-text-secondary);">
+                        계좌 정보가 아직 설정되지 않았습니다. 잠시 후 다시 확인해 주세요.
+                    </p>
+                </div>
             </div>
         {% endif %}
 

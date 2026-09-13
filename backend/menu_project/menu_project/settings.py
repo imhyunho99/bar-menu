@@ -308,6 +308,13 @@ ENFORCE_SUBSCRIPTION = os.environ.get('ENFORCE_SUBSCRIPTION', 'False') == 'True'
 SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', '')
 SUPPORT_PHONE = os.environ.get('SUPPORT_PHONE', '')
 
+# 계좌이체로 받는다. 코드에 박으면 계좌를 바꿀 때 배포를 해야 한다.
+# 비어 있으면 결제 화면이 폼 대신 '준비 중' 을 보여준다 — 계좌 없는 폼은
+# 사장님이 어디로 보낼지 모른 채 '입금했습니다' 를 누르게 만든다.
+BANK_NAME = os.environ.get('BANK_NAME', '')
+BANK_ACCOUNT = os.environ.get('BANK_ACCOUNT', '')
+BANK_HOLDER = os.environ.get('BANK_HOLDER', '')
+
 # 마케팅 사이트(Vercel)의 이용약관. 결제 화면에서 새 창으로 연다.
 MARKETING_SITE_URL = os.environ.get(
     'MARKETING_SITE_URL', 'https://bar-menu.ddnsfree.com'

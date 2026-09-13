@@ -209,6 +209,35 @@ def _send(payload):
     return thread
 
 
+def build_payment_request_payload(payment_request):
+    """입금 신청을 Discord 웹훅 JSON 페이로드로 변환한다."""
+    restaurant = payment_request.restaurant
+    email, phone = _owner_contact(restaurant)
+    return {
+        "embeds": [
+            {
+                "title": "💰 입금 신청 — 통장을 확인해 주세요",
+                "description": "확인되면 Django admin 의 '입금 신청' 에서 기간을 골라 확인하세요.",
+                "color": 3447003,
+                "fields": [
+                    {"name": "매장명", "value": restaurant.name or "-", "inline": True},
+                    {"name": "주소", "value": f"/{restaurant.slug}", "inline": True},
+                    {"name": "입금자명", "value": payment_request.depositor_name, "inline": True},
+                    {"name": "금액", "value": f"{payment_request.amount:,}원", "inline": True},
+                    {"name": "요금제", "value": payment_request.get_plan_display(), "inline": True},
+                    {"name": "이메일", "value": email, "inline": False},
+                    {"name": "연락처", "value": phone, "inline": True},
+                ],
+            }
+        ]
+    }
+
+
+def send_payment_request_notification(payment_request):
+    """입금 신청 알림을 비동기로 발송한다. 웹훅이 없으면 아무것도 하지 않는다."""
+    return _send(build_payment_request_payload(payment_request))
+
+
 def send_signup_notification(restaurant):
     """가입 알림을 비동기로 발송한다. 웹훅이 없으면 아무것도 하지 않는다."""
     return _send(build_signup_payload(restaurant))

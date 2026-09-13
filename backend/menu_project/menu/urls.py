@@ -42,6 +42,7 @@ urlpatterns = [
 
     # 구독 · 결제 (대행사는 menu/billing/ 의 provider 가 맡는다)
     path('admin/billing/', billing_views.billing_home, name='billing_home'),
+    path('admin/billing/request/', billing_views.submit_payment_request, name='billing_request'),
     path('admin/billing/start/', billing_views.start_checkout, name='billing_start_checkout'),
     path('admin/billing/cancel/', billing_views.cancel_subscription, name='billing_cancel'),
     path('admin/billing/approve/', billing_views.approve_return, name='billing_approve'),
