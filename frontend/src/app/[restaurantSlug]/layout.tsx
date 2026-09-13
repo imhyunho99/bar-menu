@@ -87,7 +87,7 @@ export default async function RestaurantLayout({
 
   return (
     <>
-      {isPreview && <PreviewBanner />}
+      {isPreview && !restaurant.menu_is_live && <PreviewBanner />}
       {(cssVars || fontFaces) && (
         <style dangerouslySetInnerHTML={{ __html: `${fontFaces}\n${cssVars}` }} />
       )}

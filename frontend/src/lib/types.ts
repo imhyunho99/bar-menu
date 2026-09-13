@@ -7,6 +7,8 @@ export interface Restaurant {
 }
 
 export interface RestaurantDetail extends Restaurant {
+  /** 손님에게 실제로 열려 있는가. 미리보기 워터마크가 이걸 본다. */
+  menu_is_live: boolean;
   site_settings: SiteSettings | null;
 }
 

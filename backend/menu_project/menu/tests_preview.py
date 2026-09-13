@@ -219,3 +219,46 @@ class DjangoAdminHomeCarriesTheBannerTests(TestCase):
         response = self.client.get('/admin/')
         self.assertNotContains(response, '아직 손님에게 공개되지 않았습니다')
         self.assertNotContains(response, '손님 화면이 닫혔습니다')
+
+
+@override_settings(ENFORCE_SUBSCRIPTION=True)
+class TheApiTellsTheFrontWhetherItIsLiveTests(TestCase):
+    """
+    워터마크는 '토큰이 있는가' 가 아니라 '실제로 안 열렸는가' 를 봐야 한다.
+
+    토큰만 보면, 결제하고 열린 뒤에도 쿠키에 남은 토큰 때문에 사장님이
+    최대 하루 동안 자기 영업 중인 메뉴판에서 '손님에게는 아직 보이지
+    않습니다' 를 읽는다. 결제가 안 된 줄 안다.
+    """
+
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name='미결제 바', slug='unpaid-bar')
+        self.token = make_preview_token('unpaid-bar')
+
+    def _detail(self):
+        return self.client.get(
+            f'/api/v1/restaurants/unpaid-bar/?preview={self.token}'
+        ).json()
+
+    def test_an_unopened_store_reports_not_live(self):
+        self.assertFalse(self._detail()['menu_is_live'])
+
+    def test_an_opened_store_reports_live_even_with_a_token(self):
+        subscription = self.restaurant.subscription
+        subscription.status = 'partner'
+        subscription.save(update_fields=['status'])
+
+        self.assertTrue(self._detail()['menu_is_live'])
+
+    def test_the_front_reads_the_flag_and_not_just_the_token(self):
+        """
+        프론트가 토큰만 보고 배너를 그리면 이 필드는 있으나 마나다.
+        layout 이 실제로 menu_is_live 를 함께 보는지 파일에서 확인한다.
+        """
+        from pathlib import Path
+
+        layout = (
+            Path(__file__).resolve().parents[3]
+            / 'frontend' / 'src' / 'app' / '[restaurantSlug]' / 'layout.tsx'
+        ).read_text(encoding='utf-8')
+        self.assertIn('!restaurant.menu_is_live', layout)

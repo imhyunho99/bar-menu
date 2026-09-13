@@ -225,9 +225,21 @@ class RestaurantSerializer(serializers.ModelSerializer):
 class RestaurantDetailSerializer(RestaurantSerializer):
     """레스토랑 상세 — SiteSettings 포함"""
     site_settings = serializers.SerializerMethodField()
+    menu_is_live = serializers.SerializerMethodField()
 
     class Meta(RestaurantSerializer.Meta):
-        fields = RestaurantSerializer.Meta.fields + ['site_settings']
+        fields = RestaurantSerializer.Meta.fields + ['site_settings', 'menu_is_live']
+
+    def get_menu_is_live(self, obj):
+        """
+        손님에게 실제로 열려 있는가.
+
+        미리보기 워터마크가 이걸 본다. 토큰이 있느냐만 보면, 결제하고 열린
+        뒤에도 쿠키에 남은 토큰 때문에 최대 하루 동안 자기 영업 중인
+        메뉴판에서 '손님에게는 보이지 않습니다' 를 읽게 된다.
+        """
+        subscription = getattr(obj, 'subscription', None)
+        return bool(subscription and subscription.menu_is_live())
 
     def get_site_settings(self, obj):
         settings = SiteSettings.objects.filter(restaurant=obj).first()
