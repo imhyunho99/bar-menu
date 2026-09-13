@@ -268,6 +268,9 @@ class QRCodeView(APIView):
 class ContactSubmitView(APIView):
     """POST /api/v1/contact/ — 제휴 문의 접수"""
 
+    # 문의는 사람이 가끔 누르는 것이다. 쏟아지면 장난이다.
+    throttle_scope = 'contact'
+
     def post(self, request):
         serializer = ContactSubmissionSerializer(data=request.data)
         if serializer.is_valid():
@@ -285,6 +288,9 @@ class ContactSubmitView(APIView):
 
 class OrderCreateView(APIView):
     """POST /api/v1/restaurants/<slug>/orders/ — 주문 접수"""
+
+    # 주문은 손님이 누르는 것이다. 읽기만큼 열어 둘 이유가 없다.
+    throttle_scope = 'orders'
 
     def post(self, request, slug):
         restaurant = get_object_or_404(Restaurant, slug=slug)

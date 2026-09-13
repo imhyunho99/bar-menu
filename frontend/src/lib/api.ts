@@ -33,6 +33,17 @@ export function isMenuClosed(error: unknown): boolean {
 }
 
 /**
+ * 지금 너무 붐비는가. DRF 레이트 리밋이 429 로 답한다.
+ *
+ * 이걸 구분하지 않으면 손님이 마케팅 홈으로 튕긴다 — QR 을 찍었는데 메뉴가
+ * 아니라 영업 페이지가 뜨는 셈이다. 매장이 사라진 것도 아니고 닫힌 것도
+ * 아니니, 잠시 뒤 다시 열어보라고 말해야 한다.
+ */
+export function isTooBusy(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 429;
+}
+
+/**
  * 미리보기 토큰을 주소 뒤에 붙인다. 없으면 그대로 둔다.
  *
  * 서버 컴포넌트는 api.server.ts 를 거쳐 토큰을 넘긴다. 클라이언트에서

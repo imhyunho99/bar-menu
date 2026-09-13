@@ -48,4 +48,4 @@ export async function getCategoryTree(slug: string): Promise<CategoryTree[]> {
   return getCategoryTreeRaw(slug, await previewToken());
 }
 
-export { isMenuClosed } from './api';
+export { isMenuClosed, isTooBusy } from './api';

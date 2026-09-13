@@ -1,6 +1,7 @@
-import { getRestaurant, getCategoryTree, isMenuClosed, previewToken } from '@/lib/api.server';
+import { getRestaurant, getCategoryTree, isMenuClosed, isTooBusy, previewToken } from '@/lib/api.server';
 import MenuNotOpen from '@/components/MenuNotOpen';
 import PreviewBanner from '@/components/PreviewBanner';
+import MenuTooBusy from '@/components/MenuTooBusy';
 import { buildCSSVariables, buildFontFaces } from '@/lib/styles';
 import type { RestaurantDetail, CategoryTree } from '@/lib/types';
 import { RestaurantProvider } from './context';
@@ -42,6 +43,11 @@ export default async function RestaurantLayout({
     // 돌기 때문에, 이 분기가 없으면 페이지 쪽 처리는 실행되지도 않는다.
     if (isMenuClosed(error)) {
       return <MenuNotOpen />;
+    }
+    // 붐벼서 잠깐 막힌 것은 '없는 매장' 이 아니다. '/' 로 보내면 QR 을 찍은
+    // 손님이 메뉴판 대신 영업 페이지를 본다.
+    if (isTooBusy(error)) {
+      return <MenuTooBusy />;
     }
     redirect('/');
   }

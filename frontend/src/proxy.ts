@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * 미리보기 토큰을 들고 다니는 쿠키.
+ * 요청이 앱에 닿기 전에 도는 자리.
+ *
+ * Next 16 에서 middleware 가 proxy 로 이름이 바뀌었다(deprecated). 하는 일은
+ * 같고, 파일명과 함수명만 다르다.
+ *
+ * ── 미리보기 토큰을 들고 다니는 쿠키 ──
  *
  * 사장님은 ?preview=... 가 붙은 링크로 들어오지만, 거기서 카테고리를
  * 누르는 순간 쿼리가 사라진다. 그때 다시 '준비 중' 이 뜨면 미리보기는
@@ -15,7 +20,7 @@ import type { NextRequest } from 'next/server';
 const PREVIEW_COOKIE = 'preview-token';
 const PREVIEW_COOKIE_MAX_AGE = 60 * 60 * 24;
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const fromQuery = request.nextUrl.searchParams.get('preview');
   const token = fromQuery ?? request.cookies.get(PREVIEW_COOKIE)?.value ?? '';
 

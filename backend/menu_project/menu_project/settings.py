@@ -275,9 +275,23 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
     ],
+    # 이 한도가 세는 것은 손님이 아니다. 손님 화면(Next.js)이 **서버에서**
+    # API 를 부르므로, API 에게는 모든 매장의 모든 손님이 Vercel egress IP
+    # 몇 개로 보인다. 메뉴판 한 번 여는 데 요청이 2개 나가니 분당 100 이면
+    # 전체 합쳐 50번이고, 20명 단체 하나면 바로 닿는다 — 그리고 닿는 순간
+    # 정상 손님이 429 를 맞는다.
+    #
+    # 그래서 읽기는 넉넉히 연다. 서버가 감당하는 양(동시 4슬롯 × 25ms)에
+    # 비하면 여전히 한참 아래고, 진짜 방어는 nginx 쪽에서 할 일이다.
+    #
+    # 쓰기는 반대로 조인다. 주문과 문의는 사람이 눌러야 생기는 것이라
+    # 쏟아지면 그게 곧 장난이다.
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/minute',
+        'anon': '600/minute',
+        'orders': '60/minute',
+        'contact': '10/minute',
     },
 }
 
