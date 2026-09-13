@@ -76,13 +76,19 @@ class CategoryDetailSerializer(CategorySerializer):
         fields = CategorySerializer.Meta.fields + ['sub_categories', 'menu_items']
 
     def get_menu_items(self, obj):
-        """최하위 카테고리일 때만 메뉴 아이템 반환"""
+        """
+        최하위 카테고리일 때만 메뉴 아이템 반환.
+
+        페어링을 같이 끌어온다. 안 걸면 메뉴마다 한 번씩 나가서, 메뉴 121개
+        짜리 카테고리에서 쿼리가 114번이었다 — 손님이 카테고리를 누를 때마다
+        도는 경로라 메뉴가 많은 가게일수록 그대로 느려진다.
+        """
         if not obj.sub_categories.exists():
             items = MenuItem.objects.filter(
                 category=obj,
                 is_available=True,
                 restaurant=obj.restaurant
-            ).order_by('priority', 'name')
+            ).prefetch_related('pairings').order_by('priority', 'name')
             return MenuItemSerializer(items, many=True, context=self.context).data
         return []
 

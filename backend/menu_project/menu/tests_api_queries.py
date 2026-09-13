@@ -11,7 +11,7 @@
 
 from django.test import TestCase, override_settings
 
-from menu.models import Category, Restaurant
+from menu.models import Category, MenuItem, MenuItemPairing, Restaurant
 
 
 @override_settings(ENFORCE_SUBSCRIPTION=False)
@@ -112,3 +112,42 @@ class RestaurantDetailQueryCountTests(TestCase):
         """
         with self.assertNumQueries(3):
             self.client.get(self.url)
+
+
+@override_settings(ENFORCE_SUBSCRIPTION=False)
+class CategoryDetailQueryCountTests(TestCase):
+    """
+    손님이 카테고리를 누를 때 도는 경로. 메뉴가 많은 가게일수록 무거워진다 —
+    bid 의 '싱글몰트' 는 메뉴 121개이고, 예전에는 쿼리가 114번 나갔다.
+    메뉴마다 페어링을 한 번씩 읽었기 때문이다.
+    """
+
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name='쿼리 바', slug='query-bar')
+        self.category = Category.objects.create(name='위스키', restaurant=self.restaurant)
+        self.url = f'/api/v1/restaurants/query-bar/categories/{self.category.id}/'
+
+    def _menus(self, count, pairings_each=0):
+        for i in range(count):
+            item = MenuItem.objects.create(
+                name=f'm{i}', price='10,000', description='',
+                category=self.category, restaurant=self.restaurant,
+            )
+            for j in range(pairings_each):
+                MenuItemPairing.objects.create(menu_item=item, name=f'p{i}-{j}')
+
+    def test_query_count_does_not_grow_with_the_menu(self):
+        self._menus(3, pairings_each=2)
+        with self.assertNumQueries(7):
+            self.client.get(self.url)
+
+        MenuItem.objects.filter(category=self.category).delete()
+        self._menus(40, pairings_each=2)
+        with self.assertNumQueries(7):
+            self.client.get(self.url)
+
+    def test_pairings_still_come_through(self):
+        self._menus(2, pairings_each=3)
+        items = self.client.get(self.url).json()['menu_items']
+        self.assertEqual(len(items), 2)
+        self.assertEqual(len(items[0]['pairings']), 3)
