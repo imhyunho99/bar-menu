@@ -212,3 +212,70 @@ class PaymentRequestNotificationTests(TestCase):
         self.assertIn('unpaid-bar', text)
         self.assertIn('owner@example.com', text)
         self.assertIn('010-1111-2222', text)
+
+
+class PaymentRequestAdminTests(TestCase):
+    def setUp(self):
+        from django.contrib.admin.sites import site
+
+        self.site = site
+        self.restaurant = Restaurant.objects.create(name='미결제 바', slug='unpaid-bar')
+        self.staff = User.objects.create_superuser('me@example.com', password='pw-12345678')
+        self.request = PaymentRequest.objects.create(
+            restaurant=self.restaurant, plan='entry',
+            depositor_name='홍길동', amount=9900,
+        )
+
+    def _admin(self):
+        from menu.admin import PaymentRequestAdmin
+
+        admin_instance = PaymentRequestAdmin(PaymentRequest, self.site)
+        # message_user 는 메시지 프레임워크가 붙은 요청을 기대한다.
+        # 액션이 하는 일만 보려는 테스트라 전달만 삼킨다.
+        admin_instance.message_user = lambda *args, **kwargs: None
+        return admin_instance
+
+    def _http_request(self):
+        from django.test import RequestFactory
+
+        http_request = RequestFactory().post('/admin/')
+        http_request.user = self.staff
+        return http_request
+
+    def test_subscription_is_reachable_from_admin(self):
+        """
+        알림을 받고 손으로 partner 로 바꾸거나 기간을 미루려면 admin 에
+        있어야 한다. 지금까지 등록조차 되어 있지 않아 shell 을 열어야 했다.
+        """
+        self.assertIn(Subscription, self.site._registry)
+
+    def test_payment_request_is_reachable_from_admin(self):
+        self.assertIn(PaymentRequest, self.site._registry)
+
+    def test_one_click_opens_the_store_for_a_month(self):
+        self._admin().confirm_1(
+            self._http_request(), PaymentRequest.objects.filter(pk=self.request.pk),
+        )
+
+        subscription = Restaurant.objects.get(slug='unpaid-bar').subscription
+        self.assertEqual(subscription.status, 'active')
+        self.assertTrue(subscription.is_usable())
+
+    def test_the_year_action_opens_it_for_a_year(self):
+        self._admin().confirm_12(
+            self._http_request(), PaymentRequest.objects.filter(pk=self.request.pk),
+        )
+
+        subscription = Restaurant.objects.get(slug='unpaid-bar').subscription
+        self.assertGreater(subscription.access_until, timezone.now() + timedelta(days=350))
+
+    def test_confirming_several_at_once(self):
+        second_store = Restaurant.objects.create(name='두번째 바', slug='second-bar')
+        PaymentRequest.objects.create(
+            restaurant=second_store, plan='entry', depositor_name='김철수', amount=9900,
+        )
+
+        self._admin().confirm_1(self._http_request(), PaymentRequest.objects.all())
+
+        for slug in ('unpaid-bar', 'second-bar'):
+            self.assertTrue(Restaurant.objects.get(slug=slug).subscription.is_usable(), slug)

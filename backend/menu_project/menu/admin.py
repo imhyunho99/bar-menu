@@ -10,7 +10,8 @@ from django.urls import path, reverse
 from django.utils.html import format_html
 from django.views.decorators.http import require_POST
 from .admin_views import relay_menu_photos
-from .models import Restaurant, UserProfile, Category, MenuItem, SiteSettings, MenuItemPairing, ContactSubmission
+from .models import (Restaurant, UserProfile, Category, MenuItem, SiteSettings,
+                     MenuItemPairing, ContactSubmission, PaymentRequest, Subscription)
 
 # 로그인한 사장님이 도착하는 화면. 기본 index 위에 아직 /<slug>/admin/ 에 남아
 # 있는 주문·결제·QR 로 가는 줄을 얹는다. 이름이 index.html 이 아닌 이유는
@@ -579,4 +580,56 @@ class ContactSubmissionAdmin(admin.ModelAdmin):
     list_filter = ('plan', 'created_at')
 
 
+@admin.register(Subscription)
+class SubscriptionAdmin(admin.ModelAdmin):
+    """
+    구독을 손으로 볼 자리.
 
+    지금까지 등록되어 있지 않아서, 알림을 받고 partner 로 바꾸거나 기간을
+    미루려면 shell 을 열어야 했다.
+    """
+    # photo_import_count 는 Task 12 에서 생긴다. 그때 여기 다시 넣는다.
+    list_display = ('restaurant', 'status', 'plan', 'current_period_end')
+    list_filter = ('status', 'plan')
+    search_fields = ('restaurant__name', 'restaurant__slug')
+    autocomplete_fields = ('restaurant',)
+
+
+@admin.register(PaymentRequest)
+class PaymentRequestAdmin(admin.ModelAdmin):
+    """
+    통장과 대조하는 자리.
+
+    확인 액션이 넷이지만 하는 일은 기간만 다르고 같다. 기간 입력 페이지를
+    따로 거치게 하면 통장을 대조하다 말고 화면을 하나 더 넘겨야 해서,
+    목록에서 바로 끝나게 했다.
+    """
+    list_display = ('created_at', 'restaurant', 'depositor_name', 'amount', 'plan', 'status')
+    list_filter = ('status', 'plan')
+    search_fields = ('depositor_name', 'restaurant__name', 'restaurant__slug')
+    readonly_fields = ('created_at', 'confirmed_at', 'confirmed_by')
+    autocomplete_fields = ('restaurant',)
+    actions = ('confirm_1', 'confirm_3', 'confirm_6', 'confirm_12')
+
+    def _confirm(self, request, queryset, months):
+        opened = 0
+        for payment_request in queryset:
+            payment_request.confirm(months=months, user=request.user)
+            opened += 1
+        self.message_user(request, f'{opened}건을 {months}개월로 확인했습니다.')
+
+    @admin.action(description='입금 확인 · 1개월')
+    def confirm_1(self, request, queryset):
+        self._confirm(request, queryset, 1)
+
+    @admin.action(description='입금 확인 · 3개월')
+    def confirm_3(self, request, queryset):
+        self._confirm(request, queryset, 3)
+
+    @admin.action(description='입금 확인 · 6개월')
+    def confirm_6(self, request, queryset):
+        self._confirm(request, queryset, 6)
+
+    @admin.action(description='입금 확인 · 1년')
+    def confirm_12(self, request, queryset):
+        self._confirm(request, queryset, 12)
