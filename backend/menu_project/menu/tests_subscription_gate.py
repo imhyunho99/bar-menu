@@ -100,11 +100,14 @@ class SubscriptionGateTests(TestCase):
         self.assertNotIn('결제', body)
 
     @override_settings(ENFORCE_SUBSCRIPTION=True)
-    def test_owner_can_still_get_the_qr_before_paying(self):
+    def test_the_qr_page_is_not_answered_with_the_customer_screen(self):
         """
-        온보딩 체크리스트의 'QR 받기' 는 결제 단계보다 앞에 있고, 결제 화면도
-        'QR 준비까지 하실 수 있습니다' 라고 안내한다. 여기를 막으면 그 안내가
-        거짓말이 되고 사장님은 오픈 준비를 끝낼 수 없다.
+        QR 발행은 입금 확인 뒤다. 하지만 그 거절은 미들웨어가 아니라 qr_views
+        가 해야 한다 — 여기서 402 를 내면 손님용 '준비 중' 화면이 그려지고,
+        그 페이지를 보는 사람은 사장님이라 무엇을 하면 열리는지 알 수 없다.
+        잠그는 것과 누구에게 말하느냐는 다른 문제다.
+
+        실제 잠금은 menu/tests_qr_gate.py 가 본다.
         """
         self._subscribe(status='unpaid')
         self.assertNotEqual(self.client.get(f"/{self.restaurant.slug}/qr/").status_code, 402)

@@ -1,17 +1,47 @@
 import qrcode
 from qrcode.image.styledpil import StyledPilImage
 from qrcode.image.styles.moduledrawers import RoundedModuleDrawer, CircleModuleDrawer
-from django.http import HttpResponse
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import render
 from io import BytesIO
 import base64
 from PIL import Image, ImageDraw
-from .models import SiteSettings, Restaurant
 
-from PIL import Image, ImageDraw
+from .admin_views import check_restaurant_permission
 from .models import SiteSettings, Restaurant
+from .preview import make_preview_token
 
+
+@login_required
 def generate_qr_code(request, restaurant_slug=None):
+    # 이 뷰에는 원래 아무 검사도 없었다. 주소만 알면 누구나 남의 매장 QR 을
+    # 뽑을 수 있었고, 그 QR 은 그 가게 메뉴판으로 곧장 들어간다.
+    if not check_restaurant_permission(request.user, restaurant_slug):
+        return HttpResponseForbidden("권한이 없습니다.")
+
+    restaurant = Restaurant.objects.filter(slug=restaurant_slug).first()
+    if restaurant is None:
+        raise Http404
+
+    # 게이트(미들웨어)가 아니라 여기서 막는다. 미들웨어가 그리는 402 는 손님용
+    # '준비 중' 화면인데, 이 페이지를 보는 사람은 사장님이라 무엇을 하면
+    # 열리는지 알 수 없다.
+    #
+    # is_usable 이 아니라 menu_is_live 로 본다. 게이트가 꺼져 있으면 미결제
+    # 매장의 메뉴판도 실제로 열려 있는데, 그때 QR 만 막으면 열려 있는 메뉴판을
+    # 가리키는 QR 을 못 뽑는 앞뒤가 안 맞는 상태가 된다.
+    subscription = getattr(restaurant, 'subscription', None)
+    if subscription is None or not subscription.menu_is_live():
+        return render(request, 'menu/qr_locked.html', {
+            'restaurant': restaurant,
+            'preview_url': (
+                f'{settings.CUSTOMER_SITE_URL}/{restaurant.slug}'
+                f'?preview={make_preview_token(restaurant.slug)}'
+            ),
+        })
+
     # 현재 서버 URL 가져오기
     host = request.get_host()
     protocol = 'https' if request.is_secure() else 'http'
