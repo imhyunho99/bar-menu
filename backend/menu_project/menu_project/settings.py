@@ -76,19 +76,15 @@ if SENTRY_DSN:
         import sentry_sdk
 
         def _sentry_before_send(event, hint):
-            # 봇이 잘못된 Host 헤더로 접근할 때 나는 DisallowedHost는 무시한다.
-            exc_info = hint.get('exc_info')
-            if exc_info and exc_info[0].__name__ == 'DisallowedHost':
-                return None
-            # error/fatal 이벤트는 Discord 에러 웹훅으로도 알린다(best-effort).
-            # 알림 발송 실패 로그(menu.notifications)는 제외해 무한루프를 막는다.
-            if event.get('level') in ('error', 'fatal') and event.get('logger') != 'menu.notifications':
-                try:
-                    from menu.notifications import send_error_alert
-                    send_error_alert(event, hint)
-                except Exception:
-                    pass
-            return event
+            # 실제 판단은 menu/observability.py 에 있다. 여기 중첩 함수로 두면
+            # import 할 수 없어 테스트할 수 없었고, '무엇을 버리는가' 는
+            # 조용히 틀리는 종류의 판단이다.
+            #
+            # import 를 함수 안에서 한다. settings 로드 시점에 menu 패키지를
+            # 끌어오면 앱 준비 전에 모델이 딸려 들어올 위험이 있다.
+            from menu.observability import before_send
+
+            return before_send(event, hint)
 
         sentry_sdk.init(
             dsn=SENTRY_DSN,
