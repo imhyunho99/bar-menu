@@ -187,22 +187,59 @@ class SearchView(APIView):
         return Response({'results': results[:8]})
 
 
+def _qr_base_url(request):
+    """
+    QR 이 가리킬 주소의 앞부분.
+
+    ?base_url= 을 그대로 믿던 자리다. 아무나 남의 도메인을 넣어 QR 을 받을 수
+    있었고, 그 QR 에는 매장 로고까지 박혔다 — 우리 도메인이 발급한 진짜처럼
+    보이는 피싱용 QR 을 우리 API 가 만들어 준 셈이다.
+
+    이제 아는 주소만 받는다. 모르는 값이면 거절하지 않고 조용히 우리 주소로
+    바꾼다. QR 을 보러 온 사장님에게 에러를 띄울 이유가 없고, 공격자에게는
+    아무것도 안 준다.
+
+    기본값이 요청 호스트가 아니라 CUSTOMER_SITE_URL 인 것도 의도다. 손님이
+    실제로 보는 화면은 Next.js 이고, 요청 호스트(api.*)로 만들면 Django 가
+    그리는 다른 화면을 가리키는 QR 이 인쇄된다.
+    """
+    from django.conf import settings
+
+    configured = (getattr(settings, 'CUSTOMER_SITE_URL', '') or '').rstrip('/')
+    host = request.get_host()
+    protocol = 'https' if request.is_secure() else 'http'
+    own = f'{protocol}://{host}'
+
+    allowed = [u for u in (configured, own) if u]
+    asked = (request.GET.get('base_url') or '').rstrip('/')
+    # 정확히 같은 주소만 받는다. startswith 로 보면
+    # develop.example.com.evil.test 가 통과한다.
+    if asked in allowed:
+        return asked
+    return configured or own
+
+
 class QRCodeView(APIView):
     """GET /api/v1/restaurants/<slug>/qr/?base_url= — QR 코드 이미지 (base64)"""
 
     def get(self, request, slug):
-        restaurant = get_object_or_404(Restaurant, slug=slug)
+        restaurant = get_object_or_404(
+            Restaurant.objects.select_related('subscription'), slug=slug
+        )
 
-        # FE에서 base_url을 전달하거나, 요청 host 기반으로 생성
-        # QR은 QR 전용 진입점(주소A, /{slug}/enter/)을 가리킨다.
+        # 게이트가 이미 막지만 여기서도 본다. QR 은 인쇄해서 테이블에 붙이는
+        # 물건이라 한 번 새면 회수할 수 없다 — 돈이 걸린 것은 두 겹으로 잠근다.
+        # menu/qr_views.py 의 Django 쪽 화면도 같은 판단을 따로 한다.
+        subscription = getattr(restaurant, 'subscription', None)
+        if subscription is None or not subscription.menu_is_live():
+            return Response(
+                {'detail': '입금이 확인되면 QR을 발행해 드립니다.'},
+                status=402,
+            )
+
+        # QR 은 QR 전용 진입점(주소A, /<slug>/enter/)을 가리킨다.
         # 이 경로만 로딩 비디오를 재생한 뒤 메뉴로 넘긴다(링크 직접 진입은 비디오 없음).
-        base_url = request.GET.get('base_url', '')
-        if base_url:
-            menu_url = f"{base_url.rstrip('/')}/{slug}/enter/"
-        else:
-            host = request.get_host()
-            protocol = 'https' if request.is_secure() else 'http'
-            menu_url = f"{protocol}://{host}/{slug}/enter/"
+        menu_url = f"{_qr_base_url(request)}/{slug}/enter/"
 
         # 로고 이미지
         logo_img = None

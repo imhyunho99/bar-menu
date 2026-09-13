@@ -79,10 +79,10 @@ class SubscriptionGateMiddleware(MiddlewareMixin):
         if subscription is not None and subscription.is_usable():
             return None
 
-        # 사장님이 입금 전에 자기 화면을 확인하는 통로. 구독 상태를 바꾸지
-        # 않고 이 요청 하나만 통과시킨다 — 미리보기가 '결제됨' 으로 번지면
-        # QR 발행까지 열린다. 워터마크는 화면 쪽이 그린다.
-        if check_preview_token(restaurant.slug, request.GET.get(PREVIEW_QUERY_PARAM)):
+        # 사장님이 입금 전에 자기 화면을 확인하는 통로. 구독 상태는 바꾸지
+        # 않고 이 요청 하나만 통과시킨다. 워터마크는 화면 쪽이 그린다.
+        if (check_preview_token(restaurant.slug, request.GET.get(PREVIEW_QUERY_PARAM))
+                and self._preview_may_open(request)):
             return None
 
         # 한 번도 연 적 없는 매장과 열었다 닫은 매장은 손님에게 다르게 읽혀야 한다.
@@ -107,6 +107,24 @@ class SubscriptionGateMiddleware(MiddlewareMixin):
             {'restaurant': restaurant, 'never_opened': never_opened},
             status=402,
         )
+
+    #  미리보기로 열리는 것은 '보기' 까지다. 아래 둘은 토큰이 있어도 안 연다.
+    #
+    #  안 그러면 미리보기가 곧 영업이 된다 — 링크를 매일 새로 받아 뿌리면
+    #  결제 없이 주문까지 받을 수 있고, 워터마크는 그걸 못 막는다.
+    PREVIEW_SAFE_METHODS = ('GET', 'HEAD', 'OPTIONS')
+    PREVIEW_CLOSED_SUFFIXES = ('/qr/',)
+
+    def _preview_may_open(self, request):
+        """
+        이 요청을 미리보기로 통과시켜도 되는가.
+
+        읽기만 연다. 쓰기(주문)는 영업이지 확인이 아니고, QR 은 인쇄해서
+        테이블에 붙이는 물건이라 '입금 확인 뒤에 발행' 이 무의미해진다.
+        """
+        if request.method not in self.PREVIEW_SAFE_METHODS:
+            return False
+        return not request.path.endswith(self.PREVIEW_CLOSED_SUFFIXES)
 
     def _restaurant_for_api(self, request, view_kwargs):
         """

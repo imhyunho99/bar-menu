@@ -311,3 +311,63 @@ class PreviewUrlNeedsExplicitConfigTests(TestCase):
 
         self.assertNotContains(response, 'preview=')
         self.assertContains(response, 'CUSTOMER_SITE_URL')
+
+
+@override_settings(ENFORCE_SUBSCRIPTION=True)
+class PreviewIsReadOnlyTests(TestCase):
+    """
+    미리보기는 '내 메뉴판이 어떻게 보이는지' 까지다.
+
+    게이트를 통째로 열어 주면 미리보기가 곧 영업이 된다 — 링크를 매일 새로
+    받아 뿌리면 결제 없이 주문까지 받을 수 있다. 워터마크는 그걸 못 막는다.
+    """
+
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name='미결제 바', slug='unpaid-bar')
+        self.token = make_preview_token('unpaid-bar')
+
+    def _get(self, path):
+        return self.client.get(f'/api/v1/restaurants/unpaid-bar/{path}?preview={self.token}')
+
+    def test_reading_the_menu_is_open(self):
+        self.assertEqual(self._get('').status_code, 200)
+        self.assertEqual(self._get('category-tree/').status_code, 200)
+
+    def test_placing_an_order_is_not(self):
+        response = self.client.post(
+            f'/api/v1/restaurants/unpaid-bar/orders/?preview={self.token}',
+            data={'table_number': '1', 'items': []},
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 402)
+
+    def test_the_qr_is_not(self):
+        """
+        QR 은 인쇄해서 테이블에 붙이는 물건이다. 미리보기로 받을 수 있으면
+        '입금 확인 뒤에 발행' 이 아무 의미가 없다.
+        """
+        self.assertEqual(self._get('qr/').status_code, 402)
+
+    def test_the_qr_stays_shut_even_for_the_logged_in_owner(self):
+        """Django 쪽 QR 화면은 토큰과 무관하게 menu_is_live 로 판단한다."""
+        from django.contrib.auth.models import User
+
+        user = User.objects.create_user('owner@example.com', password='pw-12345678')
+        UserProfile.objects.create(user=user, restaurant=self.restaurant)
+        self.client.force_login(user)
+
+        response = self.client.get(f'/unpaid-bar/qr/?preview={self.token}')
+        self.assertTemplateUsed(response, 'menu/qr_locked.html')
+
+    def test_an_open_store_still_takes_orders(self):
+        """조인 것은 미리보기뿐이다. 결제한 매장은 그대로 돌아야 한다."""
+        subscription = self.restaurant.subscription
+        subscription.status = 'partner'
+        subscription.save(update_fields=['status'])
+
+        response = self.client.post(
+            '/api/v1/restaurants/unpaid-bar/orders/',
+            data={'table_number': '1', 'items': []},
+            content_type='application/json',
+        )
+        self.assertNotEqual(response.status_code, 402)
