@@ -219,9 +219,16 @@ class NullProviderTest(TestCase):
         self.assertFalse(NullPaymentProvider().verify_webhook({}, b'{}'))
 
     def test_start_checkout_says_so_instead_of_faking_success(self):
-        response = self.client.post('/alpha/admin/billing/start/', {'plan': 'pro'}, follow=True)
+        """
+        agree=1 을 함께 보낸다. 안 보내면 약관 분기에서 멈춰서 대행사가
+        없다는 사실까지 가지 못하는데, 예전엔 템플릿에 박힌 문구가 우연히
+        매칭돼 이 테스트가 엉뚱한 이유로 통과하고 있었다.
+        """
+        response = self.client.post(
+            '/alpha/admin/billing/start/', {'plan': 'pro', 'agree': '1'}, follow=True,
+        )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '결제 연동을 준비')
+        self.assertContains(response, '결제 연동을 준비 중')
 
         subscription = Subscription.objects.get(restaurant=self.restaurant)
         self.assertEqual(subscription.status, 'unpaid')
@@ -244,9 +251,16 @@ class NullProviderTest(TestCase):
         self.assertContains(response, '9일 남음')
         self.assertContains(response, '이용 중')
 
-    def test_billing_home_warns_that_payment_is_not_wired(self):
-        response = self.client.get('/alpha/admin/billing/')
-        self.assertContains(response, '결제 연동을 준비')
+    def test_billing_home_offers_a_bank_transfer_instead_of_a_dead_card_form(self):
+        """
+        대행사가 없어도 돈 낼 방법은 있다 — 계좌이체다. 예전에는 이 화면이
+        '준비 중' 이라고만 말해서, 열고 싶은 사장님에게 아무 길도 없었다.
+        """
+        with self.settings(BANK_NAME='국민', BANK_ACCOUNT='123-45-678', BANK_HOLDER='나현호'):
+            response = self.client.get('/alpha/admin/billing/')
+        self.assertContains(response, '입금 안내')
+        self.assertContains(response, '123-45-678')
+        self.assertContains(response, '입금했습니다')
 
     def test_cancel_works_without_a_provider_and_keeps_the_paid_window(self):
         subscription = self.restaurant.subscription
