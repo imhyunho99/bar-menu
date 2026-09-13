@@ -568,6 +568,9 @@ class Subscription(models.Model):
     # 여기 속한다. active 로 올려두면 결제일이 지나는 순간 꺼지므로 따로 둔다.
     UNLIMITED_STATUS = 'partner'
 
+    # 공개 전 매장에 주는 무료 사진 등록 횟수.
+    FREE_PHOTO_IMPORTS = 1
+
     restaurant = models.OneToOneField(
         Restaurant, on_delete=models.CASCADE, related_name='subscription', verbose_name="매장"
     )
@@ -588,6 +591,12 @@ class Subscription(models.Model):
     # '돌아오는 길'에 일어나는데, 우리가 시작한 결제인지 확인할 근거가 이것뿐이다.
     # 승인이 끝나면 비운다 — 같은 값으로 두 번 승인되지 않게.
     pending_tid = models.CharField(max_length=64, blank=True, default='', verbose_name="진행 중 결제 번호")
+
+    # 사진으로 메뉴를 올린 횟수. 이 기능의 실체는 비전 API 가 아니라 사람의
+    # 손이라 무제한으로 열 수 없다. 매장 평생 누적이고 입금 확인이 되돌리지
+    # 않는다 — '무료 1회' 는 맛보기지 매달 주는 몫이 아니다. 다시 열어 줄
+    # 일이 생기면 admin 에서 0 으로 내린다.
+    photo_import_count = models.PositiveIntegerField(default=0, verbose_name="사진 등록 사용 횟수")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -627,6 +636,21 @@ class Subscription(models.Model):
         if not getattr(settings, 'ENFORCE_SUBSCRIPTION', False):
             return True
         return self.is_usable()
+
+    def photo_import_allowed(self):
+        """
+        사진으로 메뉴를 올려도 되는가.
+
+        결제한 매장은 횟수를 아예 보지 않는다. 한 번 결제했다가 기간이
+        지난 매장은 카운터가 이미 차 있어 무료 1회가 다시 생기지 않는다.
+
+        menu_is_live 가 아니라 is_usable 로 본다. 사진을 정리하는 데 드는 건
+        우리 시간이고, 그건 게이트를 켰든 껐든 같다. menu_is_live 로 보면
+        게이트가 꺼져 있는 동안 전원이 무제한이 된다.
+        """
+        if self.is_usable():
+            return True
+        return self.photo_import_count < self.FREE_PHOTO_IMPORTS
 
     def is_usable(self):
         """

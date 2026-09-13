@@ -18,7 +18,19 @@
                 {% endfor %}
             {% endif %}
 
+            {% if not photo_import_allowed %}
+            <p style="color: var(--admin-text-secondary); line-height: 1.7;">
+                보내주신 사진은 사람이 직접 보고 정리해 넣습니다. 그래서 공개 전 매장에는
+                한 번만 제공하고 있습니다. <strong>직접 입력은 계속 무료</strong>로 쓰실 수 있고,
+                손님 화면을 여시면 사진 등록도 제한 없이 쓰실 수 있습니다.
+            </p>
+            <div class="admin-header-actions">
+                <a href="{% url 'menu:add_menu' request.restaurant.slug %}" class="admin-btn admin-btn-primary">직접 입력하기</a>
+                <a href="{% url 'menu:billing_home' request.restaurant.slug %}" class="admin-btn admin-btn-secondary">입금 안내 보기</a>
+            </div>
+            {% else %}
             {% include 'admin/_menu_import_form.html' %}
+            {% endif %}
         </div>
     </div>
 

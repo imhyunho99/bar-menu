@@ -311,9 +311,24 @@ def relay_menu_photos(request, restaurant, template, cancel_url, success_url, ex
     """
     # extra_context 를 앞에 둔다. 명시 인자로 받은 값을 dict 병합으로
     # 잃을 수 있는 순서는 그 자체가 버그 자리다.
-    page = {**(extra_context or {}), 'max_images': MAX_IMAGES, 'cancel_url': cancel_url}
+    subscription = getattr(restaurant, 'subscription', None)
+    # 화면이 폼을 그릴지 안내를 그릴지 정한다. GET 에서도 알려야 사장님이
+    # 사진을 고르고 올린 뒤에야 막혔다는 걸 알게 되는 일이 없다.
+    page = {
+        **(extra_context or {}),
+        'max_images': MAX_IMAGES,
+        'cancel_url': cancel_url,
+        'photo_import_allowed': subscription is None or subscription.photo_import_allowed(),
+    }
 
     if request.method != 'POST':
+        return render(request, template, page)
+
+    if not page['photo_import_allowed']:
+        messages.error(
+            request,
+            '사진으로 정리해 드리는 것은 1회 제공됩니다. 직접 입력은 계속 무료로 쓰실 수 있습니다.',
+        )
         return render(request, template, page)
 
     uploads = request.FILES.getlist('menu_image')
@@ -370,9 +385,15 @@ def relay_menu_photos(request, restaurant, template, cancel_url, success_url, ex
         )
         return render(request, template, page)
 
+    # 보낸 뒤에 센다. 못 갔는데 횟수만 줄면 사장님은 한 번도 못 써 보고 끝난다.
+    if subscription is not None:
+        subscription.photo_import_count += 1
+        subscription.save(update_fields=['photo_import_count', 'updated_at'])
+
     messages.success(
         request,
-        f'메뉴판 사진 {len(images)}장을 받았습니다. 확인 후 정리해서 넣어 드리겠습니다.',
+        f'메뉴판 사진 {len(images)}장을 받았습니다. 확인 후 정리해서 넣어 드리겠습니다. '
+        '정리하는 중에는 미리보기가 비어 있습니다 — 그동안 직접 입력으로도 채우실 수 있습니다.',
     )
     return redirect(success_url)
 

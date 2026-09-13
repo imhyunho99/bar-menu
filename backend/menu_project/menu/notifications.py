@@ -290,7 +290,13 @@ _DISCORD_BATCH_BYTES = 8 * 1024 * 1024
 def build_menu_photo_payload(restaurant, count, part=None, parts=None):
     """사진과 함께 보낼 설명. 연락처가 없으면 되물을 방법이 없어 반드시 싣는다."""
     email, phone = _owner_contact(restaurant)
-    title = "🧾 메뉴판 사진이 도착했습니다"
+
+    # 이 사진을 정리하는 데 드는 건 우리 시간이다. 결제 여부가 제목에 보여야
+    # 무엇부터 할지 고를 수 있다. 게이트 설정과 무관하게 '돈을 냈는가' 만 본다.
+    subscription = getattr(restaurant, 'subscription', None)
+    badge = '' if (subscription and subscription.is_usable()) else '[미결제] '
+
+    title = f"{badge}🧾 메뉴판 사진이 도착했습니다"
     if parts and parts > 1:
         title += f" ({part}/{parts})"
     return {

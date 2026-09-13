@@ -588,8 +588,7 @@ class SubscriptionAdmin(admin.ModelAdmin):
     지금까지 등록되어 있지 않아서, 알림을 받고 partner 로 바꾸거나 기간을
     미루려면 shell 을 열어야 했다.
     """
-    # photo_import_count 는 Task 12 에서 생긴다. 그때 여기 다시 넣는다.
-    list_display = ('restaurant', 'status', 'plan', 'current_period_end')
+    list_display = ('restaurant', 'status', 'plan', 'current_period_end', 'photo_import_count')
     list_filter = ('status', 'plan')
     search_fields = ('restaurant__name', 'restaurant__slug')
     autocomplete_fields = ('restaurant',)
