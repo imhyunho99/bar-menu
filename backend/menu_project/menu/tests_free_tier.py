@@ -78,3 +78,56 @@ class LayoutBuilderIsHiddenTests(TestCase):
 
         self.assertNotIn('category_card_layout_json', shown)
         self.assertNotIn('menu_card_layout_json', shown)
+
+
+class NoScreenStillMentionsTheTrialTests(TestCase):
+    """
+    체험을 없앤 뒤에도 문구가 여기저기 남는다. 사장님은 코드를 안 보고
+    화면과 알림만 보므로, 거기 남은 '체험' 이 곧 우리가 하는 약속이 된다.
+    """
+
+    def test_the_signup_alert_does_not_announce_a_trial(self):
+        from menu.models import Restaurant
+        from menu.notifications import build_signup_payload
+
+        restaurant = Restaurant.objects.create(name='새 바', slug='new-bar')
+        payload = build_signup_payload(restaurant)
+        embed = payload['embeds'][0]
+
+        self.assertNotIn('체험', embed['title'])
+        self.assertNotIn('체험', str(embed['fields']))
+
+    def test_the_signup_alert_still_carries_a_way_to_reach_the_owner(self):
+        """문구를 걷어내다 연락처까지 날리면 알림이 소음이 된다."""
+        from django.contrib.auth.models import User
+
+        from menu.models import Restaurant, UserProfile
+        from menu.notifications import build_signup_payload
+
+        restaurant = Restaurant.objects.create(name='새 바', slug='new-bar')
+        user = User.objects.create_user('owner@example.com', password='pw-12345678')
+        UserProfile.objects.create(user=user, restaurant=restaurant, phone='010-1111-2222')
+
+        text = str(build_signup_payload(restaurant))
+        self.assertIn('owner@example.com', text)
+        self.assertIn('010-1111-2222', text)
+
+    def test_no_owner_facing_template_mentions_a_trial(self):
+        """
+        주석은 '왜 없앴는지' 를 설명하느라 그 단어를 쓴다. 손님·사장님에게
+        나가는 줄만 본다 — 한 줄씩 보면 {% comment %} 블록 안쪽을 놓친다.
+        """
+        import re
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parent / 'templates'
+        block = re.compile(r'{%\s*comment\s*%}.*?{%\s*endcomment\s*%}', re.S)
+        inline = re.compile(r'{#.*?#}', re.S)
+
+        offenders = []
+        for path in list(root.glob('admin/**/*.html')) + list(root.glob('onboarding/**/*.html')):
+            visible_text = inline.sub('', block.sub('', path.read_text(encoding='utf-8')))
+            hits = [line.strip() for line in visible_text.splitlines() if '체험' in line]
+            if hits:
+                offenders.append(f'{path.name}: {hits[0][:60]}')
+        self.assertEqual(offenders, [], f'화면에 체험 문구가 남았습니다: {offenders}')

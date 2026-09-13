@@ -135,11 +135,10 @@ def send_error_alert(event, hint=None):
     return thread
 
 
-# ── 무료 체험 (가입 · 만료) ────────────────────────────────────────────
-# 결제 대행사가 붙기 전까지 청구는 사람이 한다. 그 사람이 움직일 수 있으려면
-# 두 순간을 알아야 한다: 누가 들어왔는가, 누구의 체험이 끝났는가. 그래서
-# 페이로드는 언제나 연락 수단을 싣는다 — 알림을 받고도 연락할 곳이 없으면
-# 알림이 아니라 소음이다.
+# ── 가입 · 만료 알림 ──────────────────────────────────────────────────
+# 청구를 사람이 한다. 그 사람이 움직일 수 있으려면 두 순간을 알아야 한다:
+# 누가 들어왔는가, 누구의 기간이 끝났는가. 그래서 페이로드는 언제나 연락
+# 수단을 싣는다 — 알림을 받고도 연락할 곳이 없으면 알림이 아니라 소음이다.
 
 def _owner_contact(restaurant):
     """
@@ -155,22 +154,25 @@ def _owner_contact(restaurant):
 
 
 def build_signup_payload(restaurant):
-    """새로 가입한 매장을 Discord 웹훅 JSON 페이로드로 변환한다."""
+    """
+    새로 가입한 매장을 Discord 웹훅 JSON 페이로드로 변환한다.
+
+    '체험 종료' 칸이 있었는데 뺐다. 체험이 없어지면서 값이 늘 '-' 였고,
+    비어 있는 칸은 알려주는 게 없으면서 자리를 차지한다. 제목의 '무료 체험
+    시작' 도 같은 이유로 바꿨다 — 우리가 알림에서 하는 말이 곧 약속이다.
+    """
     email, phone = _owner_contact(restaurant)
-    subscription = getattr(restaurant, 'subscription', None)
-    ends_at = getattr(subscription, 'current_period_end', None)
     return {
         "embeds": [
             {
-                "title": "🌱 새 매장 가입 (무료 체험 시작)",
+                "title": "🌱 새 매장 가입",
+                "description": "아직 손님에게 공개되지 않은 상태입니다. 입금 신청이 오면 열어 주세요.",
                 "color": 3066993,
                 "fields": [
                     {"name": "매장명", "value": restaurant.name or "-", "inline": True},
                     {"name": "주소", "value": f"/{restaurant.slug}", "inline": True},
                     {"name": "이메일", "value": email, "inline": False},
                     {"name": "연락처", "value": phone, "inline": True},
-                    {"name": "체험 종료",
-                     "value": f'{ends_at:%Y-%m-%d %H:%M}' if ends_at else "-", "inline": True},
                 ],
             }
         ]
