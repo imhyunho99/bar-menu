@@ -79,3 +79,34 @@ class ComponentIdsMatchTheDefaultsTests(TestCase):
     def test_menu_ids_match(self):
         backend = {c['id'] for c in default_menu_layout()['components']}
         self.assertEqual(self._front_ids('MENU_COMPONENT_IDS'), backend)
+
+
+class CategoryCardHonorsTheLayoutTests(TestCase):
+    """
+    프론트에 JS 테스트 러너가 없다. 렌더러가 규칙을 실제로 쓰는지 소스로
+    확인하고, 그려진 결과는 마지막 E2E 가 본다.
+    """
+
+    def setUp(self):
+        self.source = (FRONTEND / 'components' / 'CategoryCard.tsx').read_text(encoding='utf-8')
+
+    def test_it_branches_on_the_layout_type(self):
+        self.assertIn('isCustomLayout', self.source)
+
+    def test_it_fills_missing_components_from_the_defaults(self):
+        self.assertIn('resolveComponents', self.source)
+
+    def test_it_uses_the_shared_aspect_ratio(self):
+        self.assertIn('CARD_ASPECT', self.source)
+
+    def test_it_keeps_the_class_names_that_carry_the_owner_fonts(self):
+        """
+        폰트·색·크기는 styles.ts 가 이 클래스들에 CSS 변수로 주입한다.
+        클래스를 갈면 사장님이 맞춰 둔 글꼴이 통째로 날아간다.
+        """
+        for klass in ('category-name-ko', 'category-name-en'):
+            self.assertIn(klass, self.source)
+
+    def test_it_draws_the_category_image(self):
+        """기본 카드에는 이미지 자리가 아예 없었다. 배치에는 있다."""
+        self.assertIn('category_image', self.source)

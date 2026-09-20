@@ -2988,3 +2988,33 @@ body {
     font-size: 0.7rem;
     color: #475569;
 }
+/* ─────────────────────────────────────────────────────────────
+   빌더로 배치를 고친 매장의 카드.
+
+   .category-card / .menu-item 의 padding 과 text-align 은 예전 흐름
+   배치용이라 절대배치에서는 좌표를 밀어낸다. custom 일 때만 걷어낸다.
+
+   글자는 상자 밖으로 넘치면 안 된다. 상자 높이는 사장님이 정한 값이고,
+   넘친 글자는 아래 조각을 덮는다.
+   ───────────────────────────────────────────────────────────── */
+.category-card-custom,
+.menu-item-custom {
+  position: relative;
+  padding: 0;
+  text-align: left;
+  overflow: hidden;
+  display: block;
+}
+
+.layout-text {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: keep-all;
+}
