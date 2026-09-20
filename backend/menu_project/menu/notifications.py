@@ -31,7 +31,7 @@ def build_contact_payload(submission):
     return {
         "embeds": [
             {
-                "title": "📩 새 제휴 문의",
+                "title": "새 제휴 문의",
                 "color": 5814783,
                 "fields": [
                     {"name": "이름/업체명", "value": submission.name or "-", "inline": True},
@@ -94,7 +94,7 @@ def build_error_payload(event, hint):
     return {
         "embeds": [
             {
-                "title": f"🚨 서버 에러: {error_type}"[:250],
+                "title": f"서버 에러 · {error_type}"[:250],
                 "description": str(error_value)[:1500],
                 "color": 15158332,
                 "fields": [
@@ -165,7 +165,7 @@ def build_signup_payload(restaurant):
     return {
         "embeds": [
             {
-                "title": "🌱 새 매장 가입",
+                "title": "새 매장 가입",
                 "description": "아직 손님에게 공개되지 않은 상태입니다. 입금 신청이 오면 열어 주세요.",
                 "color": 3066993,
                 "fields": [
@@ -186,7 +186,7 @@ def build_subscription_expired_payload(subscription):
     return {
         "embeds": [
             {
-                "title": "⏰ 이용 기간 종료 — 손님 화면이 닫혔습니다",
+                "title": "이용 기간 종료 — 손님 화면이 닫혔습니다",
                 "description": "연장 안내가 필요합니다. 사장님이 먼저 연락하지 않는 쪽이 보통입니다.",
                 "color": 15105570,
                 "fields": [
@@ -218,7 +218,7 @@ def build_payment_request_payload(payment_request):
     return {
         "embeds": [
             {
-                "title": "💰 입금 신청 — 통장을 확인해 주세요",
+                "title": "입금 신청 — 통장을 확인해 주세요",
                 "description": "확인되면 Django admin 의 '입금 신청' 에서 기간을 골라 확인하세요.",
                 "color": 3447003,
                 "fields": [
@@ -252,7 +252,7 @@ def build_expiring_soon_payload(subscription, days_left):
     return {
         "embeds": [
             {
-                "title": f"🔔 이용 기간 {days_left}일 남음",
+                "title": f"이용 기간 {days_left}일 남음",
                 "description": "연장 입금을 안내할 시점입니다.",
                 "color": 16776960,
                 "fields": [
@@ -298,7 +298,7 @@ def build_menu_photo_payload(restaurant, count, part=None, parts=None):
     subscription = getattr(restaurant, 'subscription', None)
     badge = '' if (subscription and subscription.is_usable()) else '[미결제] '
 
-    title = f"{badge}🧾 메뉴판 사진이 도착했습니다"
+    title = f"{badge}메뉴판 사진이 도착했습니다"
     if parts and parts > 1:
         title += f" ({part}/{parts})"
     return {

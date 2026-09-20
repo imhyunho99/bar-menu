@@ -277,7 +277,7 @@ export default function LandingPage() {
               {TRADES.map((t) => (
                 <span key={t} style={{ display: 'contents' }}>
                   <span className="acc item">{t}</span>
-                  <span className="dot">✳</span>
+                  <span className="dot" aria-hidden="true">·</span>
                 </span>
               ))}
             </div>

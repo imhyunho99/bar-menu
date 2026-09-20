@@ -63,7 +63,7 @@
         <div class="admin-header">
             <h1 class="admin-title">{{ request.restaurant.name|default:"bar-menu" }} 관리자 대시보드</h1>
             <div class="admin-header-actions">
-                <a href="{% url 'menu:admin_orders' request.restaurant.slug %}" class="admin-btn admin-btn-primary" style="background-color: var(--admin-success);">🔔 주문 관리</a>
+                <a href="{% url 'menu:admin_orders' request.restaurant.slug %}" class="admin-btn admin-btn-primary" style="background-color: var(--admin-success);">주문 관리</a>
                 {% if menu_is_live %}
                 <a href="{% url 'menu:menu_main' request.restaurant.slug %}" target="_blank" class="admin-btn admin-btn-secondary">사이트 보기</a>
                 {% else %}
