@@ -1,5 +1,7 @@
 // API response types matching Django DRF serializers
 
+import type { CardLayout } from './layout';
+
 export interface Restaurant {
   id: number;
   name: string;
@@ -13,6 +15,9 @@ export interface RestaurantDetail extends Restaurant {
 }
 
 export interface SiteSettings {
+  /** 빌더가 저장한 카드 배치. layout_type 이 'custom' 일 때만 쓰인다. */
+  category_card_layout_json: CardLayout | null;
+  menu_card_layout_json: CardLayout | null;
   logo_image: string | null;
   intro_image: string | null;
   intro_video: string | null;
