@@ -565,6 +565,11 @@
     }
 
     function syncValue() {
+        // 여기 들어왔다는 것은 사장님이 무언가를 옮기거나 껐다는 뜻이다.
+        // 이 표시가 없으면 손님 화면 렌더러가 영영 안 돈다 — 옮기고
+        // 저장했는데 그대로인 지금 상태가 된다. 손대지 않은 매장은
+        // 'default' 로 남아 예전 마크업 그대로 그려진다.
+        layout.layout_type = 'custom';
         textarea.value = JSON.stringify(layout);
     }
 
