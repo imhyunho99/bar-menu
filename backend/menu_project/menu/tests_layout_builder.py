@@ -36,3 +36,33 @@ class BuilderMarksTheLayoutCustomTests(TestCase):
         start = self.source.index('function syncValue()')
         end = self.source.index('}', self.source.index('textarea.value', start))
         self.assertIn("layout_type = 'custom'", self.source[start:end])
+
+
+class BuilderCleansUpAfterDraggingTests(TestCase):
+    """
+    mouseup 에 등록만 하고 정의가 없었다. ReferenceError 가 나면서
+    isDragging 이 영원히 true 로 남아, 한 번 끌고 나면 마우스를 떼도
+    움직일 때마다 상자가 계속 따라다녔다.
+    """
+
+    def setUp(self):
+        self.source = WIDGET.read_text(encoding='utf-8')
+
+    def test_stop_interaction_is_defined(self):
+        self.assertIn('function stopInteraction()', self.source)
+
+    def test_it_releases_the_drag_state(self):
+        start = self.source.index('function stopInteraction()')
+        body = self.source[start:self.source.index('function startResize', start)]
+        self.assertIn('isDragging = false', body)
+        self.assertIn('isResizing = false', body)
+
+    def test_it_unhooks_the_listeners(self):
+        """
+        떼지 않으면 끌 때마다 같은 핸들러가 쌓여, 한 번 움직일 때 좌표가
+        여러 번 계산된다.
+        """
+        start = self.source.index('function stopInteraction()')
+        body = self.source[start:self.source.index('function startResize', start)]
+        self.assertIn("removeEventListener('mousemove'", body)
+        self.assertIn("removeEventListener('mouseup'", body)

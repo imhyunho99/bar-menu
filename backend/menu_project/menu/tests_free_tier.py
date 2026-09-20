@@ -60,13 +60,13 @@ class TheGateIsOnByDefaultTests(TestCase):
         self.assertTrue(settings.ENFORCE_SUBSCRIPTION)
 
 
-class LayoutBuilderIsHiddenTests(TestCase):
-    def test_layout_json_fields_are_not_offered_in_admin(self):
-        """
-        빌더는 저장까지만 되고 손님 화면에 닿지 않는다(별도 스펙에서 고친다).
-        그동안 열어 두면 무료 티어의 핵심 화면이 조용히 거짓말을 한다 —
-        사장님이 배치를 옮기고 저장해도 아무 일도 일어나지 않는다.
-        """
+class LayoutBuilderIsAvailableTests(TestCase):
+    """
+    2026-09-12 에 감췄던 것을 되돌린다. 그때는 저장만 되고 손님 화면에
+    닿지 않아서 조용히 거짓말을 했는데, 이제 닿는다.
+    """
+
+    def test_layout_fields_are_offered_in_admin(self):
         from django.contrib.admin.sites import site
 
         from menu.models import SiteSettings
@@ -76,8 +76,13 @@ class LayoutBuilderIsHiddenTests(TestCase):
         for _, options in model_admin.fieldsets:
             shown.update(options['fields'])
 
-        self.assertNotIn('category_card_layout_json', shown)
-        self.assertNotIn('menu_card_layout_json', shown)
+        self.assertIn('category_card_layout_json', shown)
+        self.assertIn('menu_card_layout_json', shown)
+
+    def test_the_builder_widget_is_still_wired_to_those_fields(self):
+        """필드를 되살려도 위젯이 안 붙으면 JSON 원문이 그대로 보인다."""
+        source = (Path(__file__).resolve().parent / 'admin.py').read_text(encoding='utf-8')
+        self.assertIn('LayoutBuilderWidget', source)
 
 
 class NoScreenStillMentionsTheTrialTests(TestCase):
