@@ -160,7 +160,7 @@ export default async function CategoryDetailPage({
             {!isSubcategoryView && (
               <div className="menu-grid" id="menuGrid" style={{ margin: '0', padding: '0' }}>
                 {category.menu_items.map((item) => (
-                  <MenuCard key={item.id} item={item} />
+                  <MenuCard key={item.id} item={item} layout={settings?.menu_card_layout_json} />
                 ))}
 
                 {category.menu_items.length === 0 && (

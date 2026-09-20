@@ -131,3 +131,33 @@ class MenuLayoutCoversWhatTheCardDrawsTests(TestCase):
             with self.subTest(component=component['id']):
                 self.assertLessEqual(component['x'] + component['w'], 100, '카드 밖으로 나갑니다')
                 self.assertLessEqual(component['y'] + component['h'], 100, '카드 밖으로 나갑니다')
+
+
+class MenuCardHonorsTheLayoutTests(TestCase):
+    def setUp(self):
+        self.layout_source = (FRONTEND / 'components' / 'MenuCardLayout.tsx').read_text(encoding='utf-8')
+        self.card_source = (FRONTEND / 'components' / 'MenuCard.tsx').read_text(encoding='utf-8')
+
+    def test_the_custom_branch_lives_in_its_own_file(self):
+        """MenuCard 는 이미 네 갈래로 257줄이다. 다섯 번째를 끼우면 못 읽는다."""
+        self.assertIn('MenuCardLayout', self.card_source)
+
+    def test_it_branches_on_the_layout_type(self):
+        self.assertIn('isCustomLayout', self.card_source)
+
+    def test_it_draws_the_cart_button(self):
+        self.assertIn('cart_button', self.layout_source)
+
+    def test_it_draws_the_notes(self):
+        self.assertIn('menu_notes', self.layout_source)
+
+    def test_it_keeps_the_class_names_that_carry_the_owner_fonts(self):
+        for klass in ('menu-name-ko', 'menu-name-en', 'menu-price', 'menu-description', 'menu-notes'):
+            self.assertIn(klass, self.layout_source)
+
+    def test_adding_to_the_cart_still_goes_through_the_same_event(self):
+        """
+        Cart.tsx 가 window 의 add-to-cart 를 듣는다. 다른 길을 만들면
+        custom 매장만 장바구니가 조용히 안 담긴다.
+        """
+        self.assertIn('add-to-cart', self.layout_source)
