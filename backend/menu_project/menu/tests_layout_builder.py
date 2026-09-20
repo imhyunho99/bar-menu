@@ -40,7 +40,7 @@ class BuilderMarksTheLayoutCustomTests(TestCase):
 
 class BuilderCleansUpAfterDraggingTests(TestCase):
     """
-    mouseup 에 등록만 하고 정의가 없었다. ReferenceError 가 나면서
+    떼는 이벤트에 등록만 하고 정의가 없었다. ReferenceError 가 나면서
     isDragging 이 영원히 true 로 남아, 한 번 끌고 나면 마우스를 떼도
     움직일 때마다 상자가 계속 따라다녔다.
     """
@@ -64,5 +64,7 @@ class BuilderCleansUpAfterDraggingTests(TestCase):
         """
         start = self.source.index('function stopInteraction()')
         body = self.source[start:self.source.index('function startResize', start)]
-        self.assertIn("removeEventListener('mousemove'", body)
-        self.assertIn("removeEventListener('mouseup'", body)
+        self.assertIn("removeEventListener('pointermove'", body)
+        self.assertIn("removeEventListener('pointerup'", body)
+        # 손가락이 화면 밖으로 나가거나 전화가 오면 pointerup 대신 이것이 온다.
+        self.assertIn("removeEventListener('pointercancel'", body)

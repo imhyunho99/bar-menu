@@ -105,3 +105,101 @@ class MenuLayoutCoversWhatTheCardDrawsTests(TestCase):
             with self.subTest(component=component['id']):
                 self.assertLessEqual(component['x'] + component['w'], 100, '카드 밖으로 나갑니다')
                 self.assertLessEqual(component['y'] + component['h'], 100, '카드 밖으로 나갑니다')
+
+
+def _widget_defaults(kind):
+    """빌더 JS 안의 defaultLayout() 이 만드는 배치. kind 는 'category' | 'menu'."""
+    source = _widget_css()
+    start = source.index('function defaultLayout()')
+    body = source[start:source.index('// Default Fallbacks', start)]
+    # isCategory 갈래가 먼저 나오고, 그 뒤가 메뉴 갈래다.
+    first = body.index('return {')
+    second = body.index('return {', first + 1)
+    chunk = body[first:second] if kind == 'category' else body[second:]
+    return [
+        {
+            'id': m.group('id'),
+            'visible': m.group('visible') == 'true',
+            'x': int(m.group('x')), 'y': int(m.group('y')),
+            'w': int(m.group('w')), 'h': int(m.group('h')),
+        }
+        for m in re.finditer(
+            r'\{id:\s*"(?P<id>[a-z_]+)",\s*name:\s*"[^"]*",\s*'
+            r'visible:\s*(?P<visible>true|false),\s*'
+            r'x:\s*(?P<x>\d+),\s*y:\s*(?P<y>\d+),\s*'
+            r'w:\s*(?P<w>\d+),\s*h:\s*(?P<h>\d+)\}',
+            chunk,
+        )
+    ]
+
+
+class TheBuilderCanBeResetTests(TestCase):
+    """
+    사장님이 배치를 망쳤을 때 스스로 빠져나올 문이 있는가.
+
+    이게 없으면 되돌리는 길이 JSON 을 직접 지우는 것뿐이고, 그건 사장님이
+    할 수 있는 일이 아니다 — 나한테 연락이 와야 풀린다.
+    """
+
+    def test_the_builder_offers_a_reset_control(self):
+        self.assertIn('layout-reset-btn', _widget_css())
+
+    def test_reset_puts_the_card_back_on_the_old_render_path(self):
+        """
+        되돌리기가 layout_type 을 'default' 로 되돌려 놓지 않으면, 자리만
+        기본값이고 손님 화면은 계속 절대배치로 그려진다. 사장님 눈에는
+        '되돌렸는데 그대로' 로 보인다.
+        """
+        source = _widget_css()
+        body = source[source.index('function defaultLayout()'):source.index('// Default Fallbacks')]
+        self.assertNotIn("layout_type: \"custom\"", body)
+        self.assertEqual(body.count('layout_type: "default"'), 2)
+
+        reset = source[source.index('const resetBtn'):]
+        self.assertIn('layout = defaultLayout()', reset)
+        self.assertNotIn('syncValue()', reset, 'syncValue 는 custom 으로 다시 찍는다')
+
+
+class TheBuilderDefaultsMatchTheBackendTests(TestCase):
+    """
+    빌더 JS 의 기본 배치는 models.py 의 것을 손으로 베껴 둔 것이다. 한쪽만
+    고치면 '처음 여는 사장님' 과 '되돌린 사장님' 이 서로 다른 자리를 본다.
+    """
+
+    def test_category_defaults_match(self):
+        backend = [
+            {k: c[k] for k in ('id', 'visible', 'x', 'y', 'w', 'h')}
+            for c in default_category_layout()['components']
+        ]
+        self.assertEqual(_widget_defaults('category'), backend)
+
+    def test_menu_defaults_match(self):
+        backend = [
+            {k: c[k] for k in ('id', 'visible', 'x', 'y', 'w', 'h')}
+            for c in default_menu_layout()['components']
+        ]
+        self.assertEqual(_widget_defaults('menu'), backend)
+
+
+class TheBuilderWorksWithAFingerTests(TestCase):
+    """
+    사장님은 폰이나 태블릿으로도 열어 본다.
+
+    터치는 mousemove 를 만들지 않는다 — 탭이 끝난 뒤에야 mousedown/mouseup 이
+    오고, 끄는 동안에는 아무 이벤트도 안 온다. 그래서 mouse 전용으로 짜면
+    빌더가 폰에서 조용히 죽는다(캔버스는 보이는데 상자가 안 움직인다).
+    2026-09-20 에 iPhone 뷰포트로 실제 터치를 보내 확인했다.
+    """
+
+    def test_dragging_listens_for_pointers_not_mice(self):
+        source = _widget_css()
+        for event in ('pointerdown', 'pointermove', 'pointerup'):
+            self.assertIn(f"'{event}'", source)
+        for event in ('mousedown', 'mousemove', 'mouseup'):
+            self.assertNotIn(f"'{event}'", source)
+
+    def test_the_browser_does_not_steal_the_drag_for_scrolling(self):
+        """touch-action 이 없으면 상자 대신 페이지가 움직인다."""
+        css = _widget_css()
+        box_rule = css[css.index('.comp-box {'):css.index('.comp-box.selected')]
+        self.assertIn('touch-action: none', box_rule)

@@ -79,6 +79,9 @@
             justify-content: center;
             cursor: move;
             user-select: none;
+            /* 손가락으로 끌 때 브라우저가 이 제스처를 스크롤로 가져가지 않게
+               한다. 이게 없으면 태블릿에서 상자 대신 페이지가 움직인다. */
+            touch-action: none;
             box-sizing: border-box;
             border-radius: 4px;
             text-align: center;
@@ -331,6 +334,23 @@
                 width: 100%;
             }
         }
+
+        .layout-widget-wrapper .layout-reset-btn {
+            width: 100%;
+            margin-top: 8px;
+            padding: 8px 10px;
+            border: 1px solid var(--border-color, #444);
+            border-radius: 4px;
+            background: transparent;
+            color: inherit;
+            font-family: var(--font-body);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .layout-widget-wrapper .layout-reset-btn:hover {
+            border-color: var(--accent-color, #888);
+        }
     </style>
 
     <div class="builder-canvas-area">
@@ -394,6 +414,14 @@
                 <h4 class="inspector-hdr">구성 요소 목록</h4>
                 <div id="comp_list_{{ widget.name }}"></div>
             </div>
+
+            {% comment %}
+            배치를 망친 사장님이 스스로 빠져나올 문. 이게 없으면 되돌리는 길이
+            JSON 을 직접 지우는 것뿐이고, 그건 사장님이 할 수 있는 일이 아니다.
+            {% endcomment %}
+            <button type="button" class="layout-reset-btn" id="reset_{{ widget.name }}">
+                기본 배치로 되돌리기
+            </button>
         </div>
     </div>
 </div>
@@ -454,10 +482,16 @@
         console.error("Failed to parse widget layout value", e);
     }
 
-    // Default Fallbacks if empty or invalid
-    if (!layout.components || layout.components.length === 0) {
+    /**
+     * 빌더가 아는 기본 배치.
+     *
+     * 처음 여는 사장님과 되돌리기를 누른 사장님이 같은 것을 봐야 해서
+     * 한 군데서만 만든다. layout_type 이 'default' 인 것이 중요하다 —
+     * 이 값이 저장되면 손님 화면은 절대배치가 아니라 예전 카드로 그려진다.
+     */
+    function defaultLayout() {
         if (isCategory) {
-            layout = {
+            return {
                 layout_type: "default",
                 components: [
                     {id: "category_image", name: "카테고리 이미지", visible: true, x: 0, y: 0, w: 100, h: 65},
@@ -465,20 +499,24 @@
                     {id: "category_name_en", name: "카테고리명 (영문)", visible: true, x: 5, y: 85, w: 90, h: 10}
                 ]
             };
-        } else {
-            layout = {
-                layout_type: "default",
-                components: [
-                    {id: "menu_image", name: "메뉴 이미지", visible: true, x: 0, y: 0, w: 100, h: 50},
-                    {id: "menu_name", name: "메뉴명 (한글)", visible: true, x: 5, y: 55, w: 90, h: 12},
-                    {id: "menu_name_en", name: "메뉴명 (영문)", visible: true, x: 5, y: 68, w: 90, h: 8},
-                    {id: "menu_price", name: "가격", visible: true, x: 5, y: 78, w: 60, h: 10},
-                    {id: "cart_button", name: "장바구니 버튼", visible: true, x: 70, y: 78, w: 25, h: 10},
-                    {id: "menu_description", name: "메뉴 설명", visible: true, x: 5, y: 89, w: 90, h: 6},
-                    {id: "menu_notes", name: "메뉴 노트", visible: true, x: 5, y: 95, w: 90, h: 5}
-                ]
-            };
         }
+        return {
+            layout_type: "default",
+            components: [
+                {id: "menu_image", name: "메뉴 이미지", visible: true, x: 0, y: 0, w: 100, h: 50},
+                {id: "menu_name", name: "메뉴명 (한글)", visible: true, x: 5, y: 55, w: 90, h: 12},
+                {id: "menu_name_en", name: "메뉴명 (영문)", visible: true, x: 5, y: 68, w: 90, h: 8},
+                {id: "menu_price", name: "가격", visible: true, x: 5, y: 78, w: 60, h: 10},
+                {id: "cart_button", name: "장바구니 버튼", visible: true, x: 70, y: 78, w: 25, h: 10},
+                {id: "menu_description", name: "메뉴 설명", visible: true, x: 5, y: 89, w: 90, h: 6},
+                {id: "menu_notes", name: "메뉴 노트", visible: true, x: 5, y: 95, w: 90, h: 5}
+            ]
+        };
+    }
+
+    // Default Fallbacks if empty or invalid
+    if (!layout.components || layout.components.length === 0) {
+        layout = defaultLayout();
         // Write defaults back to textarea
         textarea.value = JSON.stringify(layout);
     }
@@ -602,7 +640,7 @@
                 box.appendChild(grip);
 
                 // Mouse interaction binding
-                box.addEventListener('mousedown', (e) => {
+                box.addEventListener('pointerdown', (e) => {
                     e.preventDefault();
                     if (e.target.className === 'resize-grip') {
                         startResize(e, comp);
@@ -751,8 +789,9 @@
         originalX = comp.x;
         originalY = comp.y;
 
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('mouseup', stopInteraction);
+        document.addEventListener('pointermove', drag);
+        document.addEventListener('pointerup', stopInteraction);
+        document.addEventListener('pointercancel', stopInteraction);
     }
 
     function drag(e) {
@@ -780,7 +819,7 @@
     /**
      * 끌기·크기조절이 끝났을 때 상태를 푼다.
      *
-     * 이 함수가 없었다. mouseup 에 등록만 하고 정의가 없어서 ReferenceError 가
+     * 이 함수가 없었다. 떼는 이벤트에 등록만 하고 정의가 없어서 ReferenceError 가
      * 났고, isDragging 이 영원히 true 로 남았다 — 한 번 끌고 나면 마우스를
      * 떼도 움직일 때마다 상자가 계속 따라다녔다. 상자를 고르려던 클릭이
      * 번번이 '옮김' 이 되던 것도 이것 때문이다.
@@ -789,9 +828,10 @@
         isDragging = false;
         isResizing = false;
         hasPassedThreshold = false;
-        document.removeEventListener('mousemove', drag);
-        document.removeEventListener('mousemove', resize);
-        document.removeEventListener('mouseup', stopInteraction);
+        document.removeEventListener('pointermove', drag);
+        document.removeEventListener('pointermove', resize);
+        document.removeEventListener('pointerup', stopInteraction);
+        document.removeEventListener('pointercancel', stopInteraction);
     }
 
     function startResize(e, comp) {
@@ -803,8 +843,9 @@
         originalW = comp.w;
         originalH = comp.h;
 
-        document.addEventListener('mousemove', resize);
-        document.addEventListener('mouseup', stopInteraction);
+        document.addEventListener('pointermove', resize);
+        document.addEventListener('pointerup', stopInteraction);
+        document.addEventListener('pointercancel', stopInteraction);
     }
 
     function resize(e) {
@@ -822,6 +863,35 @@
 
         syncValue();
         render();
+    }
+
+    /**
+     * 기본 배치로 되돌린다.
+     *
+     * syncValue() 를 쓰면 안 된다 — 그 함수는 '사장님이 고쳤다' 는 뜻으로
+     * layout_type 을 custom 으로 찍는다. 되돌리기는 정반대라, 여기서는
+     * textarea 에 직접 쓴다. 그래야 저장 후 손님 화면이 예전 카드로 돌아간다.
+     */
+    const resetBtn = document.getElementById(`reset_${widgetName}`);
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            const ok = window.confirm(
+                '이 카드를 기본 배치로 되돌립니다.\n'
+                + '지금 옮겨 둔 자리는 사라집니다. 저장을 눌러야 손님 화면에 적용됩니다.'
+            );
+            if (!ok) return;
+
+            layout = defaultLayout();
+            textarea.value = JSON.stringify(layout);
+
+            activeCompId = null;
+            inspectTitle.innerText = '선택된 요소 없음';
+            inspectForm.style.display = 'none';
+            inspectFallback.style.display = 'block';
+            styleFieldsContainer.style.display = 'none';
+            styleFallback.style.display = 'block';
+            render();
+        });
     }
 
     // Initialize on load
