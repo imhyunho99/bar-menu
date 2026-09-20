@@ -6,6 +6,11 @@
 남기지 않는다 — 사장님만 '내가 놓은 대로가 아니네' 하고 만다.
 
 값이 두 곳(Django 템플릿의 CSS, 프론트의 상수)에 나뉘어 있어 여기서 대조한다.
+
+여기는 **두 언어에 걸친 것만** 본다. 렌더러가 규칙을 실제로 지키는지는
+frontend 의 vitest 가 진짜로 렌더해서 확인한다(`npm test`). 예전에는 그것도
+여기서 소스를 문자열로 뒤져서 봤는데, 함수 이름만 바꿔도 통과하는 방식이라
+테스트가 초록불인 채로 기능이 죽을 수 있었다.
 """
 
 import re
@@ -81,37 +86,6 @@ class ComponentIdsMatchTheDefaultsTests(TestCase):
         self.assertEqual(self._front_ids('MENU_COMPONENT_IDS'), backend)
 
 
-class CategoryCardHonorsTheLayoutTests(TestCase):
-    """
-    프론트에 JS 테스트 러너가 없다. 렌더러가 규칙을 실제로 쓰는지 소스로
-    확인하고, 그려진 결과는 마지막 E2E 가 본다.
-    """
-
-    def setUp(self):
-        self.source = (FRONTEND / 'components' / 'CategoryCard.tsx').read_text(encoding='utf-8')
-
-    def test_it_branches_on_the_layout_type(self):
-        self.assertIn('isCustomLayout', self.source)
-
-    def test_it_fills_missing_components_from_the_defaults(self):
-        self.assertIn('resolveComponents', self.source)
-
-    def test_it_uses_the_shared_aspect_ratio(self):
-        self.assertIn('CARD_ASPECT', self.source)
-
-    def test_it_keeps_the_class_names_that_carry_the_owner_fonts(self):
-        """
-        폰트·색·크기는 styles.ts 가 이 클래스들에 CSS 변수로 주입한다.
-        클래스를 갈면 사장님이 맞춰 둔 글꼴이 통째로 날아간다.
-        """
-        for klass in ('category-name-ko', 'category-name-en'):
-            self.assertIn(klass, self.source)
-
-    def test_it_draws_the_category_image(self):
-        """기본 카드에는 이미지 자리가 아예 없었다. 배치에는 있다."""
-        self.assertIn('category_image', self.source)
-
-
 class MenuLayoutCoversWhatTheCardDrawsTests(TestCase):
     """
     custom 이면 display_mode 를 무시하고 빌더가 배치를 전부 정한다.
@@ -131,65 +105,3 @@ class MenuLayoutCoversWhatTheCardDrawsTests(TestCase):
             with self.subTest(component=component['id']):
                 self.assertLessEqual(component['x'] + component['w'], 100, '카드 밖으로 나갑니다')
                 self.assertLessEqual(component['y'] + component['h'], 100, '카드 밖으로 나갑니다')
-
-
-class MenuCardHonorsTheLayoutTests(TestCase):
-    def setUp(self):
-        self.layout_source = (FRONTEND / 'components' / 'MenuCardLayout.tsx').read_text(encoding='utf-8')
-        self.card_source = (FRONTEND / 'components' / 'MenuCard.tsx').read_text(encoding='utf-8')
-
-    def test_the_custom_branch_lives_in_its_own_file(self):
-        """MenuCard 는 이미 네 갈래로 257줄이다. 다섯 번째를 끼우면 못 읽는다."""
-        self.assertIn('MenuCardLayout', self.card_source)
-
-    def test_it_branches_on_the_layout_type(self):
-        self.assertIn('isCustomLayout', self.card_source)
-
-    def test_it_draws_the_cart_button(self):
-        self.assertIn('cart_button', self.layout_source)
-
-    def test_it_draws_the_notes(self):
-        self.assertIn('menu_notes', self.layout_source)
-
-    def test_it_keeps_the_class_names_that_carry_the_owner_fonts(self):
-        for klass in ('menu-name-ko', 'menu-name-en', 'menu-price', 'menu-description', 'menu-notes'):
-            self.assertIn(klass, self.layout_source)
-
-    def test_adding_to_the_cart_still_goes_through_the_same_event(self):
-        """
-        Cart.tsx 가 window 의 add-to-cart 를 듣는다. 다른 길을 만들면
-        custom 매장만 장바구니가 조용히 안 담긴다.
-        """
-        self.assertIn('add-to-cart', self.layout_source)
-
-
-class BrokenLayoutsCannotBreakTheCustomerScreenTests(TestCase):
-    """
-    사장님이 이상한 값을 저장해도 손님 화면이 죽으면 안 된다. 그건 사장님도
-    모르는 채 영업이 멈추는 것이다.
-
-    2026-09-20 에 10가지 망가진 입력으로 실제 렌더를 돌려 확인했다 — 전부
-    HTTP 200, 스크립트 실행 0건. 그 안전을 만드는 것이 아래 두 성질이라
-    여기서 못박는다. 프론트에 JS 테스트 러너가 없어 소스로 본다.
-    """
-
-    def setUp(self):
-        self.source = (FRONTEND / 'lib' / 'layout.ts').read_text(encoding='utf-8')
-
-    def test_a_non_array_components_falls_back_to_the_default_card(self):
-        """
-        components 가 문자열이면 .map 이 없어 터진다. isCustomLayout 이
-        먼저 배열인지 보고 아니면 예전 카드로 떨어뜨린다.
-        """
-        self.assertIn('Array.isArray(layout.components)', self.source)
-
-    def test_unknown_ids_are_dropped_by_iterating_the_defaults(self):
-        """
-        저장된 배열을 돌면 모르는 id 가 그대로 화면까지 간다. 기본값을 돌고
-        거기 있는 id 만 저장값에서 꺼내면, 이상한 것은 들어올 자리가 없다.
-        id 에 <script> 를 넣어도 렌더에 닿지 않는 이유가 이것이다.
-        """
-        start = self.source.index('export function resolveComponents')
-        body = self.source[start:self.source.index('export function boxStyle')]
-        self.assertIn('defaults.map', body)
-        self.assertNotIn('layout.components.map((c) => c)', body)
