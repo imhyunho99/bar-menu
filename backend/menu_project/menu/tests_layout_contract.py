@@ -161,3 +161,35 @@ class MenuCardHonorsTheLayoutTests(TestCase):
         custom 매장만 장바구니가 조용히 안 담긴다.
         """
         self.assertIn('add-to-cart', self.layout_source)
+
+
+class BrokenLayoutsCannotBreakTheCustomerScreenTests(TestCase):
+    """
+    사장님이 이상한 값을 저장해도 손님 화면이 죽으면 안 된다. 그건 사장님도
+    모르는 채 영업이 멈추는 것이다.
+
+    2026-09-20 에 10가지 망가진 입력으로 실제 렌더를 돌려 확인했다 — 전부
+    HTTP 200, 스크립트 실행 0건. 그 안전을 만드는 것이 아래 두 성질이라
+    여기서 못박는다. 프론트에 JS 테스트 러너가 없어 소스로 본다.
+    """
+
+    def setUp(self):
+        self.source = (FRONTEND / 'lib' / 'layout.ts').read_text(encoding='utf-8')
+
+    def test_a_non_array_components_falls_back_to_the_default_card(self):
+        """
+        components 가 문자열이면 .map 이 없어 터진다. isCustomLayout 이
+        먼저 배열인지 보고 아니면 예전 카드로 떨어뜨린다.
+        """
+        self.assertIn('Array.isArray(layout.components)', self.source)
+
+    def test_unknown_ids_are_dropped_by_iterating_the_defaults(self):
+        """
+        저장된 배열을 돌면 모르는 id 가 그대로 화면까지 간다. 기본값을 돌고
+        거기 있는 id 만 저장값에서 꺼내면, 이상한 것은 들어올 자리가 없다.
+        id 에 <script> 를 넣어도 렌더에 닿지 않는 이유가 이것이다.
+        """
+        start = self.source.index('export function resolveComponents')
+        body = self.source[start:self.source.index('export function boxStyle')]
+        self.assertIn('defaults.map', body)
+        self.assertNotIn('layout.components.map((c) => c)', body)
