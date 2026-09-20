@@ -110,3 +110,24 @@ class CategoryCardHonorsTheLayoutTests(TestCase):
     def test_it_draws_the_category_image(self):
         """기본 카드에는 이미지 자리가 아예 없었다. 배치에는 있다."""
         self.assertIn('category_image', self.source)
+
+
+class MenuLayoutCoversWhatTheCardDrawsTests(TestCase):
+    """
+    custom 이면 display_mode 를 무시하고 빌더가 배치를 전부 정한다.
+    빌더가 모르는 조각이 있으면 켜는 순간 그게 사라진다.
+    """
+
+    def test_the_cart_button_is_a_component(self):
+        ids = {c['id'] for c in default_menu_layout()['components']}
+        self.assertIn('cart_button', ids)
+
+    def test_notes_are_a_component(self):
+        ids = {c['id'] for c in default_menu_layout()['components']}
+        self.assertIn('menu_notes', ids)
+
+    def test_every_component_has_a_place(self):
+        for component in default_menu_layout()['components']:
+            with self.subTest(component=component['id']):
+                self.assertLessEqual(component['x'] + component['w'], 100, '카드 밖으로 나갑니다')
+                self.assertLessEqual(component['y'] + component['h'], 100, '카드 밖으로 나갑니다')

@@ -27,6 +27,8 @@ export const MENU_COMPONENT_IDS = [
   'menu_name_en',
   'menu_price',
   'menu_description',
+  'cart_button',
+  'menu_notes',
 ];
 
 export interface LayoutComponent {

@@ -66,8 +66,12 @@ def default_menu_layout():
             {"id": "menu_image", "name": "메뉴 이미지", "visible": True, "x": 0, "y": 0, "w": 100, "h": 50},
             {"id": "menu_name", "name": "메뉴명 (한글)", "visible": True, "x": 5, "y": 55, "w": 90, "h": 12},
             {"id": "menu_name_en", "name": "메뉴명 (영문)", "visible": True, "x": 5, "y": 68, "w": 90, "h": 8},
-            {"id": "menu_price", "name": "가격", "visible": True, "x": 5, "y": 78, "w": 90, "h": 10},
-            {"id": "menu_description", "name": "메뉴 설명", "visible": True, "x": 5, "y": 89, "w": 90, "h": 10}
+            {"id": "menu_price", "name": "가격", "visible": True, "x": 5, "y": 78, "w": 60, "h": 10},
+            # 장바구니 버튼과 노트는 빌더가 모르던 조각이다. custom 이 켜지면
+            # 빌더가 배치를 전부 정하므로, 여기 없으면 그 순간 화면에서 사라진다.
+            {"id": "cart_button", "name": "장바구니 버튼", "visible": True, "x": 70, "y": 78, "w": 25, "h": 10},
+            {"id": "menu_description", "name": "메뉴 설명", "visible": True, "x": 5, "y": 89, "w": 90, "h": 6},
+            {"id": "menu_notes", "name": "메뉴 노트", "visible": True, "x": 5, "y": 95, "w": 90, "h": 5}
         ]
     }
 
