@@ -552,6 +552,8 @@
     let isDragging = false;
     let hasPassedThreshold = false;
     let pressedIds = [];
+    // 사장님이 일부러 고른 조각. 겹친 자리를 눌러도 이것은 안 빼앗긴다.
+    let pinnedId = null;
     let isResizing = false;
     let startX, startY;
     let originalX, originalY, originalW, originalH;
@@ -696,6 +698,8 @@
                 </span>
             `;
             row.addEventListener('click', () => {
+                // 목록에서 고른 것은 일부러 고른 것이다. 덮여 있어도 끌 수 있어야 한다.
+                pinnedId = comp.id;
                 selectComponent(comp.id);
             });
             compList.appendChild(row);
@@ -725,12 +729,13 @@
     /**
      * 누른 자리 기준으로 고른다.
      *
-     * 규칙 둘:
-     *   1. 이미 고른 것이 그 자리에 있으면 **그대로 둔다**. 안 그러면
-     *      고른 조각을 끌려고 누르는 순간 다른 것으로 바뀌어, 사장님이
-     *      고른 것과 움직이는 것이 달라진다.
-     *   2. 아니면 맨 위 것을 고른다. 아래 것은 톡 눌러서(움직이지 않고)
-     *      돌아가며 고른다 — stopInteraction 이 그 일을 한다.
+     * 겹친 자리에서는 **맨 위 것**을 고른다. 사진을 카드 전체로 깔아 두면
+     * 사진이 늘 커서 아래에 있는데, '고른 것을 유지' 로 하면 사진이 선택된
+     * 채 붙어 버려서 그 위의 글자를 하나도 못 옮긴다.
+     *
+     * 예외는 사장님이 **일부러 고른 것**(오른쪽 목록에서 고르거나, 겹친
+     * 자리를 움직이지 않고 톡 눌러 아래로 내려간 것)이다. 그건 유지한다 —
+     * 완전히 덮인 조각을 끌 수 있는 유일한 길이다.
      */
     function selectComponentAt(e, fallbackComp) {
         const ids = idsAt(e.clientX, e.clientY);
@@ -738,7 +743,7 @@
             selectComponent(fallbackComp.id);
             return;
         }
-        if (ids.indexOf(activeCompId) !== -1) return;
+        if (activeCompId === pinnedId && ids.indexOf(activeCompId) !== -1) return;
         selectComponent(ids[ids.length - 1]);
     }
 
@@ -881,7 +886,8 @@
         // 완전히 덮인 조각에 닿는 유일한 길이다.
         if (isDragging && !hasPassedThreshold && pressedIds.length > 1) {
             const at = pressedIds.indexOf(activeCompId);
-            selectComponent(pressedIds[(at + 1) % pressedIds.length]);
+            pinnedId = pressedIds[(at + 1) % pressedIds.length];
+            selectComponent(pinnedId);
         }
         pressedIds = [];
         isDragging = false;
