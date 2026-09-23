@@ -3010,6 +3010,11 @@ body {
   margin: 0;
   width: 100%;
   height: 100%;
+  /* 빌더 상자에는 글자 그림자가 있다. 손님 화면에 없으면, 사장님은 빌더에서
+     다 읽히는 것만 보고 사진 위에 흰 글자를 올려 두게 된다 — 밝은 사진에서는
+     그 글자가 통째로 사라진다. 어두운 배경에서는 이 그림자가 보이지 않으므로
+     사진을 안 쓰는 배치에는 아무 영향이 없다. */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;

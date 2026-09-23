@@ -241,3 +241,22 @@ class TheBuilderShowsEveryPieceTheCustomerScreenDrawsTests(TestCase):
             source.index('function render()'),
             '그리기 전에 합쳐야 한다',
         )
+
+
+class TheBuilderDoesNotLieAboutLegibilityTests(TestCase):
+    """
+    빌더 상자에는 반투명 배경과 글자 그림자가 있어서 무엇을 올려도 읽힌다.
+    손님 화면 글자에 그게 없으면, 사장님은 빌더에서 멀쩡한 것만 보고
+    밝은 사진 위에 흰 글자를 올려 둔다 — 손님에게는 그 글자가 안 보인다.
+
+    2026-09-23 실제 음식 사진을 넣고 확인했다.
+    """
+
+    def test_the_customer_text_carries_the_same_shadow_as_the_builder(self):
+        widget = _widget_css()
+        box_rule = widget[widget.index('.comp-box {'):widget.index('.comp-box.selected')]
+        self.assertIn('text-shadow', box_rule, '빌더 상자에서 그림자가 사라졌습니다')
+
+        css = (FRONTEND / 'styles' / 'globals.css').read_text(encoding='utf-8')
+        layout_rule = css[css.index('.layout-text {'):css.index('}', css.index('.layout-text {'))]
+        self.assertIn('text-shadow', layout_rule)
