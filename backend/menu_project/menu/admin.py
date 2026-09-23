@@ -548,11 +548,27 @@ class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         }),
     )
     
+    def get_form(self, request, obj=None, **kwargs):
+        """
+        빌더에 깔 사진은 **지금 고치는 그 매장**의 것이어야 한다.
+
+        selected_restaurant_for(request) 는 슈퍼유저가 ?restaurant= 없이
+        들어오면 첫 매장을 준다. 그걸 쓰면 다른 매장 사진이 깔린 채로
+        배치를 맞추게 된다 — 화면에는 아무 표시도 안 남는다.
+        request 에 실어 보내는 이유는 formfield_for_dbfield 가 obj 를
+        못 받기 때문이고, request 는 요청마다 새것이라 섞일 일이 없다.
+        """
+        request._layout_restaurant = (
+            obj.restaurant if obj is not None else selected_restaurant_for(request)
+        )
+        return super().get_form(request, obj, **kwargs)
+
     def formfield_for_dbfield(self, db_field, request, **kwargs):
         if db_field.name in ['category_card_layout_json', 'menu_card_layout_json']:
             kind = 'category' if db_field.name.startswith('category') else 'menu'
+            restaurant = getattr(request, '_layout_restaurant', None)
             kwargs['widget'] = LayoutBuilderWidget(
-                sample_image_url=_sample_image_url(selected_restaurant_for(request), kind),
+                sample_image_url=_sample_image_url(restaurant, kind),
             )
         return super().formfield_for_dbfield(db_field, request, **kwargs)
 

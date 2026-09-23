@@ -134,3 +134,47 @@ class DraggingMovesWhatIsSelectedTests(TestCase):
         body = self.source[start:self.source.index('function startResize', start)]
         self.assertIn('!hasPassedThreshold', body)
         self.assertIn('pressedIds', body)
+
+
+class TheBuilderShowsThisStoresOwnPhotoTests(TestCase):
+    """
+    빌더 캔버스에 깔리는 사진은 지금 고치는 그 매장의 것이어야 한다.
+
+    슈퍼유저가 ?restaurant= 없이 들어오면 '고른 매장' 은 첫 매장이 된다.
+    그걸 그대로 쓰면 남의 매장 사진 위에서 배치를 맞추게 되는데, 화면에는
+    아무 표시도 안 남는다 — 저장하고 손님 화면을 봐야 안다.
+    """
+
+    def setUp(self):
+        from django.contrib.auth.models import User
+        from menu.models import Category, MenuItem, Restaurant, SiteSettings
+
+        self.first = Restaurant.objects.create(slug='first-bar', name='첫 매장')
+        self.other = Restaurant.objects.create(slug='other-bar', name='다른 매장')
+        for r, fname in ((self.first, 'first.webp'), (self.other, 'other.webp')):
+            cat = Category.objects.create(restaurant=r, name='안주')
+            MenuItem.objects.create(
+                restaurant=r, category=cat, name='메뉴', price='1000',
+                menu_image=f'menu_images/{fname}',
+            )
+        self.settings_other = SiteSettings.objects.create(restaurant=self.other)
+
+        self.admin_user = User.objects.create_superuser('boss', 'b@x.test', 'pw-9013')
+        self.client.force_login(self.admin_user)
+
+    def test_editing_a_store_shows_that_stores_photo(self):
+        url = f'/admin/menu/sitesettings/{self.settings_other.pk}/change/'
+        html = self.client.get(url).content.decode('utf-8')
+
+        self.assertIn('other.webp', html)
+        self.assertNotIn('first.webp', html, '첫 매장 사진이 깔렸습니다')
+
+    def test_a_store_with_no_photos_still_opens_the_builder(self):
+        from menu.models import Restaurant, SiteSettings
+
+        empty = Restaurant.objects.create(slug='empty-bar', name='사진 없는 매장')
+        row = SiteSettings.objects.create(restaurant=empty)
+        html = self.client.get(f'/admin/menu/sitesettings/{row.pk}/change/').content.decode('utf-8')
+
+        self.assertIn('card-preview-canvas', html)
+        self.assertIn('등록된 사진이 없어', html)
