@@ -20,7 +20,52 @@ admin.site.index_template = 'admin/owner_index.html'
 
 
 class LayoutBuilderWidget(forms.Textarea):
+    """
+    배치 빌더.
+
+    캔버스 뒤에 **그 매장의 실제 사진**을 깐다. 예전에는 어두운 바탕에
+    회색 상자만 그렸는데, 그러면 사장님이 밝은 사진 위에 흰 글자를 올려
+    두고도 빌더에서는 멀쩡해 보인다 — 손님 화면에서만 글자가 사라진다.
+    2026-09-23 에 실제 음식 사진으로 재 보니 메뉴명 대비가 1.7:1 이었다
+    (큰 글자 기준 3:1).
+
+    사진이 하나도 없는 매장은 예전처럼 어두운 바탕으로 둔다.
+    """
+
     template_name = 'admin/widgets/layout_builder_widget.html'
+
+    def __init__(self, attrs=None, sample_image_url=''):
+        super().__init__(attrs)
+        self.sample_image_url = sample_image_url or ''
+
+    def get_context(self, name, value, attrs):
+        context = super().get_context(name, value, attrs)
+        context['widget']['sample_image_url'] = self.sample_image_url
+        return context
+
+
+def _sample_image_url(restaurant, kind):
+    """
+    빌더 캔버스 뒤에 깔 사진 한 장. kind 는 'category' | 'menu'.
+
+    실패해도 빌더는 열려야 한다 — 사진은 판단을 돕는 것이지 없다고
+    못 쓰는 게 아니다.
+    """
+    if restaurant is None:
+        return ''
+    try:
+        if kind == 'category':
+            row = (Category.objects.filter(restaurant=restaurant)
+                   .exclude(category_image='').exclude(category_image=None)
+                   .order_by('id').first())
+            return row.category_image.url if row else ''
+        row = (MenuItem.objects.filter(category__restaurant=restaurant)
+               .exclude(menu_image='').exclude(menu_image=None)
+               .order_by('id').first())
+        return row.menu_image.url if row else ''
+    except (ValueError, AttributeError):
+        # 파일이 사라진 행이 있으면 .url 이 던진다.
+        return ''
 
 class MenuItemPairingInline(admin.TabularInline):
     model = MenuItemPairing
@@ -505,7 +550,10 @@ class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
     
     def formfield_for_dbfield(self, db_field, request, **kwargs):
         if db_field.name in ['category_card_layout_json', 'menu_card_layout_json']:
-            kwargs['widget'] = LayoutBuilderWidget
+            kind = 'category' if db_field.name.startswith('category') else 'menu'
+            kwargs['widget'] = LayoutBuilderWidget(
+                sample_image_url=_sample_image_url(selected_restaurant_for(request), kind),
+            )
         return super().formfield_for_dbfield(db_field, request, **kwargs)
 
     def has_add_permission(self, request):

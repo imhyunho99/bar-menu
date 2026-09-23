@@ -245,12 +245,28 @@ class TheBuilderShowsEveryPieceTheCustomerScreenDrawsTests(TestCase):
 
 class TheBuilderDoesNotLieAboutLegibilityTests(TestCase):
     """
-    빌더 상자에는 반투명 배경과 글자 그림자가 있어서 무엇을 올려도 읽힌다.
-    손님 화면 글자에 그게 없으면, 사장님은 빌더에서 멀쩡한 것만 보고
-    밝은 사진 위에 흰 글자를 올려 둔다 — 손님에게는 그 글자가 안 보인다.
+    사장님이 밝은 사진 위에 흰 글자를 올려 두고도 빌더에서는 멀쩡해
+    보이던 문제. 2026-09-23 실제 음식 사진으로 재 보니 메뉴명 대비가
+    1.7:1 이었다 (큰 글자 기준 3:1).
 
-    2026-09-23 실제 음식 사진을 넣고 확인했다.
+    고친 방향은 셋이다 — 캔버스에 실제 사진을 깔고, 상자 배경을 없애
+    사진이 비치게 하고, 글자 그림자를 손님 화면과 같게 맞췄다.
     """
+
+    def test_the_canvas_can_carry_a_real_photo(self):
+        widget = _widget_css()
+        self.assertIn('sample_image_url', widget)
+        self.assertIn('background-size: cover', widget)
+
+    def test_the_boxes_do_not_act_as_a_scrim(self):
+        """
+        반투명 흰 배경을 깔면 그게 스크림 노릇을 해서, 안 읽히는 글자가
+        읽히는 것으로 보인다. 사진을 깔아 둔 의미가 없어진다.
+        """
+        widget = _widget_css()
+        box_rule = widget[widget.index('.comp-box {'):widget.index('.comp-box.selected')]
+        self.assertIn('background: transparent', box_rule)
+        self.assertNotIn('rgba(255,255,255,.12)', box_rule)
 
     def test_the_customer_text_carries_the_same_shadow_as_the_builder(self):
         widget = _widget_css()
