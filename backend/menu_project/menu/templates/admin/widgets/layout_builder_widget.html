@@ -38,6 +38,9 @@
             flex: 1;
             min-width: 340px;
             display: flex;
+            /* 안내 문구는 캔버스 **아래**다. 가로로 두면 캔버스 옆에 붙어
+               줄이 어긋나고, 좁은 화면에서는 캔버스를 밀어낸다. */
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             background: #fff;
