@@ -18,19 +18,68 @@ jobs:
     
     - name: Deploy to server
       uses: appleboy/ssh-action@v1.0.0
+      # .env 는 git 에 없다. 여기서 안 채우면 새 기능이 **에러 없이 조용히**
+      # 꺼진 채로 배포된다 — 계좌 정보가 없으면 입금 안내 구역이 통째로 안
+      # 그려지고(템플릿이 bank_account 로 갈린다) 사장님은 돈 낼 방법이 없다.
+      # 2026-09-23 점검에서 운영에 이 네 개가 전부 빠져 있는 것을 확인했다.
+      env:
+        BANK_NAME: ${{ secrets.BANK_NAME }}
+        BANK_ACCOUNT: ${{ secrets.BANK_ACCOUNT }}
+        BANK_HOLDER: ${{ secrets.BANK_HOLDER }}
+        CUSTOMER_SITE_URL: ${{ secrets.CUSTOMER_SITE_URL }}
       with:
         host: ${{ secrets.SSH_HOST }}
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script_stop: true
+        envs: BANK_NAME,BANK_ACCOUNT,BANK_HOLDER,CUSTOMER_SITE_URL
         script: |
           cd ~/bar_menu
           git fetch origin main
           git reset --hard origin/main
+
+          # ── 운영 .env 에 필요한 설정 채우기 ─────────────────────────────
+          # 재시작 전에 한다. 뒤에 하면 이번 배포에는 반영되지 않는다.
+          ENV_FILE=~/bar_menu/.env
+          cp "$ENV_FILE" "$ENV_FILE.bak"
+          for key in BANK_NAME BANK_ACCOUNT BANK_HOLDER CUSTOMER_SITE_URL; do
+            value=$(printenv "$key" || true)
+            if [ -z "$value" ]; then
+              if grep -q "^${key}=" "$ENV_FILE"; then
+                echo "· ${key}: 시크릿이 비어 서버의 기존 값을 그대로 둡니다"
+                continue
+              fi
+              echo "!! ${key} 가 GitHub Secret 에도 서버 .env 에도 없습니다."
+              echo "   이대로 나가면 그 기능이 조용히 꺼집니다. 배포를 멈춥니다."
+              exit 1
+            fi
+            # sed 를 안 쓴다. 값에 / & | 가 섞이면 치환식이 깨지는데,
+            # 하필 조용히 깨져서 엉뚱한 값이 들어간다.
+            tmp=$(mktemp)
+            grep -v "^${key}=" "$ENV_FILE" > "$tmp" || true
+            echo "${key}=${value}" >> "$tmp"
+            mv "$tmp" "$ENV_FILE"
+            echo "· ${key} 설정함"
+          done
+
           source ~/bar_menu/venv/bin/activate
           pip install -q -r backend/requirements.txt
           cd backend/menu_project
           python manage.py migrate --noinput
           python manage.py collectstatic --noinput
           sudo systemctl restart bar_menu
+
+          # 채운 설정이 실제로 읽히는지 본다. 여기서 틀리면 사장님이
+          # 결제 화면을 열어 볼 때까지 아무도 모른다.
+          python - <<'CHECK'
+          import os, django
+          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'menu_project.settings')
+          django.setup()
+          from django.conf import settings
+          missing = [k for k in ('BANK_NAME', 'BANK_ACCOUNT', 'BANK_HOLDER', 'CUSTOMER_SITE_URL')
+                     if not getattr(settings, k, '')]
+          if missing:
+              raise SystemExit('!! 배포 후에도 비어 있습니다: ' + ', '.join(missing))
+          print('· 결제 설정 확인 완료:', settings.BANK_NAME, settings.BANK_ACCOUNT)
+          CHECK
 

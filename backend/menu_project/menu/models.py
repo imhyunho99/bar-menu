@@ -666,12 +666,20 @@ class Subscription(models.Model):
 
         past_due 를 열어 두는 건 의도적이다. 카드 한 번 실패했다고 영업
         중인 가게의 메뉴판을 꺼버리면 그게 더 큰 사고다.
+
+        canceled 도 날짜를 본다. 예전에는 해지하는 순간 손님 화면이 닫혔다 —
+        이미 받은 돈만큼의 기간이 남아 있어도 그랬다. 영업 중에 사장님이
+        '다음 달부터 안 쓴다' 는 뜻으로 눌렀다가 그날 장사가 멈춘다.
+        받은 기간까지는 열어 두고, 그 뒤에 닫힌다.
+
+        날짜가 아예 없는 canceled 는 닫는다. 한 번도 낸 적 없이 해지한
+        경우라, 열어 둘 근거가 없다.
         """
         from django.utils import timezone
 
         if self.status == self.UNLIMITED_STATUS:
             return True
-        if self.status in ('unpaid', 'canceled'):
+        if self.status == 'unpaid':
             return False
         if self.status == 'past_due':
             return True

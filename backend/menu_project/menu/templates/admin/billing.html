@@ -148,6 +148,16 @@
             </div>
         </div>
 
+        {% comment %}
+        카드 정기결제는 잠들어 있다(PAYMENT_PROVIDER 미설정). 그런데 이 구역이
+        화면 한가운데에 '매월 자동 결제', '결제 즉시 손님 화면이 열리며' 라고
+        적힌 채 먼저 눈에 띄었다. 사장님은 실제로 동작하는 계좌이체 안내를
+        지나쳐 이 버튼부터 누르고, '준비 중' 안내를 보고 되돌아온다.
+
+        지우지 않고 가린다. 대행사를 붙이면 payment_configured 가 참이 되어
+        그대로 돌아온다.
+        {% endcomment %}
+        {% if payment_configured %}
         <div class="admin-section">
             <h2>요금제 선택</h2>
             <div class="admin-card">
@@ -217,6 +227,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         {% if subscription.status != 'canceled' %}
         <div class="admin-section">

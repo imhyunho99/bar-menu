@@ -11,9 +11,10 @@ import re
 from pathlib import Path
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from .models import Restaurant, Subscription, UserProfile
+from .tests_billing import stub_registered
 
 # frontend/src/lib/marketing-content.ts
 MARKETING_CONTENT = (
@@ -52,7 +53,14 @@ class PlanPriceTests(TestCase):
 
 
 class CheckoutScreenTests(TestCase):
-    """심사자가 로그인해서 보는 결제 화면."""
+    """
+    심사자가 로그인해서 보는 결제 화면.
+
+    이 화면은 **대행사가 붙어 있을 때만** 나온다. 지금은 카카오페이가
+    잠들어 있어 가려 뒀다 — 동작하지 않는 '매월 자동 결제' 를 사장님이
+    먼저 누르게 되기 때문이다. 심사를 다시 받을 때 그대로 돌아와야 하므로,
+    여기서는 대행사를 붙인 상태로 본다.
+    """
 
     def setUp(self):
         self.restaurant = Restaurant.objects.create(name="달빛 이자카야", slug="moonlight")
@@ -61,8 +69,12 @@ class CheckoutScreenTests(TestCase):
         self.client.force_login(self.owner)
         self.url = '/moonlight/admin/billing/'
 
+    def _body(self):
+        with stub_registered(), override_settings(PAYMENT_PROVIDER='stub'):
+            return self.client.get(self.url).content.decode()
+
     def test_checkout_shows_product_name_and_price(self):
-        body = self.client.get(self.url).content.decode()
+        body = self._body()
         for code, label in Subscription.PLAN_CHOICES:
             with self.subTest(plan=code):
                 self.assertIn(label, body)
@@ -70,13 +82,13 @@ class CheckoutScreenTests(TestCase):
 
     def test_checkout_states_the_recurring_terms(self):
         """정기결제 방식·결제 시기·취소·이의신청이 화면에 있어야 한다."""
-        body = self.client.get(self.url).content.decode()
+        body = self._body()
         for phrase in ('매월', '부가세', '해지', '이의신청'):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, body)
 
     def test_checkout_links_to_the_terms(self):
-        self.assertIn('/terms', self.client.get(self.url).content.decode())
+        self.assertIn('/terms', self._body())
 
 
 BUSINESS_TS = Path(__file__).resolve().parents[3] / 'frontend' / 'src' / 'lib' / 'business.ts'
@@ -147,8 +159,14 @@ class SupportContactFallbackTests(TestCase):
         self.client.force_login(self.owner)
 
     def _dispute_text(self):
-        """'이의신청' 항목의 본문만 뽑는다."""
-        body = self.client.get('/moonlight/admin/billing/').content.decode()
+        """
+        '이의신청' 항목의 본문만 뽑는다.
+
+        이 항목은 정기결제 안내 구역 안에 있고, 그 구역은 대행사가 붙어
+        있을 때만 그려진다. 심사자가 보는 화면이 그 화면이다.
+        """
+        with stub_registered(), override_settings(PAYMENT_PROVIDER='stub'):
+            body = self.client.get('/moonlight/admin/billing/').content.decode()
         section = re.search(r'이의신청</dt>\s*<dd>(.*?)</dd>', body, re.S)
         self.assertIsNotNone(section, '결제 화면에 이의신청 안내가 없습니다')
         return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', section.group(1))).strip()
@@ -173,11 +191,14 @@ class SupportContactFallbackTests(TestCase):
 
 class PaymentPendingNoticeTests(TestCase):
     """
-    연동 전 안내 문구.
+    연동 전 결제 화면이 사실만 말하는가.
 
-    사실이어야 하고(요금이 청구되지 않는다), 동시에 '고장난 사이트'로 읽히면
-    안 된다. 이 화면은 전자결제 심사자도 본다. 셀프가입 서비스인데 '담당자에게
-    문의'라고 적혀 있으면 사장님도 어디로 문의하라는 건지 알 수 없다.
+    예전에는 '요금이 청구되지 않습니다' 라는 안내로 이 문제를 덮었다. 누르면
+    청구되지 않는 버튼을 놔둔 채 그 옆에 각주를 단 셈이라, 사장님은 버튼부터
+    누르고 각주는 그다음에 읽었다.
+
+    지금은 카드 구역을 통째로 가린다. 그러니 화면에 청구 약속 자체가 없어야
+    하고, 돈 내는 길(계좌이체)은 그대로 있어야 한다.
     """
 
     def setUp(self):
@@ -189,8 +210,12 @@ class PaymentPendingNoticeTests(TestCase):
     def _body(self):
         return self.client.get('/moonlight/admin/billing/').content.decode()
 
-    def test_notice_says_charges_are_not_made_yet(self):
-        self.assertIn('청구되지 않습니다', self._body())
+    def test_the_screen_promises_no_billing_it_cannot_do(self):
+        body = self._body()
+        for phrase in ('매월 자동 결제', '자동 청구', '결제하기'):
+            with self.subTest(phrase=phrase):
+                self.assertNotIn(phrase, body)
 
-    def test_notice_does_not_send_the_owner_to_a_nonexistent_desk(self):
+    def test_the_screen_does_not_send_the_owner_to_a_nonexistent_desk(self):
+        """셀프가입 서비스다. '담당자에게 문의' 는 어디로 가라는 말인지 없다."""
         self.assertNotIn('담당자에게 문의', self._body())

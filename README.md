@@ -1,3 +1,11 @@
+> An install-free QR menu and ordering platform, running in production at a
+> real dining pub (Bidbar). A Next.js 16 frontend and a Django REST Framework
+> backend unified under one domain via an Nginx reverse proxy, with Wi-Fi-scoped
+> ordering, a drag-and-drop card layout builder, and a bank-transfer
+> subscription gate confirmed by hand.
+
+---
+
 # bar-menu
 
 매장 내 테이블에 비치된 QR 코드를 스캔하여, 별도의 앱 설치 없이 메뉴를 확인할 수 있는 프리미엄 웹 메뉴판 서비스입니다.
@@ -174,24 +182,22 @@ ssh server "touch /path/to/reload.txt"
 
 ### 계좌이체 게이트 (2026-09)
 
-손님 공개와 QR 발행이 입금 확인 뒤로 옮겨졌다. 배포할 때 **서버에서 손으로**
-해야 하는 것들:
+손님 공개와 QR 발행이 입금 확인 뒤로 옮겨졌다.
+
+**운영 `.env` 의 네 개는 배포가 알아서 채운다.** `deploy.yml` 이 GitHub Secret
+(`BANK_NAME`·`BANK_ACCOUNT`·`BANK_HOLDER`·`CUSTOMER_SITE_URL`)을 서버 `.env` 에
+써 넣고, 시크릿에도 서버에도 없으면 **배포를 멈춘다**. 손으로 채우던 시절에는
+빠져도 에러가 안 났다 — 계좌 정보가 없으면 입금 안내 구역이 통째로 안 그려져서,
+사장님이 돈 낼 방법이 없는 채로 배포가 성공했다.
+
+`ENFORCE_SUBSCRIPTION` 은 기본이 `True` 다. 끄면 전원이 공짜가 된다.
+
+아직 손으로 해야 하는 것은 cron 하나다:
 
 ```bash
-# .env — 계좌 정보가 없으면 결제 화면이 폼 대신 '준비 중' 을 보여준다
-BANK_NAME=국민
-BANK_ACCOUNT=000000-00-000000
-BANK_HOLDER=예금주명
-
-# 손님 화면(Next.js) 주소. 미리보기 링크를 이걸로 만든다.
-# 비어 있으면 링크를 아예 만들지 않고 관리 화면이 '미설정' 이라고 말한다.
-# (운영은 https://bar-menu.ddnsfree.com)
-CUSTOMER_SITE_URL=https://develop.bar-menu.ddnsfree.com
-
-# ENFORCE_SUBSCRIPTION 은 이제 기본이 True 다. 끄면 전원이 공짜가 된다.
-
-# cron — expire_trials 는 삭제됐다. 남아 있으면 지운다.
-0 9 * * *  cd ~/bar_menu/backend/menu_project && ../venv/bin/python manage.py sweep_subscriptions
+# expire_trials 는 삭제됐다. 남아 있으면 지운다.
+0 9 * * * cd ~/bar_menu/backend/menu_project && \
+  ~/bar_menu/venv/bin/python manage.py sweep_subscriptions >> ~/logs/sweep.log 2>&1
 ```
 
 마이그레이션 3개(`0054`~`0056`)가 돈다. `0054` 는 남아 있는 `trialing` 매장을

@@ -122,11 +122,26 @@ class SubscriptionStateTest(TestCase):
         self.subscription.current_period_end = timezone.now() - timedelta(days=3)
         self.assertTrue(self.subscription.is_usable())
 
-    def test_canceled_closes_immediately_even_with_time_left(self):
-        # 알려진 불일치. 남은 기간이 있어도 해지 즉시 닫힌다.
-        # 고치려면 models.py 를 손봐야 해서 지금은 현 동작을 기록만 해둔다.
+    def test_canceled_keeps_the_period_that_was_already_paid_for(self):
+        """
+        해지는 '다음 달부터 안 쓴다' 는 뜻이지 '지금 당장 끄라' 가 아니다.
+
+        예전에는 누르는 순간 손님 화면이 닫혔다. 영업 중에 눌렀다가 그날
+        장사가 멈춘다 — 사장님은 자기가 껐다는 것도 모른다.
+        """
         self.subscription.status = 'canceled'
         self.subscription.current_period_end = timezone.now() + timedelta(days=20)
+        self.assertTrue(self.subscription.is_usable())
+
+    def test_canceled_closes_once_the_paid_period_runs_out(self):
+        self.subscription.status = 'canceled'
+        self.subscription.current_period_end = timezone.now() - timedelta(minutes=1)
+        self.assertFalse(self.subscription.is_usable())
+
+    def test_canceled_without_ever_paying_stays_closed(self):
+        """한 번도 낸 적 없이 해지한 경우. 열어 둘 근거가 없다."""
+        self.subscription.status = 'canceled'
+        self.subscription.current_period_end = None
         self.assertFalse(self.subscription.is_usable())
 
 
@@ -443,3 +458,48 @@ class WebhookTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.subscription.refresh_from_db()
         self.assertEqual(self.subscription.status, 'unpaid')
+
+
+@override_settings(BANK_NAME='IBK기업은행', BANK_ACCOUNT='45204542602019', BANK_HOLDER='나현호')
+class BillingScreenShowsOnlyWhatWorksTests(TestCase):
+    """
+    지금 돈을 받는 길은 계좌이체 하나뿐이다.
+
+    카드 정기결제 구역이 화면 한가운데에 '매월 자동 결제', '결제 즉시 손님
+    화면이 열리며' 라고 적힌 채 먼저 눈에 띄었다. 둘 다 사실이 아니다 —
+    사람이 통장을 보고 열어 준다. 사장님은 그 버튼부터 누르고 '준비 중'
+    안내를 보고 되돌아온다.
+    """
+
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name="알파바", slug="alpha")
+        self.owner = User.objects.create_user(username='alpha_owner', password='pw', is_staff=True)
+        UserProfile.objects.create(user=self.owner, restaurant=self.restaurant)
+        self.client.force_login(self.owner)
+
+    def _html(self):
+        return self.client.get('/alpha/admin/billing/').content.decode('utf-8')
+
+    def test_the_card_subscription_section_is_hidden_while_it_sleeps(self):
+        html = self._html()
+        self.assertNotIn('요금제 선택', html)
+        self.assertNotIn('매월 자동 결제', html)
+        self.assertNotIn('결제하기', html)
+        self.assertNotIn('정기결제 안내', html)
+
+    def test_the_bank_transfer_path_is_still_there(self):
+        """가리는 것이 목적이지, 돈 받는 길을 막는 것이 아니다."""
+        html = self._html()
+        self.assertIn('입금 안내', html)
+        self.assertIn('45204542602019', html)
+        self.assertIn('나현호', html)
+
+    def test_it_comes_back_when_a_provider_is_configured(self):
+        """
+        지우지 않고 가렸다. 대행사를 붙이면 그대로 돌아와야 한다 —
+        안 그러면 다시 켤 때 이 화면이 왜 비었는지 아무도 모른다.
+        """
+        with stub_registered(), override_settings(PAYMENT_PROVIDER='stub'):
+            html = self._html()
+        self.assertIn('요금제 선택', html)
+        self.assertIn('결제하기', html)

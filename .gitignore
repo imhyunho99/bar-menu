@@ -94,3 +94,8 @@ node_modules/
 .gemini/
 
 .playwright-mcp/
+
+# 작업 중 찍은 스크린샷·메모. 루트에 그대로 커밋된 적이 있다
+# (login.png 18KB, admin-sitesettings.png 240KB, sitesettings-full.md).
+/*.png
+/sitesettings-full.md
