@@ -551,6 +551,7 @@
     let activeCompId = null;
     let isDragging = false;
     let hasPassedThreshold = false;
+    let pressedIds = [];
     let isResizing = false;
     let startX, startY;
     let originalX, originalY, originalW, originalH;
@@ -715,16 +716,30 @@
         });
     }
 
-    /** 누른 자리 기준으로 고른다. 겹쳐 있으면 지금 고른 것 다음 것을 준다. */
+    /** 누른 자리에 겹쳐 있는 조각 id. 목록 순서 = 아래에서 위로. */
+    function idsAt(clientX, clientY) {
+        return boxesAt(clientX, clientY)
+            .map((box) => box.id.replace(`${widgetName}_box_`, ''));
+    }
+
+    /**
+     * 누른 자리 기준으로 고른다.
+     *
+     * 규칙 둘:
+     *   1. 이미 고른 것이 그 자리에 있으면 **그대로 둔다**. 안 그러면
+     *      고른 조각을 끌려고 누르는 순간 다른 것으로 바뀌어, 사장님이
+     *      고른 것과 움직이는 것이 달라진다.
+     *   2. 아니면 맨 위 것을 고른다. 아래 것은 톡 눌러서(움직이지 않고)
+     *      돌아가며 고른다 — stopInteraction 이 그 일을 한다.
+     */
     function selectComponentAt(e, fallbackComp) {
-        const stacked = boxesAt(e.clientX, e.clientY);
-        if (stacked.length < 2) {
+        const ids = idsAt(e.clientX, e.clientY);
+        if (ids.length < 2) {
             selectComponent(fallbackComp.id);
             return;
         }
-        const ids = stacked.map((box) => box.id.replace(`${widgetName}_box_`, ''));
-        const at = ids.indexOf(activeCompId);
-        selectComponent(ids[(at + 1) % ids.length]);
+        if (ids.indexOf(activeCompId) !== -1) return;
+        selectComponent(ids[ids.length - 1]);
     }
 
     function selectComponent(id) {
@@ -808,13 +823,23 @@
     const DRAG_THRESHOLD_PX = 4;
 
     function startDrag(e, comp) {
+        pressedIds = idsAt(e.clientX, e.clientY);
         selectComponentAt(e, comp);
+
+        // 고른 것과 끄는 것이 어긋나면 안 된다.
+        //
+        // 예전에는 여기서 comp(=누른 상자) 의 좌표를 원점으로 잡고, drag() 는
+        // activeCompId(=고른 조각) 를 움직였다. 겹친 자리에서 둘이 달라지면
+        // 엉뚱한 조각이 누른 상자 자리로 순간이동했다. 사진을 카드 전체로
+        // 깔아 놓으면 그 위의 글자를 하나도 못 옮겼다.
+        const target = layout.components.find(c => c.id === activeCompId) || comp;
+
         isDragging = true;
         hasPassedThreshold = false;
         startX = e.clientX;
         startY = e.clientY;
-        originalX = comp.x;
-        originalY = comp.y;
+        originalX = target.x;
+        originalY = target.y;
 
         document.addEventListener('pointermove', drag);
         document.addEventListener('pointerup', stopInteraction);
@@ -852,6 +877,13 @@
      * 번번이 '옮김' 이 되던 것도 이것 때문이다.
      */
     function stopInteraction() {
+        // 겹친 자리를 움직이지 않고 톡 눌렀으면, 아래 것으로 돌아가며 고른다.
+        // 완전히 덮인 조각에 닿는 유일한 길이다.
+        if (isDragging && !hasPassedThreshold && pressedIds.length > 1) {
+            const at = pressedIds.indexOf(activeCompId);
+            selectComponent(pressedIds[(at + 1) % pressedIds.length]);
+        }
+        pressedIds = [];
         isDragging = false;
         isResizing = false;
         hasPassedThreshold = false;

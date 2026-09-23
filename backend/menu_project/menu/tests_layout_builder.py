@@ -68,3 +68,56 @@ class BuilderCleansUpAfterDraggingTests(TestCase):
         self.assertIn("removeEventListener('pointerup'", body)
         # 손가락이 화면 밖으로 나가거나 전화가 오면 pointerup 대신 이것이 온다.
         self.assertIn("removeEventListener('pointercancel'", body)
+
+
+class DraggingMovesWhatIsSelectedTests(TestCase):
+    """
+    겹친 자리에서 엉뚱한 조각이 순간이동하던 것.
+
+    startDrag 이 누른 상자(comp)의 좌표를 원점으로 잡고, drag() 는
+    activeCompId 의 조각을 움직였다. 겹친 자리에서 selectComponentAt 이
+    다른 것을 고르면 둘이 달라진다 — 그러면 고르지도 않은 조각이 누른
+    상자 자리로 튄다.
+
+    2026-09-23 dev 에서 사진을 카드 전체로 깔고 그 위 글자들을 옮기려다
+    확인했다. 여섯 번 끌어서 제자리에 간 것이 하나도 없었다.
+    """
+
+    def setUp(self):
+        self.source = WIDGET.read_text(encoding='utf-8')
+
+    def _start_drag_body(self):
+        start = self.source.index('function startDrag')
+        return self.source[start:self.source.index('function drag(', start)]
+
+    def test_the_drag_origin_comes_from_the_selected_piece(self):
+        body = self._start_drag_body()
+        self.assertIn('originalX = target.x', body)
+        self.assertIn('originalY = target.y', body)
+        self.assertNotIn('originalX = comp.x', body)
+        self.assertNotIn('originalY = comp.y', body)
+
+    def test_the_target_is_resolved_after_selecting(self):
+        """고르기 전에 target 을 잡으면 같은 어긋남이 그대로 남는다."""
+        body = self._start_drag_body()
+        self.assertLess(
+            body.index('selectComponentAt(e, comp)'),
+            body.index('const target ='),
+        )
+
+    def test_pressing_keeps_a_piece_you_already_selected(self):
+        """
+        누를 때마다 다음 것으로 넘어가면, 고른 조각을 끌려고 누르는 순간
+        다른 것으로 바뀐다. 겹친 자리에서 아무것도 원하는 대로 못 옮긴다.
+        """
+        start = self.source.index('function selectComponentAt')
+        body = self.source[start:self.source.index('function selectComponent(', start)]
+        self.assertIn('ids.indexOf(activeCompId) !== -1', body)
+        self.assertIn('ids[ids.length - 1]', body)
+
+    def test_a_tap_without_moving_still_reaches_the_piece_underneath(self):
+        """완전히 덮인 조각에 닿는 유일한 길이다."""
+        start = self.source.index('function stopInteraction')
+        body = self.source[start:self.source.index('function startResize', start)]
+        self.assertIn('!hasPassedThreshold', body)
+        self.assertIn('pressedIds', body)
