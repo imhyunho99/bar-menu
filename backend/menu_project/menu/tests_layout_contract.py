@@ -111,7 +111,7 @@ def _widget_defaults(kind):
     """빌더 JS 안의 defaultLayout() 이 만드는 배치. kind 는 'category' | 'menu'."""
     source = _widget_css()
     start = source.index('function defaultLayout()')
-    body = source[start:source.index('// Default Fallbacks', start)]
+    body = source[start:source.index('function mergeWithDefaults', start)]
     # isCategory 갈래가 먼저 나오고, 그 뒤가 메뉴 갈래다.
     first = body.index('return {')
     second = body.index('return {', first + 1)
@@ -151,7 +151,7 @@ class TheBuilderCanBeResetTests(TestCase):
         '되돌렸는데 그대로' 로 보인다.
         """
         source = _widget_css()
-        body = source[source.index('function defaultLayout()'):source.index('// Default Fallbacks')]
+        body = source[source.index('function defaultLayout()'):source.index('function mergeWithDefaults')]
         self.assertNotIn("layout_type: \"custom\"", body)
         self.assertEqual(body.count('layout_type: "default"'), 2)
 
@@ -203,3 +203,41 @@ class TheBuilderWorksWithAFingerTests(TestCase):
         css = _widget_css()
         box_rule = css[css.index('.comp-box {'):css.index('.comp-box.selected')]
         self.assertIn('touch-action: none', box_rule)
+
+
+class TheBuilderShowsEveryPieceTheCustomerScreenDrawsTests(TestCase):
+    """
+    빌더가 저장값을 그대로 믿으면, 조각이 나중에 늘어났을 때 그 전에
+    저장한 매장에서는 새 조각이 빌더에 안 나온다.
+
+    2026-09-23 dev 에서 실제로 그랬다 — 네 매장 전부 저장된 배치가 5조각
+    (장바구니 버튼·노트 없음)이었다. 사장님은 그 둘을 볼 수도 옮길 수도
+    없는데, 손님 화면 렌더러는 기본값을 돌기 때문에 기본 자리에 그렸다.
+    빌더에서 본 것과 손님이 보는 것이 달랐다.
+    """
+
+    def test_the_builder_merges_saved_over_the_defaults(self):
+        source = _widget_css()
+        self.assertIn('function mergeWithDefaults', source)
+
+        body = source[source.index('function mergeWithDefaults'):source.index('const parsedCount')]
+        # 손님 화면 렌더러와 같은 방향이어야 한다: 기본값을 돌고 저장값을 얹는다.
+        self.assertIn('defaults.components.map', body)
+        self.assertNotIn('parsed.components.map(c => c)', body)
+
+    def test_opening_the_builder_does_not_mark_a_store_as_custom(self):
+        """
+        여기서 custom 을 찍으면, 사장님이 설정 화면을 열어 보기만 해도
+        손님 화면이 절대배치로 바뀐다.
+        """
+        source = _widget_css()
+        body = source[source.index('function mergeWithDefaults'):source.index('const parsedCount')]
+        self.assertIn("=== 'custom' ? 'custom' : 'default'", body)
+
+    def test_the_merge_runs_before_anything_is_drawn(self):
+        source = _widget_css()
+        self.assertLess(
+            source.index('layout = mergeWithDefaults(layout)'),
+            source.index('function render()'),
+            '그리기 전에 합쳐야 한다',
+        )

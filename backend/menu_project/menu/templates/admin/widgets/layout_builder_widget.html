@@ -514,10 +514,37 @@
         };
     }
 
-    // Default Fallbacks if empty or invalid
-    if (!layout.components || layout.components.length === 0) {
-        layout = defaultLayout();
-        // Write defaults back to textarea
+    /**
+     * 저장값을 기본값 위에 얹는다. 손님 화면 렌더러(resolveComponents)와
+     * **같은 규칙**이어야 한다.
+     *
+     * 예전에는 저장된 배열을 그대로 썼다. 그래서 조각이 나중에 늘어나면
+     * (장바구니 버튼·노트가 정확히 그랬다) 그 전에 저장된 매장에서는
+     * 빌더에 그 조각이 아예 안 나왔다 — 사장님은 볼 수도 옮길 수도 없는데
+     * 손님 화면에는 기본 자리에 그려졌다.
+     *
+     * 반대로 모르는 id 는 여기서 떨어진다. 기본값을 돌고 거기 있는 것만
+     * 저장값에서 꺼내므로, 이상한 것이 캔버스까지 올 자리가 없다.
+     */
+    function mergeWithDefaults(parsed) {
+        const defaults = defaultLayout();
+        const saved = new Map(
+            Array.isArray(parsed && parsed.components)
+                ? parsed.components.filter(c => c && c.id).map(c => [c.id, c])
+                : []
+        );
+        return {
+            // 고친 적 있는 매장인지는 저장값만 정한다. 여기서 custom 을 찍으면
+            // 열어 보기만 해도 손님 화면이 절대배치로 바뀐다.
+            layout_type: (parsed && parsed.layout_type) === 'custom' ? 'custom' : 'default',
+            components: defaults.components.map(d => ({ ...d, ...(saved.get(d.id) || {}), name: d.name })),
+        };
+    }
+
+    const parsedCount = (layout && Array.isArray(layout.components)) ? layout.components.length : 0;
+    layout = mergeWithDefaults(layout);
+    if (parsedCount !== layout.components.length) {
+        // 조각 수가 달라졌다 — 저장해 두지 않으면 다음에 열 때 또 같은 일을 한다.
         textarea.value = JSON.stringify(layout);
     }
 
