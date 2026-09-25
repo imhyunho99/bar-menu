@@ -1,0 +1,93 @@
+name: Tests
+
+# 배포 워크플로 둘뿐이라 테스트는 아무 데서도 안 돌았다. 455개가 초록불이어도
+# 사람이 기억해서 돌릴 때만 의미가 있었다 — 2026-07 에 CI 초록불이 8회 연속
+# 거짓이었던 적도 있다. 여기서 둘 다 돌린다.
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+
+# 같은 브랜치에 연달아 밀면 앞 실행을 취소한다. 무료 러너를 아껴 쓴다.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Django
+    runs-on: ubuntu-latest
+
+    # 운영·개발이 postgres 다. sqlite 로 돌리면 여기서만 통과하는 초록불이
+    # 생긴다 — 그게 정확히 CI 를 믿을 수 없게 만드는 종류의 거짓말이다.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test_ci
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # 운영 서버가 3.12 다. 로컬이 더 높다고 여기서 올리면, 여기서만
+          # 나는 에러와 여기서만 안 나는 에러가 동시에 생긴다.
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: 의존성 설치
+        run: pip install -q -r backend/requirements.txt
+
+      - name: 테스트
+        working-directory: backend/menu_project
+        env:
+          DJANGO_SECRET_KEY: ci-only-not-a-real-secret
+          DJANGO_DEBUG: 'False'
+          DB_NAME: test_ci
+          DB_USER: ci
+          DB_PASSWORD: ci
+          DB_HOST: localhost
+          DB_PORT: '5432'
+          # 게이트를 켠 채로 돈다. 꺼 두면 게이트 테스트가 통째로 무의미해진다.
+          ENFORCE_SUBSCRIPTION: 'True'
+        run: python manage.py test menu --verbosity 2
+
+  frontend:
+    name: Next.js
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 의존성 설치
+        working-directory: frontend
+        run: npm ci
+
+      - name: 테스트
+        working-directory: frontend
+        run: npm test
+
+      # 타입 오류는 vitest 가 안 잡는다. 빌드가 깨진 채로 Vercel 까지 가면
+      # 손님 화면이 내려간다.
+      - name: 빌드
+        working-directory: frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://devapi.bar-menu.ddnsfree.com
