@@ -54,7 +54,11 @@ jobs:
         working-directory: backend/menu_project
         env:
           DJANGO_SECRET_KEY: ci-only-not-a-real-secret
-          DJANGO_DEBUG: 'False'
+          # DEBUG=False 로 두면 SECURE_SSL_REDIRECT 가 켜져서 테스트 클라이언트의
+          # POST 가 https 로 301 된다. 뷰에 닿지 못해 수십 개가 ERROR 로 무너진다.
+          # 즉 이 묶음은 지금 DEBUG=True 를 전제로 쓰여 있다. 개발자 기계와 같은
+          # 조건으로 맞춰 두고, 그 전제 자체는 따로 손봐야 한다.
+          DJANGO_DEBUG: 'True'
           DB_NAME: test_ci
           DB_USER: ci
           DB_PASSWORD: ci
@@ -91,3 +95,6 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_API_URL: https://devapi.bar-menu.ddnsfree.com
+          # 없으면 빌드가 일부러 죽는다. 이 값이 빠진 채로 43일간 배포돼
+          # 모든 가입 버튼이 localhost:4311 을 가리킨 적이 있다.
+          NEXT_PUBLIC_APP_URL: https://develop.bar-menu.ddnsfree.com
