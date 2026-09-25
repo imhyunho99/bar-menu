@@ -2,11 +2,26 @@
 
 from datetime import timedelta
 
+from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .utils import optimize_image, record_image_dimensions
+
+
+# 업로드된 파일은 관리자와 **같은 원점**(api.*)에서 서빙된다. 확장자를 안 보면
+# 폰트 자리에 .html 을 올려 그 원점에서 스크립트를 돌릴 수 있고, 그 스크립트는
+# 지원하러 남의 매장 설정을 열어 본 슈퍼유저의 세션에서 실행된다. 무료 가입
+# 한 번으로 관리자 전체가 넘어간다.
+#
+# 2026-09-25 적대적 검토에서 실제로 뚫렸다 — 관리자 폼으로 그냥 올라갔고
+# /media/fonts/<x>.html 이 content-type: text/html 로 내려왔다.
+#
+# nosniff 로는 못 막는다. 선언된 타입이 진짜 text/html 이라 스니핑 문제가
+# 아니다. 애초에 받지 않는 것이 유일한 방법이다.
+FONT_FILE_EXTENSIONS = ['woff2', 'woff', 'ttf', 'otf']
+VIDEO_FILE_EXTENSIONS = ['mp4', 'webm', 'mov', 'm4v']
 
 class Restaurant(models.Model):
     """
@@ -110,14 +125,16 @@ class SiteSettings(models.Model):
         blank=True,
         null=True,
         verbose_name="로딩 비디오",
-        help_text="첫 번째로 표시될 로딩 비디오 (MP4 파일)"
+        help_text="첫 번째로 표시될 로딩 비디오 (MP4 파일)",
+        validators=[FileExtensionValidator(VIDEO_FILE_EXTENSIONS)],
     )
     loading_video_2 = models.FileField(
         upload_to='site_videos/',
         blank=True,
         null=True,
         verbose_name="로딩 비디오2",
-        help_text="첫 번째 로딩 비디오 이후 재생될 두 번째 로딩 비디오 (화면 터치 시 스킵 가능)"
+        help_text="첫 번째 로딩 비디오 이후 재생될 두 번째 로딩 비디오 (화면 터치 시 스킵 가능)",
+        validators=[FileExtensionValidator(VIDEO_FILE_EXTENSIONS)],
     )
     show_manual_card = models.BooleanField(
         default=False,
@@ -188,70 +205,70 @@ class SiteSettings(models.Model):
     )
     
     # 메뉴명(한글) 설정
-    menu_name_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="메뉴명(한글) 폰트 파일")
+    menu_name_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="메뉴명(한글) 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     menu_name_color = models.CharField(max_length=7, blank=True, default='', verbose_name="메뉴명(한글) 색상", help_text="#ffffff")
     menu_name_size = models.IntegerField(blank=True, null=True, verbose_name="메뉴명(한글) 크기", help_text="픽셀 단위 (예: 18)")
     menu_name_bold = models.BooleanField(default=False, verbose_name="메뉴명(한글) 볼드")
     menu_name_italic = models.BooleanField(default=False, verbose_name="메뉴명(한글) 이탤릭")
     
     # 메뉴명(영문) 설정
-    menu_name_en_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="메뉴명(영문) 폰트 파일")
+    menu_name_en_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="메뉴명(영문) 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     menu_name_en_color = models.CharField(max_length=7, blank=True, default='', verbose_name="메뉴명(영문) 색상", help_text="#cccccc")
     menu_name_en_size = models.IntegerField(blank=True, null=True, verbose_name="메뉴명(영문) 크기", help_text="픽셀 단위 (예: 14)")
     menu_name_en_bold = models.BooleanField(default=False, verbose_name="메뉴명(영문) 볼드")
     menu_name_en_italic = models.BooleanField(default=False, verbose_name="메뉴명(영문) 이탤릭")
     
     # 가격 설정
-    menu_price_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="가격 폰트 파일")
+    menu_price_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="가격 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     menu_price_color = models.CharField(max_length=7, blank=True, default='', verbose_name="가격 색상", help_text="#ffffff")
     menu_price_size = models.IntegerField(blank=True, null=True, verbose_name="가격 크기", help_text="픽셀 단위 (예: 20)")
     menu_price_bold = models.BooleanField(default=False, verbose_name="가격 볼드")
     menu_price_italic = models.BooleanField(default=False, verbose_name="가격 이탤릭")
     
     # 메뉴 설명 설정
-    menu_description_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="메뉴 설명 폰트 파일")
+    menu_description_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="메뉴 설명 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     menu_description_color = models.CharField(max_length=7, blank=True, default='', verbose_name="메뉴 설명 색상", help_text="#aaaaaa")
     menu_description_size = models.IntegerField(blank=True, null=True, verbose_name="메뉴 설명 크기", help_text="픽셀 단위 (예: 14)")
     menu_description_bold = models.BooleanField(default=False, verbose_name="메뉴 설명 볼드")
     menu_description_italic = models.BooleanField(default=False, verbose_name="메뉴 설명 이탤릭")
 
     # 기타 사항 설정
-    menu_notes_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="기타 사항 폰트 파일")
+    menu_notes_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="기타 사항 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     menu_notes_color = models.CharField(max_length=7, blank=True, default='', verbose_name="기타 사항 색상", help_text="#888888")
     menu_notes_size = models.IntegerField(blank=True, null=True, verbose_name="기타 사항 크기", help_text="픽셀 단위 (예: 12)")
     menu_notes_bold = models.BooleanField(default=False, verbose_name="기타 사항 볼드")
     menu_notes_italic = models.BooleanField(default=False, verbose_name="기타 사항 이탤릭")
     
     # 카테고리명(한글) 설정
-    category_name_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="카테고리명(한글) 폰트 파일")
+    category_name_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="카테고리명(한글) 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     category_name_color = models.CharField(max_length=7, blank=True, default='', verbose_name="카테고리명(한글) 색상", help_text="#ffffff")
     category_name_size = models.IntegerField(blank=True, null=True, verbose_name="카테고리명(한글) 크기", help_text="픽셀 단위 (예: 18)")
     category_name_bold = models.BooleanField(default=False, verbose_name="카테고리명(한글) 볼드")
     category_name_italic = models.BooleanField(default=False, verbose_name="카테고리명(한글) 이탤릭")
     
     # 카테고리명(영문) 설정
-    category_name_en_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="카테고리명(영문) 폰트 파일")
+    category_name_en_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="카테고리명(영문) 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     category_name_en_color = models.CharField(max_length=7, blank=True, default='', verbose_name="카테고리명(영문) 색상", help_text="#cccccc")
     category_name_en_size = models.IntegerField(blank=True, null=True, verbose_name="카테고리명(영문) 크기", help_text="픽셀 단위 (예: 14)")
     category_name_en_bold = models.BooleanField(default=False, verbose_name="카테고리명(영문) 볼드")
     category_name_en_italic = models.BooleanField(default=False, verbose_name="카테고리명(영문) 이탤릭")
     
     # 추천 페어링명 설정
-    pairing_name_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링명 폰트 파일")
+    pairing_name_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링명 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     pairing_name_color = models.CharField(max_length=7, blank=True, default='', verbose_name="페어링명 색상", help_text="#ffffff")
     pairing_name_size = models.IntegerField(blank=True, null=True, verbose_name="페어링명 크기", help_text="픽셀 단위 (예: 14)")
     pairing_name_bold = models.BooleanField(default=False, verbose_name="페어링명 볼드")
     pairing_name_italic = models.BooleanField(default=False, verbose_name="페어링명 이탤릭")
 
     # 추천 페어링 설명 설정
-    pairing_description_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링 설명 폰트 파일")
+    pairing_description_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링 설명 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     pairing_description_color = models.CharField(max_length=7, blank=True, default='', verbose_name="페어링 설명 색상", help_text="#888888")
     pairing_description_size = models.IntegerField(blank=True, null=True, verbose_name="페어링 설명 크기", help_text="픽셀 단위 (예: 11)")
     pairing_description_bold = models.BooleanField(default=False, verbose_name="페어링 설명 볼드")
     pairing_description_italic = models.BooleanField(default=False, verbose_name="페어링 설명 이탤릭")
 
     # 추천 페어링 가격 설정
-    pairing_price_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링 가격 폰트 파일")
+    pairing_price_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링 가격 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     pairing_price_color = models.CharField(max_length=7, blank=True, default='', verbose_name="페어링 가격 색상", help_text="#ffffff")
     pairing_price_size = models.IntegerField(blank=True, null=True, verbose_name="페어링 가격 크기", help_text="픽셀 단위 (예: 12)")
     pairing_price_bold = models.BooleanField(default=False, verbose_name="페어링 가격 볼드")
