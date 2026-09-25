@@ -5,9 +5,16 @@ name: Tests
 # 거짓이었던 적도 있다. 여기서 둘 다 돌린다.
 on:
   push:
-    branches: [main, develop]
+    # main 은 여기서 안 받는다. deploy.yml 이 workflow_call 로 불러서
+    # **배포를 막는 문지기**로 돌리기 때문이다. 양쪽에서 받으면 같은 ref 로
+    # 두 번 돌고, 아래 concurrency 의 cancel-in-progress 가 둘 중 하나를
+    # 죽인다 — 하필 문지기 쪽이 죽으면 배포가 검사 없이 나가거나 헛되이
+    # 실패한다.
+    branches: [develop]
   pull_request:
   workflow_dispatch:
+  # 운영 배포가 이 결과를 기다린다. deploy.yml 의 tests 잡이 여기를 부른다.
+  workflow_call:
 
 # 같은 브랜치에 연달아 밀면 앞 실행을 취소한다. 무료 러너를 아껴 쓴다.
 concurrency:

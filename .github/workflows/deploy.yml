@@ -9,7 +9,16 @@ on:
       - '.github/workflows/deploy.yml'
 
 jobs:
+  # 테스트가 빨간불이면 운영으로 나가지 않는다.
+  #
+  # 예전에는 테스트와 배포가 같은 push 로 **나란히** 돌았다. 빨간불이 떠도
+  # 배포는 그대로 나갔으니, 초록불은 사후 보고였지 문지기가 아니었다.
+  # 이 레포는 CI 초록불이 8회 연속 거짓이었던 적도 있다.
+  tests:
+    uses: ./.github/workflows/test.yml
+
   deploy:
+    needs: tests
     runs-on: ubuntu-latest
     
     steps:
