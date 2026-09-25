@@ -178,3 +178,39 @@ class TheBuilderShowsThisStoresOwnPhotoTests(TestCase):
 
         self.assertIn('card-preview-canvas', html)
         self.assertIn('등록된 사진이 없어', html)
+
+
+class TheBuilderDoesNotRunWhatTheOwnerStoredTests(TestCase):
+    """
+    조각 이름은 저장된 JSON 에서 온다. 그 JSON 은 사장님이 textarea 로 직접
+    넣을 수 있고, 남의 매장 설정을 열어 보는 사람은 대개 지원하러 들어간
+    **슈퍼유저**다. 목록을 innerHTML 로 지으면 그 세션에서 실행된다.
+
+    캔버스 상자는 처음부터 innerText 였는데 오른쪽 목록만 아니었다.
+    2026-09-25 적대적 검토에서 나왔다.
+    """
+
+    def setUp(self):
+        self.source = WIDGET.read_text(encoding='utf-8')
+
+    def test_the_component_list_is_not_built_from_a_template_string(self):
+        start = self.source.index('// Render in component list')
+        body = self.source[start:self.source.index('compList.appendChild', start)]
+        # 주석은 뺀다 — 왜 innerHTML 을 안 쓰는지 적어 둔 문장이 여기 있다.
+        code = '\n'.join(l for l in body.split('\n') if not l.strip().startswith('//'))
+        self.assertNotIn('innerHTML', code)
+        self.assertIn('innerText', code)
+
+    def test_nothing_in_the_widget_writes_json_values_into_innerHTML(self):
+        """
+        캔버스든 목록이든, 저장값이 innerHTML 로 가는 길이 하나라도 있으면
+        같은 구멍이다. 비우는 용도(= '')는 값이 아니므로 괜찮다.
+        """
+        for line in self.source.split('\n'):
+            if 'innerHTML' not in line:
+                continue
+            stripped = line.strip()
+            self.assertTrue(
+                stripped.endswith("innerHTML = '';") or stripped.startswith('//'),
+                f'저장값이 innerHTML 로 갑니다: {stripped}',
+            )

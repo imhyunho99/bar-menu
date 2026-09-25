@@ -726,12 +726,18 @@
             if (activeCompId === comp.id) {
                 row.classList.add('active');
             }
-            row.innerHTML = `
-                <span>${comp.name}</span>
-                <span class="comp-item-flag ${comp.visible ? 'is-on' : 'is-off'}">
-                    ${comp.visible ? '보기' : '숨김'}
-                </span>
-            `;
+            // innerHTML 로 짓지 않는다. comp.name 은 저장된 JSON 에서 온 값이고,
+            // 그 JSON 은 사장님이 textarea 로 직접 넣을 수 있다. 남의 매장 설정을
+            // 열어 보는 사람(지원하러 들어간 슈퍼유저)의 세션에서 실행된다.
+            // 캔버스 쪽(box.innerText)은 처음부터 맞게 돼 있었는데 목록만 아니었다.
+            const nameCell = document.createElement('span');
+            nameCell.innerText = comp.name;
+
+            const flagCell = document.createElement('span');
+            flagCell.className = `comp-item-flag ${comp.visible ? 'is-on' : 'is-off'}`;
+            flagCell.innerText = comp.visible ? '보기' : '숨김';
+
+            row.replaceChildren(nameCell, flagCell);
             row.addEventListener('click', () => {
                 // 목록에서 고른 것은 일부러 고른 것이다. 덮여 있어도 끌 수 있어야 한다.
                 pinnedId = comp.id;
