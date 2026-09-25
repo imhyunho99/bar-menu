@@ -15,6 +15,32 @@ from .preview import preview_url_for
 
 
 @login_required
+
+def _customer_base_url(request):
+    """
+    QR 이 가리킬 주소의 앞부분.
+
+    **요청 호스트를 쓰면 안 된다.** 사장님은 Django admin(api.*)에서 이 화면에
+    들어온다. 그런데 손님이 실제로 보는 화면은 Next.js 쪽이고, QR 전용 진입점
+    `/<slug>/enter/` 는 거기에만 있는 경로다. api.* 로 만든 QR 은 인쇄된 뒤
+    404 가 된다 — 종이에 박힌 뒤라 다시 찍는 것 말고는 고칠 방법이 없다.
+
+    API 쪽(`menu/api/views.py:_qr_base_url`)은 같은 이유로 이미
+    CUSTOMER_SITE_URL 을 먼저 본다. 규칙이 두 군데로 갈려 있었고 이쪽만
+    옛날 방식으로 남아 있었다.
+
+    CUSTOMER_SITE_URL 이 비어 있으면 예전처럼 요청 호스트로 떨어진다.
+    그편이 QR 화면 자체가 죽는 것보다 낫고, 관리 화면이 '미설정' 이라고
+    따로 말해 준다.
+    """
+    from django.conf import settings
+
+    configured = (getattr(settings, 'CUSTOMER_SITE_URL', '') or '').rstrip('/')
+    if configured:
+        return configured
+    protocol = 'https' if request.is_secure() else 'http'
+    return f"{protocol}://{request.get_host()}"
+
 def generate_qr_code(request, restaurant_slug=None):
     # 이 뷰에는 원래 아무 검사도 없었다. 주소만 알면 누구나 남의 매장 QR 을
     # 뽑을 수 있었고, 그 QR 은 그 가게 메뉴판으로 곧장 들어간다.
@@ -39,16 +65,14 @@ def generate_qr_code(request, restaurant_slug=None):
             'preview_url': preview_url_for(restaurant),
         })
 
-    # 현재 서버 URL 가져오기
-    host = request.get_host()
-    protocol = 'https' if request.is_secure() else 'http'
-    
+    base = _customer_base_url(request)
+
     # 식당별 URL 생성 — QR 전용 진입점(주소A, /{slug}/enter/)을 가리킨다.
     if restaurant_slug:
-        menu_url = f"{protocol}://{host}/{restaurant_slug}/enter/"
+        menu_url = f"{base}/{restaurant_slug}/enter/"
     else:
         # fallback (혹시 slug 없이 호출된 경우)
-        menu_url = f"{protocol}://{host}/"
+        menu_url = f"{base}/"
         
     # 사이트 설정 가져오기 및 wifi 파라미터 조건부 추가
     site_settings = None

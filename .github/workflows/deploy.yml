@@ -15,7 +15,35 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-    
+
+    # 서버에 **붙기 전에** 끝낸다. 아래 배포 단계는 git reset --hard 를 먼저
+    # 하고 그다음에 설정을 검사했다. 거기서 멈추면 새 코드가 디스크에 깔린 채
+    # DB 는 옛 스키마로 남는다 — 지금 도는 워커는 메모리의 옛 코드라 멀쩡해
+    # 보이지만, 다음 재시작·리부트·OOM 때 새 코드가 옛 스키마를 만나 손님
+    # 화면이 통째로 500 이 된다. 며칠 전 '안전하게 실패한' 배포와 연결짓기도
+    # 어렵다. 그래서 서버를 건드리기 전에 여기서 떨어뜨린다.
+    - name: 배포 전 설정 점검
+      env:
+        BANK_NAME: ${{ secrets.BANK_NAME }}
+        BANK_ACCOUNT: ${{ secrets.BANK_ACCOUNT }}
+        BANK_HOLDER: ${{ secrets.BANK_HOLDER }}
+        CUSTOMER_SITE_URL: ${{ secrets.CUSTOMER_SITE_URL }}
+      run: |
+        fail=0
+        for key in BANK_NAME BANK_ACCOUNT BANK_HOLDER CUSTOMER_SITE_URL; do
+          value=$(printenv "$key" || true)
+          if [ -z "$value" ]; then
+            echo "::error::$key 시크릿이 비어 있습니다. 이 값이 없으면 기능이 조용히 꺼진 채 배포됩니다."
+            fail=1
+          elif [ "$(printf '%s' "$value" | wc -l | tr -d ' ')" != "0" ]; then
+            # 줄바꿈이 섞이면 .env 에 줄이 하나 더 생겨 다른 설정을 덮어쓴다.
+            # 배포 후 점검은 '비어 있지 않은가' 만 보므로 그대로 통과한다.
+            echo "::error::$key 에 줄바꿈이 들어 있습니다. .env 의 다른 설정을 덮어쓸 수 있습니다."
+            fail=1
+          fi
+        done
+        exit $fail
+
     - name: Deploy to server
       uses: appleboy/ssh-action@v1.0.0
       # .env 는 git 에 없다. 여기서 안 채우면 새 기능이 **에러 없이 조용히**
@@ -35,11 +63,10 @@ jobs:
         envs: BANK_NAME,BANK_ACCOUNT,BANK_HOLDER,CUSTOMER_SITE_URL
         script: |
           cd ~/bar_menu
-          git fetch origin main
-          git reset --hard origin/main
 
           # ── 운영 .env 에 필요한 설정 채우기 ─────────────────────────────
-          # 재시작 전에 한다. 뒤에 하면 이번 배포에는 반영되지 않는다.
+          # **코드를 갈아엎기 전에** 한다. .env 는 트리와 무관하므로 순서를
+          # 앞으로 당겨도 되고, 여기서 멈추면 서버는 손도 안 댄 상태로 남는다.
           ENV_FILE=~/bar_menu/.env
           cp "$ENV_FILE" "$ENV_FILE.bak"
           for key in BANK_NAME BANK_ACCOUNT BANK_HOLDER CUSTOMER_SITE_URL; do
@@ -61,6 +88,9 @@ jobs:
             mv "$tmp" "$ENV_FILE"
             echo "· ${key} 설정함"
           done
+
+          git fetch origin main
+          git reset --hard origin/main
 
           source ~/bar_menu/venv/bin/activate
           pip install -q -r backend/requirements.txt

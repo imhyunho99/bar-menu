@@ -72,3 +72,45 @@ class QrNeedsPaymentTests(TestCase):
         self.client.force_login(self.user)
         response = self.client.get('/unpaid-bar/qr/')
         self.assertTemplateUsed(response, 'menu/qr_code.html')
+
+
+@override_settings(CUSTOMER_SITE_URL='https://bar-menu.ddnsfree.com')
+class ThePrintedQRPointsAtTheCustomerSiteTests(TestCase):
+    """
+    인쇄된 QR 은 고칠 수 없다. 여기가 틀리면 손님이 종이를 찍고 404 를 본다.
+
+    사장님은 Django admin(api.*)에서 이 화면에 들어온다. 요청 호스트로 주소를
+    만들면 api.* 가 박히는데, QR 전용 진입점 `/<slug>/enter/` 는 Next.js 쪽에만
+    있는 경로다. 2026-09-25 검토에서 실제로 그 상태였다 —
+    `https://api.bar-menu.ddnsfree.com/bid/enter/` 는 404 를 준다.
+
+    API 쪽(`menu/api/views.py:_qr_base_url`)은 같은 이유로 이미 고쳐져 있었다.
+    규칙이 두 군데로 갈려서 사장님이 실제로 인쇄하는 쪽만 남아 있었다.
+    """
+
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name='달빛', slug='moonlight')
+        subscription = self.restaurant.subscription
+        subscription.status = 'partner'
+        subscription.save(update_fields=['status'])
+        self.user = User.objects.create_superuser('boss', 'b@x.test', 'pw-2591')
+        self.client.force_login(self.user)
+
+    def _menu_url(self):
+        response = self.client.get('/moonlight/qr/')
+        self.assertEqual(response.status_code, 200)
+        return response.context['menu_url']
+
+    def test_it_uses_the_customer_site_not_the_admin_host(self):
+        url = self._menu_url()
+        self.assertTrue(url.startswith('https://bar-menu.ddnsfree.com/'), url)
+        self.assertNotIn('testserver', url)
+
+    def test_it_keeps_the_qr_only_entrance(self):
+        """/enter/ 로 들어와야 QR 전용 화면이 뜬다."""
+        self.assertEqual(self._menu_url(), 'https://bar-menu.ddnsfree.com/moonlight/enter/')
+
+    @override_settings(CUSTOMER_SITE_URL='')
+    def test_without_the_setting_it_falls_back_instead_of_dying(self):
+        """주소를 모르면 예전처럼 요청 호스트로 떨어진다. 화면이 죽는 것보다 낫다."""
+        self.assertIn('/moonlight/enter/', self._menu_url())
