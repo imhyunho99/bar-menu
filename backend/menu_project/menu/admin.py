@@ -128,6 +128,41 @@ class RestaurantFilterMixin:
                 obj.restaurant = request.user.profile.restaurant
         super().save_model(request, obj, form, change)
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """
+        남의 매장 행을 고를 수 있는 칸을 만들지 않는다.
+
+        `save_model` 은 obj.restaurant 만 바로잡는다. 가리키는 **상대**는
+        안 본다. 그래서 카테고리의 `parent` 에 남의 매장 카테고리를 붙일 수
+        있었고, 2026-09-25 적대적 검토가 실제로 그렇게 만들었다. 결과는
+        두 가지였다 — 남의 손님 화면에 내가 쓴 글자가 하위 카테고리로 뜨고,
+        그 카테고리의 **메뉴가 통째로 사라진다**(하위가 생기면 serializer 가
+        메뉴 대신 하위 목록을 준다). 영업 중에 당하면 사장님은 이유를 모른다.
+
+        읽기(드롭다운에 남의 매장 이름이 다 보이는 것)와 쓰기가 같이 닫힌다.
+        ModelChoiceField 는 **검증할 때도** 이 queryset 으로 거르기 때문에,
+        화면에 없던 id 를 손으로 밀어 넣어도 '올바른 선택이 아닙니다' 가 된다.
+
+        한 필드가 아니라 믹스인에 두는 이유: 이 규칙이 빠진 admin 이 하나라도
+        생기면 같은 구멍이 그대로 다시 열린다. 매장에 속한 모델을 가리키는
+        칸이면 무엇이든 자동으로 걸린다.
+        """
+        if not request.user.is_superuser:
+            profile = getattr(request.user, 'profile', None)
+            shop = getattr(profile, 'restaurant', None)
+            related = db_field.remote_field.model
+            has_restaurant = any(
+                f.name == 'restaurant' for f in related._meta.get_fields()
+            )
+            if has_restaurant:
+                if shop is None:
+                    # 매장이 안 묶인 스태프 계정이 실제로 있다. 고를 것을
+                    # 주지 않는다 — 열어 두면 아무 매장이나 고를 수 있다.
+                    kwargs['queryset'] = related.objects.none()
+                else:
+                    kwargs['queryset'] = related.objects.filter(restaurant=shop)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
     def get_list_filter(self, request):
         if request.user.is_superuser:
             return super().get_list_filter(request)
