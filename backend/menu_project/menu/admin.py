@@ -161,6 +161,16 @@ class RestaurantFilterMixin:
                     kwargs['queryset'] = related.objects.none()
                 else:
                     kwargs['queryset'] = related.objects.filter(restaurant=shop)
+
+        # 자기 자신을 부모로 고르지 못하게 한다. 매장 안으로 좁혀도 A.parent=A
+        # 는 남는데, 하위 목록을 재귀로 따라가는 곳이 있어 거기서 무한으로
+        # 돈다 — 테넌시 버그를 재귀 버그로 바꾸는 꼴이다. 커스텀 화면
+        # (admin_views.py:259)은 이미 .exclude(id=...) 를 하고 있었다.
+        if db_field.name == 'parent' and 'queryset' in kwargs:
+            editing = request.resolver_match.kwargs.get('object_id') if request.resolver_match else None
+            if editing:
+                kwargs['queryset'] = kwargs['queryset'].exclude(pk=editing)
+
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_list_filter(self, request):

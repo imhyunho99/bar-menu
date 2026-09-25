@@ -97,3 +97,78 @@ class ForeignKeyChoicesStayInsideTheStoreTests(TestCase):
         choices = response.context['adminform'].form.fields['parent'].queryset
         self.assertIn(self.my_category, choices)
         self.assertIn(self.their_category, choices)
+
+
+class ACategoryCannotBeItsOwnParentTests(TestCase):
+    """
+    매장 안으로 좁혀도 A.parent = A 는 남는다. 하위 목록을 재귀로 따라가는
+    곳이 있어 거기서 무한으로 돈다 — 테넌시 버그를 재귀 버그로 바꾸는 꼴이다.
+    커스텀 화면(admin_views.py)은 이미 자기 자신을 빼고 있었다.
+    """
+
+    def setUp(self):
+        self.shop = Restaurant.objects.create(name='내 가게', slug='mine')
+        self.category = Category.objects.create(restaurant=self.shop, name='안주')
+        self.owner = User.objects.create_user('me@example.com', password='pw-91827', is_staff=True)
+        UserProfile.objects.create(user=self.owner, restaurant=self.shop)
+        from django.contrib.auth.models import Group
+        group = Group.objects.filter(name__icontains='사장').first()
+        if group:
+            self.owner.groups.add(group)
+        self.client.force_login(self.owner)
+
+    def test_the_parent_dropdown_excludes_the_row_being_edited(self):
+        response = self.client.get(f'/admin/menu/category/{self.category.pk}/change/')
+        if response.status_code != 200:
+            self.skipTest('이 계정은 변경 화면에 못 들어간다')
+        choices = response.context['adminform'].form.fields['parent'].queryset
+        self.assertNotIn(self.category, choices)
+
+    def test_a_forged_post_cannot_make_it_its_own_parent(self):
+        response = self.client.post(f'/admin/menu/category/{self.category.pk}/change/', {
+            'name': '안주', 'parent': self.category.pk, 'priority': '1',
+        })
+        self.category.refresh_from_db()
+        self.assertIsNone(self.category.parent, f'자기 자신이 부모가 됐습니다 (HTTP {response.status_code})')
+
+
+class AStrayForeignKeyChangesNothingForCustomersTests(TestCase):
+    """
+    폼 가드가 못 닿는 길이 남아 있다 — ORM, import_csv, 픽스처, 앞으로 생길
+    API. 그쪽으로 침입 FK 가 들어오더라도 손님 화면에는 아무 일이 없어야
+    한다. 여기서는 일부러 ORM 으로 심어서 확인한다.
+
+    막지 않으면 피해가 두 겹이다. 남의 글자가 하위 카테고리로 뜨고, 하위가
+    생겼다는 이유로 원래 메뉴가 통째로 사라진다.
+    """
+
+    def setUp(self):
+        self.victim = Restaurant.objects.create(name='피해 가게', slug='victim')
+        self.attacker = Restaurant.objects.create(name='공격 가게', slug='attacker')
+        sub = self.victim.subscription
+        sub.status = 'partner'
+        sub.save(update_fields=['status'])
+
+        self.category = Category.objects.create(restaurant=self.victim, name='안주')
+        MenuItem.objects.create(
+            restaurant=self.victim, category=self.category, name='진짜 메뉴', price='10000',
+        )
+        # 폼을 거치지 않고 심는다.
+        Category.objects.create(
+            restaurant=self.attacker, name='ZZ 남의 글자', parent=self.category,
+        )
+
+    def test_the_api_hides_it_and_keeps_the_menu(self):
+        response = self.client.get(f'/api/v1/restaurants/victim/categories/{self.category.pk}/')
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body['sub_categories'], [], '남의 카테고리가 손님에게 보입니다')
+        self.assertEqual([m['name'] for m in body['menu_items']], ['진짜 메뉴'])
+
+    def test_the_server_rendered_page_hides_it_too(self):
+        """serializer 만 고치면 Django 가 그리는 쪽이 그대로 뚫려 있다."""
+        response = self.client.get(f'/victim/category/{self.category.pk}/')
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode('utf-8')
+        self.assertNotIn('ZZ 남의 글자', html)
+        self.assertIn('진짜 메뉴', html)

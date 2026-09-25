@@ -69,11 +69,37 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class CategoryDetailSerializer(CategorySerializer):
     """카테고리 상세 — 하위 카테고리 목록 포함"""
-    sub_categories = CategorySerializer(many=True, read_only=True)
+    sub_categories = serializers.SerializerMethodField()
     menu_items = serializers.SerializerMethodField()
 
     class Meta(CategorySerializer.Meta):
         fields = CategorySerializer.Meta.fields + ['sub_categories', 'menu_items']
+
+    def get_sub_categories(self, obj):
+        """
+        **같은 매장의** 하위만 준다.
+
+        역참조를 그냥 믿으면, 남의 매장 카테고리가 parent 로 이 행을 가리키는
+        순간 그 이름이 손님 화면에 하위 카테고리로 뜬다. 게다가 하위가
+        생겼다는 이유로 아래 get_menu_items 가 빈 목록을 주므로, 원래 있던
+        **메뉴가 통째로 사라진다**.
+
+        admin 폼 쪽은 이미 막았지만(RestaurantFilterMixin), 폼을 안 거치는
+        길이 남아 있다 — ORM, import_csv, 픽스처, 앞으로 생길 API. 그쪽으로
+        들어온 값이라도 손님 화면에는 아무 일이 없어야 한다.
+        """
+        return CategorySerializer(self._own_children(obj), many=True, context=self.context).data
+
+    @staticmethod
+    def _own_children(obj):
+        """
+        같은 매장의 하위만. **파이썬에서 거른다.**
+
+        `.filter()` 를 쓰면 prefetch 캐시를 버리고 쿼리를 다시 낸다. 이 프로젝트가
+        예전에 같은 함정으로 N+1 을 만들었고, tests_api_queries 가 쿼리 수를
+        못박아 두고 있어서 실제로 그 테스트가 잡아냈다.
+        """
+        return [c for c in obj.sub_categories.all() if c.restaurant_id == obj.restaurant_id]
 
     def get_menu_items(self, obj):
         """
@@ -83,7 +109,10 @@ class CategoryDetailSerializer(CategorySerializer):
         짜리 카테고리에서 쿼리가 114번이었다 — 손님이 카테고리를 누를 때마다
         도는 경로라 메뉴가 많은 가게일수록 그대로 느려진다.
         """
-        if not obj.sub_categories.exists():
+        # '하위가 있는가' 도 같은 매장 기준으로 센다. 남의 매장 카테고리가
+        # 이 행을 parent 로 가리키면 exists() 가 참이 되어, 하위 목록은
+        # 비어 있는데 **메뉴만 사라지는** 상태가 된다. 피해의 본체가 여기다.
+        if not self._own_children(obj):
             items = MenuItem.objects.filter(
                 category=obj,
                 is_available=True,
