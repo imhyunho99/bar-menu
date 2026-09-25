@@ -253,10 +253,33 @@ class TheBuilderDoesNotLieAboutLegibilityTests(TestCase):
     사진이 비치게 하고, 글자 그림자를 손님 화면과 같게 맞췄다.
     """
 
-    def test_the_canvas_can_carry_a_real_photo(self):
+    def test_the_photo_is_drawn_where_the_image_piece_is(self):
+        """
+        캔버스 배경에 통째로 깔면, 사진 조각을 줄이거나 꺼 둬도 캔버스는
+        사진으로 꽉 찬다. 그러면 아래 안내문이 양쪽으로 거짓말이 된다 —
+        사진 없는 자리를 사진 위로 보이게 하고, 사진을 끈 매장에도 사진을
+        보여 준다. 2026-09-25 검토에서 실측으로 잡혔다.
+        """
         widget = _widget_css()
         self.assertIn('sample_image_url', widget)
-        self.assertIn('background-size: cover', widget)
+        # 캔버스 규칙에는 배경 사진이 없어야 한다.
+        canvas_rule = widget[widget.index('.card-preview-canvas {'):widget.index('.card-preview-canvas.category-type')]
+        self.assertNotIn('background-image', canvas_rule)
+        self.assertNotIn('background-size', canvas_rule)
+        # 상자를 그리는 쪽에서 사진 조각일 때만 깐다.
+        self.assertIn("comp.id.endsWith('_image')", widget)
+        self.assertIn('box.style.backgroundImage', widget)
+
+    def test_a_hidden_image_piece_shows_no_photo(self):
+        """
+        숨긴 조각은 상자 자체가 안 그려진다(render 가 comp.visible 로 거른다).
+        사진을 상자 안에서 그리므로, 끄면 사진도 같이 사라진다 — 손님 화면과
+        같은 결과다.
+        """
+        widget = _widget_css()
+        draw = widget[widget.index('layout.components.forEach'):widget.index('// Render in component list')]
+        self.assertIn('if (comp.visible)', draw)
+        self.assertLess(draw.index('if (comp.visible)'), draw.index('box.style.backgroundImage'))
 
     def test_the_boxes_do_not_act_as_a_scrim(self):
         """

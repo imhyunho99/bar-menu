@@ -3006,6 +3006,15 @@ body {
   display: block;
 }
 
+/* 절대배치 카드의 장바구니 버튼.
+
+   .add-cart-btn 은 32px 정원을 전제로 border-radius: 50% 를 쓴다. 거기에
+   사장님이 정한 크기(100%/100%)를 씌우면 97×75 짜리 타원이 된다 — 빌더에는
+   네모로 보이고 손님 화면에만 타원이 나온다. 사장님이 정한 모양을 따른다. */
+.menu-item-custom .add-cart-btn {
+  border-radius: 10px;
+}
+
 .layout-text {
   margin: 0;
   width: 100%;

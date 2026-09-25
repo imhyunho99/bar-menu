@@ -55,10 +55,6 @@
             width: 320px;
             max-width: 100%;
             background: #000;
-            /* 이 매장의 실제 사진이 깔린다(있을 때). 손님 화면과 같은 방식으로
-               채운다 — 그래야 여기서 본 대비가 손님이 보는 대비와 같다. */
-            background-size: cover;
-            background-position: center;
             border-radius: var(--radius);
             overflow: hidden;
             border: 1px solid var(--ink);
@@ -378,7 +374,7 @@
         <!-- Canvas Preview -->
         <div class="preview-container">
             <div class="card-preview-canvas" id="canvas_{{ widget.name }}"
-                 {% if widget.sample_image_url %}style="background-image: url('{{ widget.sample_image_url }}');"{% endif %}>
+                 data-sample-image="{{ widget.sample_image_url }}">
                 <!-- Dynamic Elements inside -->
             </div>
             {% comment %}
@@ -387,8 +383,8 @@
             {% endcomment %}
             <p class="canvas-note">
                 {% if widget.sample_image_url %}
-                    배경은 이 매장의 실제 사진입니다. 글자가 여기서 안 읽히면
-                    손님 화면에서도 안 읽힙니다.
+                    사진 조각을 놓은 자리에 이 매장의 실제 사진을 깔아 보여 드립니다.
+                    글자가 여기서 안 읽히면 손님 화면에서도 안 읽힙니다.
                 {% else %}
                     등록된 사진이 없어 검은 배경으로 보여 드립니다.
                     사진을 올리면 여기에 실제 사진이 깔립니다.
@@ -594,6 +590,7 @@
     let originalX, originalY, originalW, originalH;
 
     const canvas = document.getElementById(`canvas_${widgetName}`);
+    const sampleImage = (canvas.dataset.sampleImage || '').trim();
     const inspectTitle = document.getElementById(`inspect_title_${widgetName}`);
     const inspectForm = document.getElementById(`inspect_form_${widgetName}`);
     const inspectFallback = document.getElementById(`inspect_fallback_${widgetName}`);
@@ -690,6 +687,22 @@
                 box.className = 'comp-box';
                 box.id = `${widgetName}_box_${comp.id}`;
                 box.innerText = comp.name;
+
+                // 사진은 **사진 조각이 놓인 자리에만** 그린다.
+                //
+                // 예전에는 캔버스 배경에 통째로 깔았다. 그러면 사진 조각을
+                // 작게 줄이거나 아예 꺼 둬도 캔버스는 사진으로 꽉 차서,
+                // 아래 안내문("여기서 안 읽히면 손님 화면에서도 안 읽힙니다")이
+                // 양쪽으로 거짓말이 됐다 — 사진이 없는 자리를 사진 위로 보이게
+                // 하고, 사진을 끈 매장에도 사진을 보여 줬다.
+                if (sampleImage && comp.id.endsWith('_image')) {
+                    box.style.backgroundImage = `url('${sampleImage}')`;
+                    box.style.backgroundSize = 'cover';
+                    box.style.backgroundPosition = 'center';
+                    // 사진을 그린 자리에는 이름표를 지운다. 손님 화면에는
+                    // 없는 글자라, 남겨 두면 그만큼 또 어긋난다.
+                    box.innerText = '';
+                }
                 box.style.left = `${comp.x}%`;
                 box.style.top = `${comp.y}%`;
                 box.style.width = `${comp.w}%`;

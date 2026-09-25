@@ -67,7 +67,12 @@ export function resolveComponents(
   layout: CardLayout,
   defaults: LayoutComponent[],
 ): LayoutComponent[] {
-  const saved = new Map(layout.components.map((c) => [c.id, c]));
+  // 빌더는 저장할 때 이미 거른다(widget 의 mergeWithDefaults). 여기서도 걸러야
+  // 한다 — JSONField 에는 검증이 없고 admin 의 textarea 로 아무거나 들어온다.
+  // components: [null] 하나로 손님 화면이 통째로 에러 화면이 됐다.
+  const saved = new Map(
+    layout.components.filter((c) => c && c.id).map((c) => [c.id, c]),
+  );
   return defaults.map((fallback) => ({ ...fallback, ...(saved.get(fallback.id) ?? {}) }));
 }
 

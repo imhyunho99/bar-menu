@@ -165,7 +165,13 @@ export default function MenuCard({
   if (isCustomLayout(layout)) {
     return (
       <>
-        <div onClick={handleItemClick} data-detail={item.enable_detail_view ? 'true' : undefined}>
+        {/*
+          itemRef 가 여기에도 있어야 한다. 위 useEffect 가 #menu-<id> 해시와
+          ?target= 을 보고 이 ref 로 스크롤·하이라이트를 한다. 기본 분기에만
+          달려 있어서, 배치를 고친 매장은 검색 결과를 눌러도 화면이 그대로
+          있었다 — 손님은 누른 메뉴를 직접 찾아 내려가야 했다.
+        */}
+        <div ref={itemRef} onClick={handleItemClick} data-detail={item.enable_detail_view ? 'true' : undefined}>
           <MenuCardLayout
             item={item}
             layout={layout as CardLayout}

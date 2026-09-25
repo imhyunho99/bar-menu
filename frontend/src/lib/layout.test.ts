@@ -98,6 +98,23 @@ describe('resolveComponents — 무엇을 그릴지 정한다', () => {
     ]);
   });
 
+  it('저장값에 null 이 하나 섞여도 죽지 않는다', () => {
+    // admin 의 textarea 가 JSONField 에 그대로 쓰고, 그 필드에는 검증이 없다.
+    // components: [null] 하나로 손님 화면이 통째로 에러 화면이 됐다.
+    // 2026-09-25 검토에서 실제 손님 화면을 그렇게 만들어 확인했다.
+    const layout = { layout_type: 'custom', components: [null] } as unknown as CardLayout;
+    expect(() => resolveComponents(layout, DEFAULTS)).not.toThrow();
+    expect(resolveComponents(layout, DEFAULTS)).toHaveLength(3);
+  });
+
+  it('id 없는 조각도 그냥 건너뛴다', () => {
+    const layout = {
+      layout_type: 'custom',
+      components: [{ visible: true, x: 0, y: 0, w: 10, h: 10 }, DEFAULTS[0]],
+    } as unknown as CardLayout;
+    expect(resolveComponents(layout, DEFAULTS).map((c) => c.id)).toEqual(DEFAULTS.map((c) => c.id));
+  });
+
   it('순서는 기본값이 정한다', () => {
     const layout: CardLayout = {
       layout_type: 'custom',

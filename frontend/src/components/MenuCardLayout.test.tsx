@@ -100,6 +100,19 @@ describe('장바구니', () => {
     window.removeEventListener('add-to-cart', heard);
   });
 
+  it('글자 상자에 덮여도 눌린다', () => {
+    // 그리는 순서가 곧 위아래다. 노트와 설명이 기본값 배열에서 버튼보다
+    // 뒤에 있어서, 사장님이 그 둘을 버튼 위로 옮기면 버튼이 덮여 눌러도
+    // 아무 일이 없었다 — 주문이 조용히 안 담기고 사장님은 모른다.
+    // 빌더에는 위아래를 바꿀 방법이 아예 없다.
+    const { container } = draw(ITEM, true, layoutOf(
+      { id: 'cart_button', name: '장바구니', visible: true, x: 70, y: 80, w: 25, h: 12 },
+      { id: 'menu_notes', name: '노트', visible: true, x: 70, y: 80, w: 25, h: 12 },
+    ));
+    const box = container.querySelector('.add-cart-btn')?.parentElement;
+    expect(box?.style.zIndex).toBe('1');
+  });
+
   it('장바구니를 끈 매장에는 버튼이 없다', () => {
     draw(ITEM, false);
     expect(screen.queryByRole('button')).toBeNull();

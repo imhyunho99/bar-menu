@@ -100,7 +100,12 @@ function Piece({
     case 'cart_button':
       if (!enableCart) return null;
       return (
-        <div style={style}>
+        // 그리는 순서가 곧 겹칠 때의 위아래다. 기본값 배열에서 노트와 설명이
+        // 장바구니 버튼보다 뒤에 있어서, 사장님이 그 둘을 버튼 위로 옮기면
+        // 버튼이 글자에 덮여 **눌러도 아무 일이 없다**. 주문이 조용히 안
+        // 담기고, 사장님은 손님이 안 시킨 줄 안다. 누를 것은 글자보다 위에
+        // 둔다 — 빌더에는 위아래를 바꿀 방법이 아예 없다.
+        <div style={{ ...style, zIndex: 1 }}>
           <button
             className="add-cart-btn"
             style={{ width: '100%', height: '100%' }}
