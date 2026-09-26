@@ -120,6 +120,45 @@ def _validate_password_value(password, email):
     return None
 
 
+
+def _client_ip(request):
+    """nginx 뒤에 있으므로 X-Forwarded-For 의 첫 값이 손님이다."""
+    forwarded = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    if forwarded:
+        return forwarded.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', '') or 'unknown'
+
+
+def _signup_is_rate_limited(request):
+    """
+    한 IP 가 한 시간에 몇 번까지 가입할 수 있는가.
+
+    /signup/ 은 로그인 없이 누구나 POST 할 수 있고, 한 번에 staff 계정·매장·
+    구독을 만들고 Discord 로 알림을 쏜다. 막지 않으면 스크립트 하나로 계정과
+    slug 가 무한정 생기고, 알림 채널이 묻혀 **진짜 에러 알림이 안 보인다**.
+
+    운영은 워커가 2개이고 캐시가 프로세스마다 따로라, 실제 한도는 설정값의
+    두 배쯤이다. 무한과 열 번은 다르므로 그대로 둔다 — 정확히 맞추려면
+    공용 캐시(Redis 등)가 필요하고, 그건 이 변경의 범위가 아니다.
+    """
+    from django.conf import settings as django_settings
+    from django.core.cache import cache
+
+    limit = getattr(django_settings, 'SIGNUP_MAX_PER_HOUR', 5)
+    if limit <= 0:
+        return False
+
+    key = f'signup-attempts:{_client_ip(request)}'
+    # add() 는 없을 때만 넣는다. 먼저 만들어 두고 세야 만료 시각이 밀리지 않는다.
+    cache.add(key, 0, 60 * 60)
+    try:
+        count = cache.incr(key)
+    except ValueError:
+        # 그새 만료됐다. 이번 요청은 통과시킨다.
+        cache.set(key, 1, 60 * 60)
+        return False
+    return count > limit
+
 def signup(request):
     """
     셀프 가입 한 화면. 성공하면 네 덩어리를 한 트랜잭션에 만들고 로그인시킨다.
@@ -132,6 +171,15 @@ def signup(request):
         # 폼 action 에는 쿼리가 안 붙으므로 히든 필드로 실어 보낸다.
         return render(request, 'onboarding/signup.html',
                       {'values': {}, 'errors': {}, 'plan': request.GET.get('plan', '')})
+
+    if _signup_is_rate_limited(request):
+        # 429 로 끊지 않는다. 진짜 사장님이 오타로 몇 번 더 눌렀을 수도 있고,
+        # 그때 빈 화면을 보여주면 그 자리에서 이탈한다.
+        return render(request, 'onboarding/signup.html', {
+            'values': {},
+            'errors': {'form': '가입 시도가 너무 잦습니다. 잠시 후 다시 시도해 주세요.'},
+            'plan': request.POST.get('plan', ''),
+        })
 
     email = request.POST.get('email', '').strip().lower()
     password = request.POST.get('password', '')

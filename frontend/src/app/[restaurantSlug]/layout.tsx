@@ -78,6 +78,12 @@ export default async function RestaurantLayout({
     const ipMatches = clientIp === settings.store_public_ip;
 
     if (!isLocal && !ipMatches) {
+      // 막힌 사람에게 매장 공인 IP를 주지 않는다. 아래 제거 코드가 이 return
+      // **뒤에** 있어서, 하필 통과 못한 사람이 받는 화면에만 그 값이 그대로
+      // 실려 나갔다. 게이트를 우회하려는 사람에게 정답을 알려 주는 셈이다.
+      // SSID와 비밀번호는 남긴다 — 그 와이파이에 접속하라는 안내가 이 화면의
+      // 용건이라, 그건 빼면 화면이 할 말을 잃는다.
+      settings.store_public_ip = null;
       return <WifiRestrictionBlock settings={settings} clientIp={clientIp} slug={restaurantSlug} />;
     }
   }

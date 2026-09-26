@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+import sys
 from dotenv import load_dotenv
 
 # .env 파일 로드 (루트 폴더 .env 또는 백엔드 폴더 .env 순서로 확인)
@@ -351,3 +352,25 @@ CUSTOMER_SITE_URL = os.environ.get('CUSTOMER_SITE_URL', '').rstrip('/')
 # 테스트 CID: 정기결제 TCSUBSCRIP / 단건 TC0ONETIME (문서 명시)
 KAKAOPAY_SECRET_KEY = os.environ.get('KAKAOPAY_SECRET_KEY', '')
 KAKAOPAY_CID = os.environ.get('KAKAOPAY_CID', '')
+
+
+# ── 셀프 가입 속도 제한 ────────────────────────────────────────────────
+#
+# /signup/ 은 로그인 없이 누구나 POST 할 수 있고, 한 번에 staff 계정 ·매장 ·
+# 구독을 만들고 Discord 로 알림을 쏜다. 스크립트를 돌리면 계정과 slug 가
+# 무한정 생기고, 알림 채널이 묻혀서 **진짜 에러 알림이 안 보인다**.
+SIGNUP_MAX_PER_HOUR = int(os.environ.get('SIGNUP_MAX_PER_HOUR', '5'))
+
+if 'CACHES' not in globals():
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'bar-menu',
+        }
+    }
+
+# 테스트에서는 더미로 둔다. 같은 프로세스에서 127.0.0.1 로 19번 가입하는
+# 테스트들이 있어서, 안 그러면 속도 제한이 먼저 걸려 엉뚱한 곳이 빨개진다.
+# 제한 자체는 tests_signup_rate_limit 이 캐시를 명시적으로 켜고 확인한다.
+if 'test' in sys.argv:
+    CACHES = {'default': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}}
