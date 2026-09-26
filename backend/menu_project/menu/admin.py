@@ -34,14 +34,41 @@ class LayoutBuilderWidget(forms.Textarea):
 
     template_name = 'admin/widgets/layout_builder_widget.html'
 
-    def __init__(self, attrs=None, sample_image_url=''):
+    def __init__(self, attrs=None, sample_image_url='', photoless=0, total=0):
         super().__init__(attrs)
         self.sample_image_url = sample_image_url or ''
+        self.photoless = photoless
+        self.total = total
 
     def get_context(self, name, value, attrs):
         context = super().get_context(name, value, attrs)
         context['widget']['sample_image_url'] = self.sample_image_url
+        context['widget']['photoless'] = self.photoless
+        context['widget']['total'] = self.total
         return context
+
+
+def _photoless_count(restaurant, kind):
+    """
+    사진이 없는 메뉴(또는 카테고리) 수.
+
+    절대배치 카드는 사진 자리를 좌표로 잡아 둔다. 사진이 없는 메뉴는 그
+    자리가 빈 채로 나가서, 같은 배치인데도 카드가 156px 에서 536px 로
+    늘어난다(2026-09-25 실측). 사장님은 빌더에서 그걸 볼 방법이 없다 —
+    빌더는 사진이 **있는** 메뉴 한 장으로만 그리기 때문이다.
+
+    막지 않고 세어서 알려 준다. 사진을 채울지, 사진 조각을 끌지, 그대로 둘지는
+    사장님이 정할 일이다.
+    """
+    if restaurant is None:
+        return 0, 0
+    if kind == 'category':
+        rows = Category.objects.filter(restaurant=restaurant)
+        blank = rows.filter(category_image='').count() + rows.filter(category_image=None).count()
+    else:
+        rows = MenuItem.objects.filter(category__restaurant=restaurant)
+        blank = rows.filter(menu_image='').count() + rows.filter(menu_image=None).count()
+    return blank, rows.count()
 
 
 def _sample_image_url(restaurant, kind):
@@ -612,8 +639,11 @@ class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         if db_field.name in ['category_card_layout_json', 'menu_card_layout_json']:
             kind = 'category' if db_field.name.startswith('category') else 'menu'
             restaurant = getattr(request, '_layout_restaurant', None)
+            photoless, total = _photoless_count(restaurant, kind)
             kwargs['widget'] = LayoutBuilderWidget(
                 sample_image_url=_sample_image_url(restaurant, kind),
+                photoless=photoless,
+                total=total,
             )
         return super().formfield_for_dbfield(db_field, request, **kwargs)
 

@@ -299,3 +299,135 @@ class TheBuilderDoesNotLieAboutLegibilityTests(TestCase):
         css = (FRONTEND / 'styles' / 'globals.css').read_text(encoding='utf-8')
         layout_rule = css[css.index('.layout-text {'):css.index('}', css.index('.layout-text {'))]
         self.assertIn('text-shadow', layout_rule)
+
+
+class TheBuilderUsesTheCustomerDefaultsTests(TestCase):
+    """
+    사장님이 스타일을 비워 두면 손님 화면은 globals.css 의 :root 값을 쓴다.
+    빌더가 그걸 모르고 전부 흰색으로 그리면, 검은 카드 위에서 거의 안 보이는
+    글자(#4c4c4c 영문명, #575757 노트)가 빌더에서는 또렷하게 보인다.
+    사장님은 멀쩡한 줄 알고 저장한다.
+
+    2026-09-25 검토가 실측으로 잡았다. 값이 두 언어에 나뉘어 있으니 여기서
+    대조한다 — 갈라지면 같은 거짓말이 그대로 돌아온다.
+    """
+
+    #: 빌더 상수의 키 → globals.css 의 CSS 변수 이름
+    PIECES = {
+        'menu_name': 'menu-name',
+        'menu_name_en': 'menu-name-en',
+        'menu_price': 'menu-price',
+        'menu_description': 'menu-desc',
+        'menu_notes': 'menu-notes',
+        'category_name': 'category-name',
+        'category_name_en': 'category-name-en',
+    }
+
+    def setUp(self):
+        self.widget = _widget_css()
+        self.css = (FRONTEND / 'styles' / 'globals.css').read_text(encoding='utf-8')
+
+    def _builder_defaults(self):
+        block = self.widget[
+            self.widget.index('const CUSTOMER_TEXT_DEFAULTS'):self.widget.index('const PREVIEW_SCALE')
+        ]
+        return {
+            m.group('id'): m.group('color').lower()
+            for m in re.finditer(
+                r"(?P<id>[a-z_]+):\s*\{color:\s*'(?P<color>#[0-9a-fA-F]{3,6})'", block,
+            )
+        }
+
+    def _css_default(self, var_name):
+        match = re.search(rf'--{var_name}-color:\s*(#[0-9a-fA-F]{{3,6}});', self.css)
+        self.assertIsNotNone(match, f'globals.css 에 --{var_name}-color 가 없습니다')
+        value = match.group(1).lower()
+        # #fff 와 #ffffff 를 같은 것으로 본다.
+        if len(value) == 4:
+            value = '#' + ''.join(c * 2 for c in value[1:])
+        return value
+
+    def test_every_piece_the_builder_draws_has_a_customer_default(self):
+        builder = self._builder_defaults()
+        for piece in self.PIECES:
+            with self.subTest(piece=piece):
+                self.assertIn(piece, builder, '빌더가 이 조각의 기본색을 모릅니다')
+
+    def test_the_colors_match_what_the_customer_sees(self):
+        builder = self._builder_defaults()
+        for piece, var_name in self.PIECES.items():
+            with self.subTest(piece=piece):
+                self.assertEqual(
+                    builder[piece], self._css_default(var_name),
+                    f'{piece}: 빌더와 손님 화면의 기본색이 다릅니다',
+                )
+
+    def test_an_empty_style_field_does_not_overwrite_the_default(self):
+        """
+        빈 칸을 '흰색'으로 읽으면 기본값을 깔아 둔 의미가 없다. 예전 코드가
+        `input.value || '#ffffff'` 였다.
+        """
+        body = self.widget[
+            self.widget.index('function updateBoxStyleFeedback'):self.widget.index('function syncValue')
+        ]
+        self.assertNotIn("|| '#ffffff'", body)
+        self.assertIn('if (input.value) box.style.color = input.value;', body)
+
+
+class TheBuilderWarnsAboutPhotolessItemsTests(TestCase):
+    """
+    사진 없는 메뉴가 섞여 있으면 같은 배치인데도 카드 높이가 크게 달라진다.
+    2026-09-25 실측으로 같은 배치에서 156px 과 536px 이었다 — 사진 없는
+    카드는 380px 가 검게 빈다.
+
+    빌더는 사진이 **있는** 메뉴 한 장으로만 그려서, 사장님이 저장하기 전에
+    그걸 알 방법이 없었다. 막지 않고 세어서 알려 준다.
+    """
+
+    def setUp(self):
+        from django.contrib.auth.models import User
+        from menu.models import Category, MenuItem, Restaurant, SiteSettings
+
+        self.shop = Restaurant.objects.create(name='달빛', slug='moonlight')
+        self.settings = SiteSettings.objects.create(restaurant=self.shop)
+        category = Category.objects.create(restaurant=self.shop, name='안주')
+        MenuItem.objects.create(
+            restaurant=self.shop, category=category, name='사진 있음',
+            price='1000', menu_image='menu_images/x.webp',
+        )
+        MenuItem.objects.create(
+            restaurant=self.shop, category=category, name='사진 없음', price='2000',
+        )
+        self.user = User.objects.create_superuser('boss', 'b@x.test', 'pw-4471')
+        self.client.force_login(self.user)
+
+    def _html(self):
+        url = f'/admin/menu/sitesettings/{self.settings.pk}/change/'
+        return self.client.get(url).content.decode('utf-8')
+
+    def test_it_counts_the_items_without_a_photo(self):
+        html = self._html()
+        self.assertIn('2개 중', html)
+        self.assertIn('1개</strong>에 사진이 없습니다', html)
+
+    def test_it_says_what_the_owner_can_do_about_it(self):
+        """숫자만 던지면 사장님은 뭘 해야 할지 모른다."""
+        html = self._html()
+        self.assertIn('사진 조각을 꺼서', html)
+
+    def test_a_store_where_everything_has_a_photo_gets_no_warning(self):
+        """
+        화면에는 카테고리 빌더와 메뉴 빌더가 같이 있고 각각 따로 센다.
+        둘 다 채워야 경고가 사라진다 — 처음엔 카테고리 사진을 안 채워서
+        이 테스트가 정직하게 실패했다.
+        """
+        from menu.models import Category, MenuItem
+        MenuItem.objects.filter(menu_image='').update(menu_image='menu_images/y.webp')
+        Category.objects.filter(category_image='').update(category_image='category_images/z.webp')
+        self.assertNotIn('사진이 없습니다', self._html())
+
+    def test_the_category_builder_counts_categories_not_menus(self):
+        """둘이 같은 숫자를 쓰면 사장님이 엉뚱한 것을 채우러 간다."""
+        html = self._html()
+        self.assertIn('1개 중', html)   # 카테고리 1개 (사진 없음 1)
+        self.assertIn('2개 중', html)   # 메뉴 2개 (사진 없음 1)
