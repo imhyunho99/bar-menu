@@ -336,34 +336,62 @@ class OrderCreateView(APIView):
         # Calculate total price on backend
         total_price = 0
         items_data = data.get('items', [])
+
+        # 손님이 보낸 것이라 모양부터 본다.
+        #
+        # 예전에는 그냥 돌았다. items 가 문자열이면 AttributeError, quantity 가
+        # 글자면 ValueError, menu_item 이 글자면 ValueError 가 **잡히지 않은 채**
+        # 올라가 500 이 됐다. 500 은 Sentry 를 타고 Discord 로 간다 — 로그인도
+        # 없이 아무나 사장님을 호출할 수 있었다는 뜻이다.
+        if not isinstance(items_data, list) or not items_data:
+            # 빈 주문도 여기서 막는다. 예전에는 201 이 나가고 항목 없는 주문이
+            # 저장돼서, 주방에 아무것도 안 적힌 티켓이 떴다.
+            return Response(
+                {'status': 'error', 'message': '주문할 메뉴를 담아 주세요.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         for item in items_data:
+            if not isinstance(item, dict):
+                return Response(
+                    {'status': 'error', 'message': '주문 형식이 올바르지 않습니다.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             try:
                 menu_item = MenuItem.objects.get(id=item.get('menu_item'), restaurant=restaurant)
-                item['name'] = menu_item.name
-                
-                # Strip currency and formatting symbols, convert to numeric value
-                price_str = str(menu_item.price).replace('₩', '').replace(',', '').strip()
-                try:
-                    price_val = int(float(price_str))
-                except ValueError:
-                    price_val = 0
-                
-                item['price'] = price_val
-                quantity = int(item.get('quantity', 1))
-                if quantity > 99:
-                    return Response(
-                        {'status': 'error', 'message': '수량은 1~99 사이여야 합니다.'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-                if quantity < 1:
-                    quantity = 1
-                item['quantity'] = quantity
-                total_price += price_val * quantity
-            except MenuItem.DoesNotExist:
+            except (MenuItem.DoesNotExist, ValueError, TypeError):
                 return Response(
                     {'status': 'error', 'message': f"메뉴 ID {item.get('menu_item')} 존재하지 않습니다."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+
+            item['name'] = menu_item.name
+
+            # Strip currency and formatting symbols, convert to numeric value
+            price_str = str(menu_item.price).replace('₩', '').replace(',', '').strip()
+            try:
+                price_val = int(float(price_str))
+            except ValueError:
+                price_val = 0
+
+            item['price'] = price_val
+
+            try:
+                quantity = int(item.get('quantity', 1))
+            except (TypeError, ValueError):
+                return Response(
+                    {'status': 'error', 'message': '수량은 숫자로 보내 주세요.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if quantity > 99:
+                return Response(
+                    {'status': 'error', 'message': '수량은 1~99 사이여야 합니다.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if quantity < 1:
+                quantity = 1
+            item['quantity'] = quantity
+            total_price += price_val * quantity
         
         data['total_price'] = total_price
         
