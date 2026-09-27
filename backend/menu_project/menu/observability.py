@@ -37,6 +37,34 @@ def is_client_disconnect(exc):
     return False
 
 
+#: 끊김을 뜻하는 예외 이름들. 이벤트에 예외 **객체**가 없을 때 쓴다.
+_DISCONNECT_TYPES = ('BrokenPipeError', 'ConnectionResetError', 'ConnectionAbortedError')
+
+
+def event_is_client_disconnect(event):
+    """
+    예외 객체 없이 올라온 이벤트도 걸러낸다.
+
+    로깅 통합으로 들어온 이벤트에는 hint 에 exc_info 가 없을 수 있다. 그러면
+    is_client_disconnect 가 볼 것이 없어 통과해 버린다 — 정작 가장 자주 오는
+    'OSError: write error' 가 그 모양으로 올라올 수 있다.
+
+    여기서는 이벤트에 적힌 타입·메시지로 같은 판단을 한다. 조건을 똑같이
+    좁게 둔다: OSError 는 메시지가 정확히 'write error' 일 때만이다. 디스크가
+    차서 나는 OSError 는 반드시 알아야 한다.
+    """
+    values = (event.get('exception') or {}).get('values') or []
+    if not values:
+        return False
+    last = values[-1]
+    exc_type = last.get('type') or ''
+    exc_value = (last.get('value') or '').strip()
+
+    if exc_type in _DISCONNECT_TYPES:
+        return True
+    return exc_type == 'OSError' and exc_value == _UWSGI_CLIENT_GONE
+
+
 def before_send(event, hint):
     """Sentry 로 보내기 직전. None 을 돌려주면 그 이벤트는 버려진다."""
     exc_info = hint.get('exc_info')
@@ -47,6 +75,10 @@ def before_send(event, hint):
         return None
 
     if exc is not None and is_client_disconnect(exc):
+        return None
+
+    # 예외 객체가 없는 경로로 올라온 같은 에러도 버린다.
+    if exc is None and event_is_client_disconnect(event):
         return None
 
     # error/fatal 이벤트는 Discord 에러 웹훅으로도 알린다(best-effort).

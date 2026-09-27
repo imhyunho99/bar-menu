@@ -85,22 +85,83 @@ def send_contact_notification(submission):
     return thread
 
 
+def _sentry_issue_url(event):
+    """
+    Sentry 에서 이 이벤트를 찾아가는 주소.
+
+    `transaction` 이 비는 에러(응답을 쓰다 난 uwsgi write error 같은)는 알림만
+    봐서는 아무것도 알 수 없다. 최소한 '거기로 가는 길'은 있어야 한다.
+    org·project 는 비밀이 아니므로 기본값을 둔다 — 비워 두면 링크 칸이
+    통째로 빠져서, 정작 필요한 사람이 설정 하나 때문에 못 본다.
+    """
+    event_id = event.get("event_id")
+    if not event_id:
+        return ""
+    org = os.environ.get("SENTRY_ORG", "private-9kb")
+    if not org:
+        return ""
+    return f"https://{org}.sentry.io/issues/?query=id%3A{event_id}"
+
+
+def _request_summary(event):
+    """어떤 요청에서 났는가. 스캐너인지 손님인지가 대개 여기서 갈린다."""
+    request = event.get("request") or {}
+    method = request.get("method") or ""
+    url = request.get("url") or ""
+    if not url:
+        return "-"
+    return f"{method} {url}".strip()[:300]
+
+
+def _client_summary(event):
+    """누가 보냈는가. IP 와 User-Agent 가 있으면 봇 여부가 바로 보인다."""
+    request = event.get("request") or {}
+    headers = {k.lower(): v for k, v in (request.get("headers") or {}).items()}
+    ip = ((event.get("user") or {}).get("ip_address")) or headers.get("x-forwarded-for") or ""
+    agent = headers.get("user-agent") or ""
+    parts = [p for p in (ip, agent) if p]
+    return " · ".join(parts)[:300] if parts else "-"
+
+
 def build_error_payload(event, hint):
-    """Sentry 이벤트를 Discord 에러 알림 페이로드로 변환한다."""
+    """
+    Sentry 이벤트를 Discord 에러 알림 페이로드로 변환한다.
+
+    예전에는 '위치' 와 '환경' 둘뿐이었다. 그런데 자주 오는 에러일수록
+    transaction 이 비어 있어서(응답을 쓰다 난 것이라 뷰가 특정되지 않는다)
+    알림이 `위치 -` 만 남기고, 받는 사람은 Sentry 를 따로 열어 찾아야 했다.
+    요청 주소·보낸 쪽·이벤트 링크를 같이 싣는다 — 스캐너인지 손님인지가
+    대개 그 세 줄에서 갈린다.
+    """
     values = (event.get("exception") or {}).get("values") or [{}]
     last = values[-1]
     error_type = last.get("type") or event.get("level", "error")
     error_value = last.get("value") or event.get("message") or "(메시지 없음)"
+
+    fields = [
+        {"name": "요청", "value": _request_summary(event), "inline": False},
+        {"name": "보낸 쪽", "value": _client_summary(event), "inline": False},
+        {
+            "name": "위치",
+            # transaction 이 없으면 culprit 이라도 준다. 둘 다 없는 경우가
+            # 바로 uwsgi write error 다.
+            "value": (event.get("transaction") or event.get("culprit") or "-")[:200],
+            "inline": True,
+        },
+        {"name": "환경", "value": (event.get("environment") or "-")[:100], "inline": True},
+    ]
+
+    url = _sentry_issue_url(event)
+    if url:
+        fields.append({"name": "Sentry", "value": url[:300], "inline": False})
+
     return {
         "embeds": [
             {
                 "title": f"서버 에러 · {error_type}"[:250],
                 "description": str(error_value)[:1500],
                 "color": 15158332,
-                "fields": [
-                    {"name": "위치", "value": (event.get("transaction") or "-")[:200], "inline": True},
-                    {"name": "환경", "value": (event.get("environment") or "-")[:100], "inline": True},
-                ],
+                "fields": fields,
             }
         ]
     }
