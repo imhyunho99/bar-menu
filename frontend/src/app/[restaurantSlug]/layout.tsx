@@ -1,4 +1,5 @@
 import { getRestaurant, getCategoryTree, isMenuClosed, isTooBusy, previewToken } from '@/lib/api.server';
+import { appUrl } from '@/lib/site';
 import MenuNotOpen from '@/components/MenuNotOpen';
 import PreviewBanner from '@/components/PreviewBanner';
 import MenuTooBusy from '@/components/MenuTooBusy';
@@ -22,7 +23,10 @@ export default async function RestaurantLayout({
   const { restaurantSlug } = await params;
 
   if (restaurantSlug === 'admin') {
-    redirect('http://localhost:8000/admin/');
+    // 호스트를 여기서 적지 않는다. 예전에는 localhost:8000 이 박혀 있어서,
+    // 운영에서 /admin 을 연 사람이 **자기 컴퓨터의** 8000 번 포트로 보내졌다.
+    // appUrl 이 호스트를 아는 유일한 자리다.
+    redirect(appUrl('/admin/'));
   }
 
   // 402 분기보다 먼저 읽어야 한다. 미리보기로 들어왔는지는 그 분기에서도
