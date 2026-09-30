@@ -1,0 +1,248 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>구독 관리 - bar-menu</title>
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+</head>
+<body class="brand">
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1 class="admin-title">{{ request.restaurant.name|default:"bar-menu" }} 구독 관리</h1>
+            <div class="admin-header-actions">
+                <a href="{% url 'menu:admin_dashboard' request.restaurant.slug %}" class="admin-btn admin-btn-secondary">대시보드로</a>
+            </div>
+        </div>
+
+        {% if messages %}
+            <div style="margin-bottom: 20px;">
+                {% for message in messages %}
+                    <div style="background-color: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--admin-success); padding: 12px; border-radius: var(--admin-radius); margin-bottom: 10px;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% comment %}
+        계좌이체로 받고 확인은 사람이 한다. 자동 결제(카카오페이)는 코드가 잠들어
+        있고, 심사를 받게 되면 이 화면 아래에 나란히 붙는다.
+        {% endcomment %}
+        {% if pending_request %}
+            <div class="admin-section">
+                <div class="admin-card">
+                    <h2>확인 중입니다</h2>
+                    <p style="color: var(--admin-text-secondary); line-height: 1.6;">
+                        <strong style="color: var(--amber);">{{ pending_request.depositor_name }}</strong> 이름으로
+                        {{ pending_request.amount|floatformat:0 }}원 입금 신청을 받았습니다.
+                        통장을 확인하는 대로 손님 화면과 QR을 열어 드리겠습니다.
+                    </p>
+                    <p style="color: var(--admin-text-secondary); font-size: 0.875rem;">
+                        입금자명이 통장에 찍힌 이름과 다르면 확인이 늦어질 수 있습니다.
+                        다르게 보내셨다면 알려 주세요.
+                    </p>
+                </div>
+            </div>
+        {% elif bank_account %}
+            <div class="admin-section">
+                <div class="admin-card">
+                    <h2>입금 안내</h2>
+                    <p style="font-size: 1.05rem; color: var(--admin-text-primary);">
+                        {{ bank_name }} <strong>{{ bank_account }}</strong> (예금주 {{ bank_holder }})
+                    </p>
+                    <p style="color: var(--admin-text-secondary); line-height: 1.6;">
+                        입금하신 뒤 아래에 <strong>통장에 찍힐 이름</strong>을 적어 주세요.
+                        상호와 달라도 괜찮습니다 — 그 이름으로 대조합니다.
+                    </p>
+                    <form method="post" action="{% url 'menu:billing_request' request.restaurant.slug %}">
+                        {% csrf_token %}
+                        <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-top: 16px;">
+                            <label style="display: flex; flex-direction: column; gap: 6px;">
+                                <span style="font-size: 0.875rem; color: var(--admin-text-secondary);">입금자명</span>
+                                <input type="text" name="depositor_name" maxlength="50" required
+                                       style="padding: 10px 12px; border-radius: var(--admin-radius); border: 1px solid var(--line);">
+                            </label>
+                            <label style="display: flex; flex-direction: column; gap: 6px;">
+                                <span style="font-size: 0.875rem; color: var(--admin-text-secondary);">요금제</span>
+                                <select name="plan" style="padding: 10px 12px; border-radius: var(--admin-radius); border: 1px solid var(--line);">
+                                    {% for plan in plans %}
+                                    <option value="{{ plan.value }}" {% if plan.current %}selected{% endif %}>
+                                        {{ plan.label }} · 월 {{ plan.price }}원
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <button type="submit" class="admin-btn admin-btn-primary">입금했습니다</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% else %}
+            <div class="admin-section">
+                <div class="admin-card">
+                    <h2>입금 안내를 준비하고 있습니다</h2>
+                    <p style="color: var(--admin-text-secondary);">
+                        계좌 정보가 아직 설정되지 않았습니다. 잠시 후 다시 확인해 주세요.
+                    </p>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="admin-section">
+            <h2>현재 상태</h2>
+            <div class="admin-card">
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <tbody>
+                            <tr>
+                                <th style="width: 180px;">요금제</th>
+                                <td>{{ subscription.get_plan_display }}</td>
+                            </tr>
+                            <tr>
+                                <th>상태</th>
+                                <td>
+                                    {{ subscription.get_status_display }}
+                                    {% if not is_usable %}
+                                        <span style="color: var(--admin-danger);">· 손님 화면이 닫혀 있습니다</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>이용 가능 기간</th>
+                                <td>
+                                    {% if access_until %}
+                                        {{ access_until|date:"Y년 m월 d일 H:i" }}까지
+                                        {% if days_left is not None %}
+                                            {% if days_left > 0 %}
+                                                <strong style="color: var(--admin-success);">({{ days_left }}일 남음)</strong>
+                                            {% else %}
+                                                <strong style="color: var(--admin-danger);">(오늘 종료)</strong>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% elif subscription.status == 'partner' %}
+                                        <span style="color: var(--admin-text-secondary);">기한 없음 · 무제한</span>
+                                    {% else %}
+                                        <span style="color: var(--admin-text-secondary);">결제 전</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if subscription.status == 'unpaid' %}
+                            <tr>
+                                <th>손님 화면</th>
+                                <td style="color: var(--admin-text-secondary);">
+                                    결제가 확인되면 열립니다. 그전까지 메뉴 등록·디자인·QR 준비는 모두 하실 수 있습니다.
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% if subscription.canceled_at %}
+                            <tr>
+                                <th>해지 신청</th>
+                                <td>{{ subscription.canceled_at|date:"Y년 m월 d일 H:i" }}</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {% comment %}
+        카드 정기결제는 잠들어 있다(PAYMENT_PROVIDER 미설정). 그런데 이 구역이
+        화면 한가운데에 '매월 자동 결제', '결제 즉시 손님 화면이 열리며' 라고
+        적힌 채 먼저 눈에 띄었다. 사장님은 실제로 동작하는 계좌이체 안내를
+        지나쳐 이 버튼부터 누르고, '준비 중' 안내를 보고 되돌아온다.
+
+        지우지 않고 가린다. 대행사를 붙이면 payment_configured 가 참이 되어
+        그대로 돌아온다.
+        {% endcomment %}
+        {% if payment_configured %}
+        <div class="admin-section">
+            <h2>요금제 선택</h2>
+            <div class="admin-card">
+                <div class="plan-grid">
+                    {% for plan in plans %}
+                        <form method="post" action="{% url 'menu:billing_start_checkout' request.restaurant.slug %}" class="plan-card{% if plan.current %} plan-card-current{% endif %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="plan" value="{{ plan.value }}">
+
+                            <div class="plan-name">
+                                {{ plan.label }}
+                                {% if plan.current %}<span class="plan-badge">현재 이용 중</span>{% endif %}
+                            </div>
+                            <div class="plan-price">
+                                <strong>{{ plan.price }}</strong>원
+                                <span class="plan-per">/ 월</span>
+                            </div>
+                            <p class="plan-note">부가세 포함 · 매월 자동 결제 · 약정 없음</p>
+
+                            <label class="plan-agree">
+                                <input type="checkbox" name="agree" value="1" required>
+                                <span>
+                                    <a href="{{ terms_url }}" target="_blank" rel="noopener">이용약관 및 정기결제 조건</a>에 동의합니다
+                                </span>
+                            </label>
+
+                            <button type="submit" class="admin-btn {% if plan.current %}admin-btn-primary{% else %}admin-btn-secondary{% endif %} plan-btn">
+                                {{ plan.price }}원 결제하기
+                            </button>
+                        </form>
+                    {% endfor %}
+                </div>
+
+                {# 정기결제 조건 고지. 전자결제 심사에서 결제 시기·취소·이의신청 안내 여부를 본다. #}
+                <div class="recurring-terms">
+                    <h3>정기결제 안내</h3>
+                    <dl>
+                        <dt>결제 방식</dt>
+                        <dd>등록하신 결제수단으로 매월 자동 청구되는 정기결제(구독) 상품입니다.</dd>
+
+                        <dt>결제 시기</dt>
+                        <dd>최초 결제일에 1개월분을 선불로 결제하고, 이후 매월 같은 날에 자동 결제됩니다.</dd>
+
+                        <dt>서비스 제공기간</dt>
+                        <dd>결제 즉시 손님 화면이 열리며, 결제일로부터 1개월간 이용하실 수 있습니다.</dd>
+
+                        <dt>해지 · 환불</dt>
+                        <dd>
+                            언제든 해지할 수 있고 위약금은 없습니다. 해지하시면 이미 결제한 기간까지 이용한 뒤
+                            다음 결제부터 청구되지 않습니다. 환불 조건은 <a href="{{ terms_url }}" target="_blank" rel="noopener">이용약관</a>을 따릅니다.
+                        </dd>
+
+                        <dt>이의신청</dt>
+                        <dd>
+                            {% if support_email or support_phone %}
+                                결제 내역에 이의가 있으시면
+                                {% if support_email %}{{ support_email }}{% endif %}{% if support_email and support_phone %} 또는 {% endif %}{% if support_phone %}{{ support_phone }}{% endif %}
+                                으로 알려주시면 3영업일 안에 회신드립니다.
+                            {% else %}
+                                {# 연락처를 아직 못 받았을 때. 빈 값을 그대로 박으면 문장에 구멍이 난다. #}
+                                결제 내역에 이의가 있으시면
+                                <a href="{{ contact_url }}" target="_blank" rel="noopener">문의하기</a>로
+                                알려주시면 3영업일 안에 회신드립니다.
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if subscription.status != 'canceled' %}
+        <div class="admin-section">
+            <h2>구독 해지</h2>
+            <div class="admin-card">
+                <p style="color: var(--admin-text-secondary); margin-bottom: 14px;">
+                    해지하시면 다음 결제가 진행되지 않습니다.
+                </p>
+                <form method="post" action="{% url 'menu:billing_cancel' request.restaurant.slug %}" onsubmit="return confirm('정말 해지하시겠습니까?');" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="admin-btn admin-btn-danger">구독 해지</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

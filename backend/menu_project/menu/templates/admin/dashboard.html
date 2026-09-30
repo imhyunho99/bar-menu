@@ -51,8 +51,10 @@
         }
     </style>
 </head>
-<body>
+<body class="brand">
     <div class="admin-container">
+        {% include "admin/_payment_banner.html" %}
+
         <!-- Toast Notification for Reorder Success -->
         <div id="toast" class="toast-notification">
             <span>✓ 순서가 저장되었습니다.</span>
@@ -61,8 +63,17 @@
         <div class="admin-header">
             <h1 class="admin-title">{{ request.restaurant.name|default:"bar-menu" }} 관리자 대시보드</h1>
             <div class="admin-header-actions">
-                <a href="{% url 'menu:admin_orders' request.restaurant.slug %}" class="admin-btn admin-btn-primary" style="background-color: var(--admin-success);">🔔 주문 관리</a>
+                <a href="{% url 'menu:admin_orders' request.restaurant.slug %}" class="admin-btn admin-btn-primary" style="background-color: var(--admin-success);">주문 관리</a>
+                {% if menu_is_live %}
                 <a href="{% url 'menu:menu_main' request.restaurant.slug %}" target="_blank" class="admin-btn admin-btn-secondary">사이트 보기</a>
+                {% else %}
+                {% comment %}
+                공개 전에는 '사이트 보기' 가 잠긴 화면으로 간다. 사장님이 볼 것은
+                손님이 볼 화면이므로 미리보기 링크로 보낸다.
+                {% endcomment %}
+                <a href="{{ preview_url }}" target="_blank" rel="noopener" class="admin-btn admin-btn-secondary">미리보기 열기</a>
+                <button type="button" class="admin-btn admin-btn-secondary" data-preview-url="{{ preview_url }}" onclick="copyPreviewLink(this)">링크 복사</button>
+                {% endif %}
             </div>
         </div>
 
@@ -141,6 +152,7 @@
                     <p style="font-size: 0.85rem; color: var(--admin-text-secondary); margin-top: 4px;">* 행 좌측의 ⋮⋮ 핸들을 잡고 드래그하면 순서를 변경할 수 있습니다.</p>
                 </div>
                 <a href="{% url 'menu:add_menu' request.restaurant.slug %}" class="admin-btn admin-btn-primary">메뉴 추가</a>
+                <a href="{% url 'menu:import_menu' request.restaurant.slug %}" class="admin-btn">메뉴판 사진으로 등록</a>
             </div>
             
             <div class="admin-table-container">
@@ -220,6 +232,20 @@
     </div>
 
     <script>
+        // 미리보기 링크 복사. 주소가 길어서 사장님이 손으로 옮겨 적을 수 없다.
+        function copyPreviewLink(button) {
+            const url = button.dataset.previewUrl;
+            navigator.clipboard.writeText(url).then(function () {
+                const original = button.textContent;
+                button.textContent = '복사됨';
+                setTimeout(function () { button.textContent = original; }, 2000);
+            }).catch(function () {
+                // clipboard 는 https 나 localhost 가 아니면 막힌다. 그때는
+                // 주소를 띄워 주기라도 해야 사장님이 직접 복사할 수 있다.
+                window.prompt('아래 주소를 복사해 주세요', url);
+            });
+        }
+
         // CSRF 토큰 헬퍼
         function getCookie(name) {
             let cookieValue = null;

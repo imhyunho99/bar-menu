@@ -1,11 +1,23 @@
+from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
 from django.http import HttpResponseForbidden, JsonResponse
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 import json
 from .models import Category, MenuItem, UserProfile, Restaurant, Order, OrderItem, MenuItemPairing, SiteSettings
+from . import notifications
+from .preview import preview_url_for
+from .menu_import import (
+    MAX_IMAGES,
+    MAX_TOTAL_UPLOAD_BYTES,
+    MAX_UPLOAD_BYTES,
+    MenuImportError,
+    parse_menu_image,
+    shrink_for_vision,
+)
 
 def check_restaurant_permission(user, restaurant_slug):
     """
@@ -20,6 +32,26 @@ def check_restaurant_permission(user, restaurant_slug):
         return user.profile.restaurant.slug == restaurant_slug
     
     return False
+
+#: 카테고리를 고르지 않고 등록한 메뉴가 담기는 곳. 사진으로 등록하는 경로가
+#: 구분선 없는 메뉴판에 쓰는 이름과 같다.
+DEFAULT_CATEGORY_NAME = '메뉴'
+
+
+def default_category_for(restaurant):
+    """
+    카테고리를 고르지 않았을 때 메뉴를 담을 카테고리. 없으면 만든다.
+
+    손님 화면은 카테고리를 타고 그려져서, 카테고리 없는 메뉴는 DB 에 있어도
+    어디에도 나타나지 않는다. 갓 가입한 매장에는 카테고리가 하나도 없으므로
+    '직접 입력'으로 처음 등록한 메뉴가 그대로 사라진다. 사장님은 등록했다고
+    믿은 채 QR 을 인쇄해 붙이고, 빈 메뉴판은 개업 당일에 발견된다.
+    """
+    category, _ = Category.objects.get_or_create(
+        restaurant=restaurant, name=DEFAULT_CATEGORY_NAME
+    )
+    return category
+
 
 def admin_login(request, restaurant_slug=None):
     if request.method == 'POST':
@@ -58,9 +90,20 @@ def admin_dashboard(request, restaurant_slug=None):
 
     categories = Category.objects.filter(restaurant=request.restaurant).order_by('priority', 'name')
     menu_items = MenuItem.objects.filter(restaurant=request.restaurant).order_by('category__priority', 'priority', 'name')
+    subscription = getattr(request.restaurant, 'subscription', None)
     return render(request, 'admin/dashboard.html', {
         'categories': categories,
-        'menu_items': menu_items
+        'menu_items': menu_items,
+        'restaurant': request.restaurant,
+        # 배너가 쓰는 것들. 사장님이 메뉴를 다 채우고 QR 을 인쇄한 뒤에야
+        # 손님 화면이 닫혀 있다는 걸 알게 되는 일을 막는다.
+        'menu_is_live': bool(subscription and subscription.menu_is_live()),
+        'subscription': subscription,
+        'days_left': subscription.days_left if subscription else None,
+        'billing_url': reverse('menu:billing_home', kwargs={'restaurant_slug': request.restaurant.slug}),
+        # 누를 때마다 새로 만든다. 저장하지 않으니 회전을 신경 쓸 일이 없고,
+        # 어제 열어 둔 탭의 링크가 죽어 있어도 다시 누르면 된다.
+        'preview_url': preview_url_for(request.restaurant),
     })
 
 @login_required
@@ -109,6 +152,8 @@ def add_menu(request, restaurant_slug=None):
         category = None
         if category_id:
              category = Category.objects.filter(id=category_id, restaurant=request.restaurant).first()
+        if category is None:
+            category = default_category_for(request.restaurant)
 
         MenuItem.objects.create(
             name=request.POST['name'],
@@ -242,6 +287,213 @@ def duplicate_menu(request, menu_id, restaurant_slug=None):
         new_pairing.save()
 
     messages.success(request, f"'{menu.name}' 메뉴 및 관련 주류 페어링이 복제되었습니다.")
+    return redirect('menu:admin_dashboard', restaurant_slug=request.restaurant.slug)
+
+
+def relay_menu_photos(request, restaurant, template, cancel_url, success_url, extra_context=None):
+    """
+    종이 메뉴판 사진을 받아 우리에게 넘긴다.
+
+    뽑아낸 결과는 저장하지 않는다. 비전 API 를 부르지 않고 사진을 그대로
+    Discord 로 보내면, 우리가 보고 손으로 정리해 넣는다.
+
+    extra_context 는 Django admin 안에서 그릴 때 쓴다. admin 의 머리띠·빵부스러기는
+    each_context() 가 채우는 값(site_header, has_permission …)으로 그려져서, 그걸
+    안 넘기면 화면이 'Django 관리' 로 되돌아가고 사장님은 다른 사이트에 온 줄 안다.
+
+    매장은 인자로 받는다 — 이 흐름이 주소가 다른 두 화면에서 돌기 때문이다.
+    /<slug>/admin/ 은 slug 로, Django /admin/ 은 로그인 계정으로 매장을 정한다.
+    여기서 request.restaurant 를 읽으면 후자에서는 늘 None 이다(미들웨어가
+    /admin/ 을 건너뛴다). 화면과 돌아갈 곳만 다르고 규칙은 하나여야 한다.
+    """
+    # extra_context 를 앞에 둔다. 명시 인자로 받은 값을 dict 병합으로
+    # 잃을 수 있는 순서는 그 자체가 버그 자리다.
+    subscription = getattr(restaurant, 'subscription', None)
+    # 화면이 폼을 그릴지 안내를 그릴지 정한다. GET 에서도 알려야 사장님이
+    # 사진을 고르고 올린 뒤에야 막혔다는 걸 알게 되는 일이 없다.
+    page = {
+        **(extra_context or {}),
+        'max_images': MAX_IMAGES,
+        'cancel_url': cancel_url,
+        'photo_import_allowed': subscription is None or subscription.photo_import_allowed(),
+    }
+
+    if request.method != 'POST':
+        return render(request, template, page)
+
+    if not page['photo_import_allowed']:
+        messages.error(
+            request,
+            '사진으로 정리해 드리는 것은 1회 제공됩니다. 직접 입력은 계속 무료로 쓰실 수 있습니다.',
+        )
+        return render(request, template, page)
+
+    uploads = request.FILES.getlist('menu_image')
+    if not uploads:
+        messages.error(request, '메뉴판 사진을 선택해 주세요.')
+        return render(request, template, page)
+
+    # 조용히 앞의 10장만 쓰면 사장님은 빠진 페이지가 있는 줄 모르고,
+    # 메뉴가 반만 들어온 이유를 우리도 사장님도 찾지 못한다.
+    if len(uploads) > MAX_IMAGES:
+        messages.error(
+            request,
+            f'사진은 한 번에 {MAX_IMAGES}장까지 올릴 수 있습니다. '
+            f'{len(uploads)}장을 선택하셨습니다. 나눠서 올려 주세요.',
+        )
+        return render(request, template, page)
+
+    # read() 로 통째로 메모리에 올리기 전에 크기부터 본다. 운영 인스턴스는
+    # RAM 이 1GB 미만이라 큰 사진 여러 장을 한꺼번에 펼치면 워커가 죽는다.
+    total = sum(u.size or 0 for u in uploads)
+    for upload in uploads:
+        if upload.size and upload.size > MAX_UPLOAD_BYTES:
+            messages.error(
+                request,
+                f'사진 한 장이 너무 큽니다({upload.name}). '
+                f'{MAX_UPLOAD_BYTES // (1024 * 1024)}MB 이하로 올려 주세요.',
+            )
+            return render(request, template, page)
+    if total > MAX_TOTAL_UPLOAD_BYTES:
+        messages.error(
+            request,
+            f'사진 합계가 너무 큽니다. {MAX_TOTAL_UPLOAD_BYTES // (1024 * 1024)}MB 이하로, '
+            '또는 몇 장씩 나눠 올려 주세요.',
+        )
+        return render(request, template, page)
+
+    # 한 장씩 줄이고 원본은 바로 버린다. 열 장을 다 펼쳐 놓으면 워커 하나가
+    # 130MB 넘게 쓴다(실측). 브라우저가 이미 줄여 보냈으면 여기선 거의 공짜다.
+    images = []
+    for upload in uploads:
+        try:
+            payload, _ = shrink_for_vision(upload.read())
+        except MenuImportError as e:
+            messages.error(request, f'{upload.name}: {e}')
+            return render(request, template, page)
+        images.append(payload)
+
+    # 비동기로 던지지 않는다. 도착 여부를 사장님께 말해야 하기 때문이다 —
+    # 못 갔는데 '받았습니다' 가 뜨면 사장님은 기다리고 우리는 모른다.
+    if not notifications.send_menu_photos(restaurant, images):
+        messages.error(
+            request,
+            '사진을 보내지 못했습니다. 잠시 후 다시 시도해 주시고, 계속 안 되면 알려 주세요.',
+        )
+        return render(request, template, page)
+
+    # 보낸 뒤에 센다. 못 갔는데 횟수만 줄면 사장님은 한 번도 못 써 보고 끝난다.
+    if subscription is not None:
+        subscription.photo_import_count += 1
+        subscription.save(update_fields=['photo_import_count', 'updated_at'])
+
+    messages.success(
+        request,
+        f'메뉴판 사진 {len(images)}장을 받았습니다. 확인 후 정리해서 넣어 드리겠습니다. '
+        '정리하는 중에는 미리보기가 비어 있습니다 — 그동안 직접 입력으로도 채우실 수 있습니다.',
+    )
+    return redirect(success_url)
+
+
+@login_required
+def import_menu(request, restaurant_slug=None):
+    """/<slug>/admin/ 쪽 입구. 매장은 주소의 slug 가 정한다."""
+    if not check_restaurant_permission(request.user, restaurant_slug):
+        return HttpResponseForbidden("권한이 없습니다.")
+
+    dashboard = reverse('menu:admin_dashboard', kwargs={'restaurant_slug': request.restaurant.slug})
+    return relay_menu_photos(
+        request,
+        request.restaurant,
+        'admin/menu_import.html',
+        cancel_url=dashboard,
+        success_url=dashboard,
+    )
+
+# 자동 인식을 다시 켤 때 필요한 것은 전부 남아 있다: menu_import.parse_menu_image
+# 와 admin/menu_import_preview.html, 그리고 아래 import_menu_commit. 위 함수에서
+# send_menu_photos 대신 parse_menu_image 를 부르고 확인 화면으로 넘기면 된다.
+# 지금 그 경로를 쓰지 않는 이유는 호출 제한이 없어 비용에 상한이 없었고,
+# 정확도도 사장님이 손봐야 하는 수준이었기 때문이다.
+
+
+@login_required
+@require_POST
+def import_menu_commit(request, restaurant_slug=None):
+    """확인 화면에서 손본 내용을 실제 카테고리·메뉴로 만든다."""
+    if not check_restaurant_permission(request.user, restaurant_slug):
+        return HttpResponseForbidden("권한이 없습니다.")
+
+    # 폼은 항목마다 c<카테고리번호>_i<항목번호> 로 이름을 붙인다.
+    # 체크가 풀린 항목은 아예 전송되지 않으므로 include 목록이 곧 저장 대상이다.
+    included = request.POST.getlist('include')
+    if not included:
+        messages.error(request, '저장할 항목을 하나 이상 선택해 주세요.')
+        return redirect('menu:import_menu', restaurant_slug=request.restaurant.slug)
+
+    # 이미 있는 카테고리에 붙일지, 새로 만들지는 카테고리 단위로 정해진다
+    last_priority = (
+        Category.objects.filter(restaurant=request.restaurant)
+        .order_by('-priority')
+        .values_list('priority', flat=True)
+        .first()
+    ) or 0.0
+
+    created_categories = 0
+    created_items = 0
+    category_cache = {}
+
+    # 이름을 비운 항목은 저장하지 않는다. 카테고리를 먼저 만들어 두면 그런
+    # 항목만 있는 카테고리가 빈 채로 남으므로, 저장할 항목부터 추려낸다.
+    included = [k for k in included if request.POST.get(f'{k}_name', '').strip()]
+    if not included:
+        messages.error(request, '저장할 항목의 메뉴명이 모두 비어 있습니다.')
+        return redirect('menu:import_menu', restaurant_slug=request.restaurant.slug)
+
+    for key in included:
+        cat_idx = key.split('_')[0]
+
+        if cat_idx not in category_cache:
+            existing_id = request.POST.get(f'{cat_idx}_existing')
+            if existing_id:
+                category = Category.objects.filter(id=existing_id, restaurant=request.restaurant).first()
+                # 남의 매장 카테고리이거나 그새 지워진 id. 그냥 두면 카테고리
+                # 없는 메뉴가 조용히 생겨서 손님 화면 어디에도 안 뜬다.
+                if category is None:
+                    messages.error(request, '고른 카테고리를 찾을 수 없습니다. 다시 시도해 주세요.')
+                    return redirect('menu:import_menu', restaurant_slug=request.restaurant.slug)
+            else:
+                last_priority += 1.0
+                category = Category.objects.create(
+                    name=request.POST.get(f'{cat_idx}_name', '').strip() or '메뉴',
+                    name_en=request.POST.get(f'{cat_idx}_name_en', '').strip(),
+                    priority=last_priority,
+                    restaurant=request.restaurant,
+                )
+                created_categories += 1
+            category_cache[cat_idx] = category
+
+        category = category_cache[cat_idx]
+        name = request.POST.get(f'{key}_name', '').strip()
+        if not name:
+            continue
+
+        MenuItem.objects.create(
+            name=name,
+            name_en=request.POST.get(f'{key}_name_en', '').strip(),
+            price=request.POST.get(f'{key}_price', '').strip(),
+            description=request.POST.get(f'{key}_description', '').strip(),
+            category=category,
+            priority=float(created_items),
+            restaurant=request.restaurant,
+        )
+        created_items += 1
+
+    messages.success(
+        request,
+        f'메뉴 {created_items}개를 등록했습니다.'
+        + (f' (카테고리 {created_categories}개 신규 생성)' if created_categories else '')
+    )
     return redirect('menu:admin_dashboard', restaurant_slug=request.restaurant.slug)
 
 

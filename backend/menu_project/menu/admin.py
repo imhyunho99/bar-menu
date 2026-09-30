@@ -1,15 +1,98 @@
 import json
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
-from django.urls import path
+from django.shortcuts import redirect
+from django.urls import path, reverse
+from django.utils.html import format_html
 from django.views.decorators.http import require_POST
-from .models import Restaurant, UserProfile, Category, MenuItem, SiteSettings, MenuItemPairing, ContactSubmission
+from .admin_views import relay_menu_photos
+from .models import (Restaurant, UserProfile, Category, MenuItem, SiteSettings,
+                     MenuItemPairing, ContactSubmission, PaymentRequest, Subscription)
+
+# 로그인한 사장님이 도착하는 화면. 기본 index 위에 아직 /<slug>/admin/ 에 남아
+# 있는 주문·결제·QR 로 가는 줄을 얹는다. 이름이 index.html 이 아닌 이유는
+# admin/owner_index.html 의 주석에 적어 뒀다.
+admin.site.index_template = 'admin/owner_index.html'
+
 
 class LayoutBuilderWidget(forms.Textarea):
+    """
+    배치 빌더.
+
+    캔버스 뒤에 **그 매장의 실제 사진**을 깐다. 예전에는 어두운 바탕에
+    회색 상자만 그렸는데, 그러면 사장님이 밝은 사진 위에 흰 글자를 올려
+    두고도 빌더에서는 멀쩡해 보인다 — 손님 화면에서만 글자가 사라진다.
+    2026-09-23 에 실제 음식 사진으로 재 보니 메뉴명 대비가 1.7:1 이었다
+    (큰 글자 기준 3:1).
+
+    사진이 하나도 없는 매장은 예전처럼 어두운 바탕으로 둔다.
+    """
+
     template_name = 'admin/widgets/layout_builder_widget.html'
+
+    def __init__(self, attrs=None, sample_image_url='', photoless=0, total=0):
+        super().__init__(attrs)
+        self.sample_image_url = sample_image_url or ''
+        self.photoless = photoless
+        self.total = total
+
+    def get_context(self, name, value, attrs):
+        context = super().get_context(name, value, attrs)
+        context['widget']['sample_image_url'] = self.sample_image_url
+        context['widget']['photoless'] = self.photoless
+        context['widget']['total'] = self.total
+        return context
+
+
+def _photoless_count(restaurant, kind):
+    """
+    사진이 없는 메뉴(또는 카테고리) 수.
+
+    절대배치 카드는 사진 자리를 좌표로 잡아 둔다. 사진이 없는 메뉴는 그
+    자리가 빈 채로 나가서, 같은 배치인데도 카드가 156px 에서 536px 로
+    늘어난다(2026-09-25 실측). 사장님은 빌더에서 그걸 볼 방법이 없다 —
+    빌더는 사진이 **있는** 메뉴 한 장으로만 그리기 때문이다.
+
+    막지 않고 세어서 알려 준다. 사진을 채울지, 사진 조각을 끌지, 그대로 둘지는
+    사장님이 정할 일이다.
+    """
+    if restaurant is None:
+        return 0, 0
+    if kind == 'category':
+        rows = Category.objects.filter(restaurant=restaurant)
+        blank = rows.filter(category_image='').count() + rows.filter(category_image=None).count()
+    else:
+        rows = MenuItem.objects.filter(category__restaurant=restaurant)
+        blank = rows.filter(menu_image='').count() + rows.filter(menu_image=None).count()
+    return blank, rows.count()
+
+
+def _sample_image_url(restaurant, kind):
+    """
+    빌더 캔버스 뒤에 깔 사진 한 장. kind 는 'category' | 'menu'.
+
+    실패해도 빌더는 열려야 한다 — 사진은 판단을 돕는 것이지 없다고
+    못 쓰는 게 아니다.
+    """
+    if restaurant is None:
+        return ''
+    try:
+        if kind == 'category':
+            row = (Category.objects.filter(restaurant=restaurant)
+                   .exclude(category_image='').exclude(category_image=None)
+                   .order_by('id').first())
+            return row.category_image.url if row else ''
+        row = (MenuItem.objects.filter(category__restaurant=restaurant)
+               .exclude(menu_image='').exclude(menu_image=None)
+               .order_by('id').first())
+        return row.menu_image.url if row else ''
+    except (ValueError, AttributeError):
+        # 파일이 사라진 행이 있으면 .url 이 던진다.
+        return ''
 
 class MenuItemPairingInline(admin.TabularInline):
     model = MenuItemPairing
@@ -30,6 +113,32 @@ class UserAdmin(BaseUserAdmin):
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
 
+def selected_restaurant_for(request):
+    """
+    지금 화면이 다루는 매장.
+
+    사장님은 계정에 매장이 하나 묶여 있어 고를 일이 없다. 슈퍼유저는 매장이
+    여럿이라 ?restaurant=<id> 로 고르고, 안 고르면 첫 매장을 본다.
+
+    한 군데에 모아 둔 이유: 메뉴 워크스페이스와 그 안의 '사진으로 등록' 버튼이
+    규칙을 따로 쓰면, 고른 매장과 사진이 날아가는 매장이 어긋난다. 그 어긋남은
+    화면에 아무 표시도 남기지 않는다.
+    """
+    if request.user.is_superuser:
+        # isdigit() 로 거르는 이유: 숫자가 아닌 값을 id 로 넘기면 Django 가
+        # ValueError 를 던져 500 이 된다. 주소창을 손으로 고치면 나는 에러이고,
+        # 로그인 도착지가 /admin/ 이 된 뒤로는 첫 화면이 통째로 죽는다.
+        restaurant_id = request.GET.get('restaurant', '')
+        if restaurant_id.isdigit():
+            chosen = Restaurant.objects.filter(id=restaurant_id).first()
+            if chosen:
+                return chosen
+        return Restaurant.objects.order_by('name').first()
+
+    profile = getattr(request.user, 'profile', None)
+    return profile.restaurant if profile else None
+
+
 # 공통 믹스인: 레스토랑별 데이터 격리
 class RestaurantFilterMixin:
     def get_queryset(self, request):
@@ -45,6 +154,51 @@ class RestaurantFilterMixin:
             if hasattr(request.user, 'profile') and request.user.profile.restaurant:
                 obj.restaurant = request.user.profile.restaurant
         super().save_model(request, obj, form, change)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """
+        남의 매장 행을 고를 수 있는 칸을 만들지 않는다.
+
+        `save_model` 은 obj.restaurant 만 바로잡는다. 가리키는 **상대**는
+        안 본다. 그래서 카테고리의 `parent` 에 남의 매장 카테고리를 붙일 수
+        있었고, 2026-09-25 적대적 검토가 실제로 그렇게 만들었다. 결과는
+        두 가지였다 — 남의 손님 화면에 내가 쓴 글자가 하위 카테고리로 뜨고,
+        그 카테고리의 **메뉴가 통째로 사라진다**(하위가 생기면 serializer 가
+        메뉴 대신 하위 목록을 준다). 영업 중에 당하면 사장님은 이유를 모른다.
+
+        읽기(드롭다운에 남의 매장 이름이 다 보이는 것)와 쓰기가 같이 닫힌다.
+        ModelChoiceField 는 **검증할 때도** 이 queryset 으로 거르기 때문에,
+        화면에 없던 id 를 손으로 밀어 넣어도 '올바른 선택이 아닙니다' 가 된다.
+
+        한 필드가 아니라 믹스인에 두는 이유: 이 규칙이 빠진 admin 이 하나라도
+        생기면 같은 구멍이 그대로 다시 열린다. 매장에 속한 모델을 가리키는
+        칸이면 무엇이든 자동으로 걸린다.
+        """
+        if not request.user.is_superuser:
+            profile = getattr(request.user, 'profile', None)
+            shop = getattr(profile, 'restaurant', None)
+            related = db_field.remote_field.model
+            has_restaurant = any(
+                f.name == 'restaurant' for f in related._meta.get_fields()
+            )
+            if has_restaurant:
+                if shop is None:
+                    # 매장이 안 묶인 스태프 계정이 실제로 있다. 고를 것을
+                    # 주지 않는다 — 열어 두면 아무 매장이나 고를 수 있다.
+                    kwargs['queryset'] = related.objects.none()
+                else:
+                    kwargs['queryset'] = related.objects.filter(restaurant=shop)
+
+        # 자기 자신을 부모로 고르지 못하게 한다. 매장 안으로 좁혀도 A.parent=A
+        # 는 남는데, 하위 목록을 재귀로 따라가는 곳이 있어 거기서 무한으로
+        # 돈다 — 테넌시 버그를 재귀 버그로 바꾸는 꼴이다. 커스텀 화면
+        # (admin_views.py:259)은 이미 .exclude(id=...) 를 하고 있었다.
+        if db_field.name == 'parent' and 'queryset' in kwargs:
+            editing = request.resolver_match.kwargs.get('object_id') if request.resolver_match else None
+            if editing:
+                kwargs['queryset'] = kwargs['queryset'].exclude(pk=editing)
+
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_list_filter(self, request):
         if request.user.is_superuser:
@@ -98,25 +252,13 @@ class CategoryAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         return custom_urls + super().get_urls()
 
     def changelist_view(self, request, extra_context=None):
-        # 1. 관리 가능한 레스토랑 목록 가져오기 (Superuser용)
         restaurants = Restaurant.objects.all().order_by('name')
-        
-        # 2. 현재 선택된 레스토랑 가져오기
-        selected_restaurant = None
-        if request.user.is_superuser:
-            restaurant_id = request.GET.get('restaurant')
-            if restaurant_id:
-                selected_restaurant = Restaurant.objects.filter(id=restaurant_id).first()
-            if not selected_restaurant:
-                selected_restaurant = restaurants.first()
-        else:
-            if hasattr(request.user, 'profile') and request.user.profile.restaurant:
-                selected_restaurant = request.user.profile.restaurant
-        
-        # 3. 카테고리 트리 데이터 구성
+        selected_restaurant = selected_restaurant_for(request)
+
+        # 카테고리 트리 데이터 구성
         workspace_data = get_menu_workspace_data(selected_restaurant)
         
-        # 4. 컨텍스트 추가
+        # 컨텍스트 추가
         extra_context = extra_context or {}
         extra_context.update({
             'restaurants': restaurants if request.user.is_superuser else None,
@@ -133,8 +275,12 @@ class CategoryAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         try:
             data = json.loads(request.body)
             ids = data.get('ids', [])
+            # get_queryset 을 거친다. 화면은 id 만 보내오므로, 그 id 가 누구
+            # 것인지 여기서 안 보면 개발자도구로 숫자만 바꿔 남의 매장을
+            # 건드릴 수 있다. 목록에 안 보이는 것과 못 건드리는 것은 다르다.
+            mine = self.get_queryset(request)
             for index, cat_id in enumerate(ids):
-                Category.objects.filter(id=cat_id).update(priority=float(index))
+                mine.filter(id=cat_id).update(priority=float(index))
             return JsonResponse({'status': 'success'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
@@ -239,29 +385,47 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
             path('bulk-move/', self.admin_site.admin_view(self.bulk_move_view), name='menuitem-bulk-move'),
             path('<path:object_id>/duplicate/', self.admin_site.admin_view(self.duplicate_view), name='menuitem-duplicate'),
             path('<path:object_id>/toggle-available/', self.admin_site.admin_view(self.toggle_available_view), name='menuitem-toggle-available'),
+            path('import/', self.admin_site.admin_view(self.import_photos_view), name='menuitem-import-photos'),
         ]
         return custom_urls + super().get_urls()
 
-    def changelist_view(self, request, extra_context=None):
-        # 1. 관리 가능한 레스토랑 목록 가져오기 (Superuser용)
-        restaurants = Restaurant.objects.all().order_by('name')
-        
-        # 2. 현재 선택된 레스토랑 가져오기
-        selected_restaurant = None
+    def import_photos_view(self, request):
+        """
+        메뉴판 사진 등록. 화면과 규칙은 /<slug>/admin/ 쪽과 같은 것을 쓴다.
+
+        여기까지 온 계정은 admin_view 를 통과했으니 스태프인 것만 확실하다.
+        매장이 안 묶인 스태프 계정이 실제로 있고, 그 사람에게 조용히 첫 매장을
+        집어 주면 남의 매장 메뉴판이 우리에게 날아온다. 그래서 거절한다.
+        """
+        restaurant = selected_restaurant_for(request)
+        if restaurant is None:
+            raise PermissionDenied('관리할 매장이 없는 계정입니다.')
+
+        workspace = reverse('admin:menu_menuitem_changelist')
+        # 슈퍼유저는 매장을 골라서 들어온다. 그 선택을 안 물고 돌아가면
+        # 고른 매장과 돌아간 매장이 어긋난다.
         if request.user.is_superuser:
-            restaurant_id = request.GET.get('restaurant')
-            if restaurant_id:
-                selected_restaurant = Restaurant.objects.filter(id=restaurant_id).first()
-            if not selected_restaurant:
-                selected_restaurant = restaurants.first()
-        else:
-            if hasattr(request.user, 'profile') and request.user.profile.restaurant:
-                selected_restaurant = request.user.profile.restaurant
-        
-        # 3. 워크스페이스 데이터 구성
+            workspace += f'?restaurant={restaurant.id}'
+        return relay_menu_photos(
+            request,
+            restaurant,
+            'admin/menu_import_admin.html',
+            cancel_url=workspace,
+            success_url=workspace,
+            extra_context={
+                **self.admin_site.each_context(request),
+                'title': '메뉴판 사진으로 등록',
+            },
+        )
+
+    def changelist_view(self, request, extra_context=None):
+        restaurants = Restaurant.objects.all().order_by('name')
+        selected_restaurant = selected_restaurant_for(request)
+
+        # 워크스페이스 데이터 구성
         workspace_data = get_menu_workspace_data(selected_restaurant)
         
-        # 4. 컨텍스트 추가
+        # 컨텍스트 추가
         extra_context = extra_context or {}
         extra_context.update({
             'restaurants': restaurants if request.user.is_superuser else None,
@@ -278,8 +442,9 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         try:
             data = json.loads(request.body)
             ids = data.get('ids', [])
+            mine = self.get_queryset(request)   # 남의 매장 id 는 여기서 걸러진다
             for index, menu_id in enumerate(ids):
-                MenuItem.objects.filter(id=menu_id).update(priority=float(index))
+                mine.filter(id=menu_id).update(priority=float(index))
             return JsonResponse({'status': 'success'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
@@ -288,7 +453,7 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         if request.method != 'POST':
             return JsonResponse({'status': 'error', 'message': 'POST only'}, status=405)
         try:
-            original = MenuItem.objects.get(id=object_id)
+            original = self.get_queryset(request).get(id=object_id)
             pairings = list(original.pairings.all())
             original.pk = None
             original.id = None
@@ -329,8 +494,9 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         try:
             data = json.loads(request.body)
             ids = data.get('ids', [])
+            mine = self.get_queryset(request)
             for obj_id in ids:
-                original = MenuItem.objects.get(id=obj_id)
+                original = mine.get(id=obj_id)
                 pairings = list(original.pairings.all())
                 original.pk = None
                 original.id = None
@@ -352,7 +518,9 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         try:
             data = json.loads(request.body)
             ids = data.get('ids', [])
-            MenuItem.objects.filter(id__in=ids).delete()
+            # 가장 되돌리기 어려운 동작이다. 섞여 들어온 남의 매장 id 는
+            # 조용히 빠지고 내 것만 지워진다.
+            self.get_queryset(request).filter(id__in=ids).delete()
             return JsonResponse({'status': 'success'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
@@ -374,7 +542,9 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
                         if category.restaurant != request.user.profile.restaurant:
                             return JsonResponse({'status': 'error', 'message': '권한이 없습니다.'}, status=403)
             
-            MenuItem.objects.filter(id__in=ids).update(category=category)
+            # 고른 카테고리가 내 것인지는 위에서 봤다. 옮기는 대상이 누구
+            # 것인지도 봐야 한다 — 안 그러면 남의 메뉴가 내 카테고리로 온다.
+            self.get_queryset(request).filter(id__in=ids).update(category=category)
             return JsonResponse({'status': 'success'})
         except Category.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': '카테고리를 찾을 수 없습니다.'}, status=404)
@@ -390,15 +560,19 @@ class MenuItemAdmin(RestaurantFilterMixin, admin.ModelAdmin):
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
     list_display = ('restaurant', 'created_at')
+    readonly_fields = ('sync_ip_button',)
     fieldsets = (
+        # 2026-09-12 에 감췄다가 2026-09-20 에 되돌렸다. 그때는 저장만 되고
+        # 손님 화면에 닿지 않아 조용히 거짓말을 했는데, 이제 닿는다.
         ('카드 레이아웃 커스터마이징 설정', {
             'fields': ('category_card_layout_json', 'menu_card_layout_json'),
+            'description': '여기서 옮긴 배치는 저장하면 손님 화면에 그대로 반영됩니다.',
         }),
         ('기본 설정', {
             'fields': ('restaurant', 'logo_image', 'intro_image', 'intro_video', 'loading_video_2', 'show_manual_card', 'side_image')
         }),
         ('와이파이 및 결제 연동 설정', {
-            'fields': ('enable_wifi', 'wifi_ssid', 'wifi_password', 'wifi_security', 'restrict_by_ip', 'store_public_ip', 'restrict_by_wifi_ssid', 'disable_screenshots', 'enable_payhere', 'enable_cart', 'payhere_store_id', 'payhere_api_key'),
+            'fields': ('enable_wifi', 'wifi_ssid', 'wifi_password', 'wifi_security', 'restrict_by_ip', 'store_public_ip', 'sync_ip_button', 'restrict_by_wifi_ssid', 'disable_screenshots', 'enable_payhere', 'enable_cart', 'payhere_store_id', 'payhere_api_key'),
         }),
         ('색상 설정', {
             'fields': ('background_color', 'category_card_color', 'menu_card_color'),
@@ -446,9 +620,31 @@ class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
         }),
     )
     
+    def get_form(self, request, obj=None, **kwargs):
+        """
+        빌더에 깔 사진은 **지금 고치는 그 매장**의 것이어야 한다.
+
+        selected_restaurant_for(request) 는 슈퍼유저가 ?restaurant= 없이
+        들어오면 첫 매장을 준다. 그걸 쓰면 다른 매장 사진이 깔린 채로
+        배치를 맞추게 된다 — 화면에는 아무 표시도 안 남는다.
+        request 에 실어 보내는 이유는 formfield_for_dbfield 가 obj 를
+        못 받기 때문이고, request 는 요청마다 새것이라 섞일 일이 없다.
+        """
+        request._layout_restaurant = (
+            obj.restaurant if obj is not None else selected_restaurant_for(request)
+        )
+        return super().get_form(request, obj, **kwargs)
+
     def formfield_for_dbfield(self, db_field, request, **kwargs):
         if db_field.name in ['category_card_layout_json', 'menu_card_layout_json']:
-            kwargs['widget'] = LayoutBuilderWidget
+            kind = 'category' if db_field.name.startswith('category') else 'menu'
+            restaurant = getattr(request, '_layout_restaurant', None)
+            photoless, total = _photoless_count(restaurant, kind)
+            kwargs['widget'] = LayoutBuilderWidget(
+                sample_image_url=_sample_image_url(restaurant, kind),
+                photoless=photoless,
+                total=total,
+            )
         return super().formfield_for_dbfield(db_field, request, **kwargs)
 
     def has_add_permission(self, request):
@@ -458,6 +654,63 @@ class SiteSettingsAdmin(RestaurantFilterMixin, admin.ModelAdmin):
                 if SiteSettings.objects.filter(restaurant=request.user.profile.restaurant).exists():
                     return False
         return super().has_add_permission(request)
+
+    def get_urls(self):
+        # 매장 공인 IP를 현재 접속 IP로 동기화하는 커스텀 admin URL
+        custom = [
+            path(
+                '<path:object_id>/sync-store-ip/',
+                self.admin_site.admin_view(self.sync_store_ip),
+                name='menu_sitesettings_sync_store_ip',
+            ),
+        ]
+        return custom + super().get_urls()
+
+    def sync_store_ip(self, request, object_id, *args, **kwargs):
+        # 버튼을 누른 관리자의 현재 공인 IP를 store_public_ip에 저장한다.
+        obj = self.get_object(request, object_id)  # get_queryset 스코핑 → 타 매장 접근 차단
+        if obj is None:
+            self.message_user(request, '설정을 찾을 수 없습니다.', level=messages.ERROR)
+            return redirect('admin:menu_sitesettings_changelist')
+        if not self.has_change_permission(request, obj):
+            raise PermissionDenied
+
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        client_ip = x_forwarded_for.split(',')[0].strip() if x_forwarded_for else request.META.get('REMOTE_ADDR', '')
+        # ::ffff: IPv4-mapped IPv6 접두사 제거 (프론트 게이트 layout.tsx와 값 형식 일치)
+        if client_ip.startswith('::ffff:'):
+            client_ip = client_ip[7:]
+
+        if client_ip and client_ip not in ('127.0.0.1', '::1', 'localhost'):
+            obj.store_public_ip = client_ip
+            obj.save(update_fields=['store_public_ip'])
+            self.message_user(
+                request,
+                f'매장 공인 IP를 현재 접속 IP({client_ip})로 동기화했습니다.',
+                level=messages.SUCCESS,
+            )
+        else:
+            self.message_user(
+                request,
+                f'로컬/내부 접속(IP: {client_ip or "알 수 없음"})이라 동기화하지 않았습니다. '
+                f'매장 와이파이에 연결한 기기에서 다시 눌러 주세요.',
+                level=messages.WARNING,
+            )
+        return redirect('admin:menu_sitesettings_change', obj.pk)
+
+    def sync_ip_button(self, obj):
+        if not obj or not obj.pk:
+            return '설정을 먼저 저장한 뒤 사용할 수 있습니다.'
+        url = reverse('admin:menu_sitesettings_sync_store_ip', args=[obj.pk])
+        current = obj.store_public_ip or '(미설정)'
+        return format_html(
+            '<a class="button" href="{}" style="background:#3b82f6;color:#fff;">현재 접속 IP로 동기화</a>'
+            '<span style="margin-left:10px;color:#555;">저장된 매장 IP: <b>{}</b></span>'
+            '<p class="help" style="margin-top:6px;">매장 와이파이에 연결한 기기에서 이 버튼을 누르면 현재 공인 IP가 매장 IP로 저장됩니다. '
+            '위 <b>공인 IP 접속 제한</b>이 켜져 있으면, 이 IP로 접속할 때만 메뉴판이 보입니다.</p>',
+            url, current,
+        )
+    sync_ip_button.short_description = '매장 공인 IP 동기화'
 
 
 
@@ -469,4 +722,55 @@ class ContactSubmissionAdmin(admin.ModelAdmin):
     list_filter = ('plan', 'created_at')
 
 
+@admin.register(Subscription)
+class SubscriptionAdmin(admin.ModelAdmin):
+    """
+    구독을 손으로 볼 자리.
 
+    지금까지 등록되어 있지 않아서, 알림을 받고 partner 로 바꾸거나 기간을
+    미루려면 shell 을 열어야 했다.
+    """
+    list_display = ('restaurant', 'status', 'plan', 'current_period_end', 'photo_import_count')
+    list_filter = ('status', 'plan')
+    search_fields = ('restaurant__name', 'restaurant__slug')
+    autocomplete_fields = ('restaurant',)
+
+
+@admin.register(PaymentRequest)
+class PaymentRequestAdmin(admin.ModelAdmin):
+    """
+    통장과 대조하는 자리.
+
+    확인 액션이 넷이지만 하는 일은 기간만 다르고 같다. 기간 입력 페이지를
+    따로 거치게 하면 통장을 대조하다 말고 화면을 하나 더 넘겨야 해서,
+    목록에서 바로 끝나게 했다.
+    """
+    list_display = ('created_at', 'restaurant', 'depositor_name', 'amount', 'plan', 'status')
+    list_filter = ('status', 'plan')
+    search_fields = ('depositor_name', 'restaurant__name', 'restaurant__slug')
+    readonly_fields = ('created_at', 'confirmed_at', 'confirmed_by')
+    autocomplete_fields = ('restaurant',)
+    actions = ('confirm_1', 'confirm_3', 'confirm_6', 'confirm_12')
+
+    def _confirm(self, request, queryset, months):
+        opened = 0
+        for payment_request in queryset:
+            payment_request.confirm(months=months, user=request.user)
+            opened += 1
+        self.message_user(request, f'{opened}건을 {months}개월로 확인했습니다.')
+
+    @admin.action(description='입금 확인 · 1개월')
+    def confirm_1(self, request, queryset):
+        self._confirm(request, queryset, 1)
+
+    @admin.action(description='입금 확인 · 3개월')
+    def confirm_3(self, request, queryset):
+        self._confirm(request, queryset, 3)
+
+    @admin.action(description='입금 확인 · 6개월')
+    def confirm_6(self, request, queryset):
+        self._confirm(request, queryset, 6)
+
+    @admin.action(description='입금 확인 · 1년')
+    def confirm_12(self, request, queryset):
+        self._confirm(request, queryset, 12)

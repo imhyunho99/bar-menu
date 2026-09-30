@@ -1,10 +1,27 @@
 # menu/models.py
 
+from datetime import timedelta
+
+from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .utils import optimize_image
+from .utils import optimize_image, record_image_dimensions
+
+
+# 업로드된 파일은 관리자와 **같은 원점**(api.*)에서 서빙된다. 확장자를 안 보면
+# 폰트 자리에 .html 을 올려 그 원점에서 스크립트를 돌릴 수 있고, 그 스크립트는
+# 지원하러 남의 매장 설정을 열어 본 슈퍼유저의 세션에서 실행된다. 무료 가입
+# 한 번으로 관리자 전체가 넘어간다.
+#
+# 2026-09-25 적대적 검토에서 실제로 뚫렸다 — 관리자 폼으로 그냥 올라갔고
+# /media/fonts/<x>.html 이 content-type: text/html 로 내려왔다.
+#
+# nosniff 로는 못 막는다. 선언된 타입이 진짜 text/html 이라 스니핑 문제가
+# 아니다. 애초에 받지 않는 것이 유일한 방법이다.
+FONT_FILE_EXTENSIONS = ['woff2', 'woff', 'ttf', 'otf']
+VIDEO_FILE_EXTENSIONS = ['mp4', 'webm', 'mov', 'm4v']
 
 class Restaurant(models.Model):
     """
@@ -22,7 +39,12 @@ class Restaurant(models.Model):
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     restaurant = models.ForeignKey(Restaurant, on_delete=models.SET_NULL, null=True, blank=True, related_name='managers')
-    
+    # 결제 대행사가 붙기 전까지 청구는 사람이 한다. 그 사람이 연락할 수단을
+    # 가입 때 받아둔다. 필수로 만들면 가입 폼에서 이탈하므로 선택 입력이다 —
+    # 이메일은 username 으로 이미 받고 있어서 연락 자체는 끊기지 않는다.
+    phone = models.CharField(max_length=30, blank=True, default='', verbose_name="연락처")
+
+
     def __str__(self):
         return f"{self.user.username} - {self.restaurant.name if self.restaurant else 'No Restaurant'}"
 
@@ -32,6 +54,15 @@ class UserProfile(models.Model):
 def create_restaurant_settings(sender, instance, created, **kwargs):
     if created:
         SiteSettings.objects.create(restaurant=instance)
+        # 구독 없는 매장은 게이트가 잠그도록 바뀌었다(SubscriptionGateMiddleware).
+        # 어드민에서 손으로 매장을 만들고 구독을 깜빡하면 그 집 메뉴판이
+        # 이유 없이 캄캄해지므로, 매장이 생기는 모든 경로에서 같이 만든다.
+        #
+        # unpaid 로 시작한다. 이건 '고장' 이 아니라 무료 미리보기 계정이다 —
+        # 메뉴 등록과 디자인은 열려 있고, 손님 공개와 QR 만 입금 확인 뒤에 열린다.
+        # 날짜를 채우지 않는 것이 중요하다. 채우면 is_usable 의 마지막 날짜
+        # 분기로 떨어져 손님 화면이 공짜로 열린다.
+        Subscription.objects.create(restaurant=instance, status='unpaid')
 
 def default_category_layout():
     return {
@@ -50,8 +81,12 @@ def default_menu_layout():
             {"id": "menu_image", "name": "메뉴 이미지", "visible": True, "x": 0, "y": 0, "w": 100, "h": 50},
             {"id": "menu_name", "name": "메뉴명 (한글)", "visible": True, "x": 5, "y": 55, "w": 90, "h": 12},
             {"id": "menu_name_en", "name": "메뉴명 (영문)", "visible": True, "x": 5, "y": 68, "w": 90, "h": 8},
-            {"id": "menu_price", "name": "가격", "visible": True, "x": 5, "y": 78, "w": 90, "h": 10},
-            {"id": "menu_description", "name": "메뉴 설명", "visible": True, "x": 5, "y": 89, "w": 90, "h": 10}
+            {"id": "menu_price", "name": "가격", "visible": True, "x": 5, "y": 78, "w": 60, "h": 10},
+            # 장바구니 버튼과 노트는 빌더가 모르던 조각이다. custom 이 켜지면
+            # 빌더가 배치를 전부 정하므로, 여기 없으면 그 순간 화면에서 사라진다.
+            {"id": "cart_button", "name": "장바구니 버튼", "visible": True, "x": 70, "y": 78, "w": 25, "h": 10},
+            {"id": "menu_description", "name": "메뉴 설명", "visible": True, "x": 5, "y": 89, "w": 90, "h": 6},
+            {"id": "menu_notes", "name": "메뉴 노트", "visible": True, "x": 5, "y": 95, "w": 90, "h": 5}
         ]
     }
 
@@ -72,21 +107,34 @@ class SiteSettings(models.Model):
         blank=True,
         null=True,
         verbose_name="인트로 이미지",
-        help_text="메인 페이지에 표시될 인트로 이미지"
+        help_text="메인 페이지에 표시될 인트로 이미지",
     )
+
+    # 브라우저가 이미지 도착 전에 자리를 잡으려면 크기를 알아야 한다. 없으면
+    # 0 으로 잡아 뒀다가 도착하는 순간 아래 내용을 밀어낸다(CLS 0.777).
+    #
+    # Django 의 width_field/height_field 는 쓰지 않는다. 그 방식은 값이 비어
+    # 있는 동안 **행을 읽을 때마다 파일을 연다**(post_init). 메뉴 50개 페이지면
+    # 요청당 50번이고, 사라진 파일이 하나 있으면 목록 전체가 죽는다. 배포 직후
+    # 백필 전까지가 정확히 그 구간이다. 그래서 save() 에서 한 번 계산해 넣고
+    # 읽을 때는 컬럼만 본다.
+    intro_image_width = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    intro_image_height = models.PositiveIntegerField(null=True, blank=True, editable=False)
     intro_video = models.FileField(
         upload_to='site_videos/',
         blank=True,
         null=True,
         verbose_name="로딩 비디오",
-        help_text="첫 번째로 표시될 로딩 비디오 (MP4 파일)"
+        help_text="첫 번째로 표시될 로딩 비디오 (MP4 파일)",
+        validators=[FileExtensionValidator(VIDEO_FILE_EXTENSIONS)],
     )
     loading_video_2 = models.FileField(
         upload_to='site_videos/',
         blank=True,
         null=True,
         verbose_name="로딩 비디오2",
-        help_text="첫 번째 로딩 비디오 이후 재생될 두 번째 로딩 비디오 (화면 터치 시 스킵 가능)"
+        help_text="첫 번째 로딩 비디오 이후 재생될 두 번째 로딩 비디오 (화면 터치 시 스킵 가능)",
+        validators=[FileExtensionValidator(VIDEO_FILE_EXTENSIONS)],
     )
     show_manual_card = models.BooleanField(
         default=False,
@@ -98,8 +146,19 @@ class SiteSettings(models.Model):
         blank=True,
         null=True,
         verbose_name="사이드 이미지",
-        help_text="사이드 메뉴 등에 사용될 이미지"
+        help_text="사이드 메뉴 등에 사용될 이미지",
     )
+
+    # 브라우저가 이미지 도착 전에 자리를 잡으려면 크기를 알아야 한다. 없으면
+    # 0 으로 잡아 뒀다가 도착하는 순간 아래 내용을 밀어낸다(CLS 0.777).
+    #
+    # Django 의 width_field/height_field 는 쓰지 않는다. 그 방식은 값이 비어
+    # 있는 동안 **행을 읽을 때마다 파일을 연다**(post_init). 메뉴 50개 페이지면
+    # 요청당 50번이고, 사라진 파일이 하나 있으면 목록 전체가 죽는다. 배포 직후
+    # 백필 전까지가 정확히 그 구간이다. 그래서 save() 에서 한 번 계산해 넣고
+    # 읽을 때는 컬럼만 본다.
+    side_image_width = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    side_image_height = models.PositiveIntegerField(null=True, blank=True, editable=False)
     
     # WiFi 및 결제 설정
     wifi_ssid = models.CharField(max_length=100, blank=True, null=True, verbose_name="WiFi SSID")
@@ -146,70 +205,70 @@ class SiteSettings(models.Model):
     )
     
     # 메뉴명(한글) 설정
-    menu_name_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="메뉴명(한글) 폰트 파일")
+    menu_name_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="메뉴명(한글) 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     menu_name_color = models.CharField(max_length=7, blank=True, default='', verbose_name="메뉴명(한글) 색상", help_text="#ffffff")
     menu_name_size = models.IntegerField(blank=True, null=True, verbose_name="메뉴명(한글) 크기", help_text="픽셀 단위 (예: 18)")
     menu_name_bold = models.BooleanField(default=False, verbose_name="메뉴명(한글) 볼드")
     menu_name_italic = models.BooleanField(default=False, verbose_name="메뉴명(한글) 이탤릭")
     
     # 메뉴명(영문) 설정
-    menu_name_en_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="메뉴명(영문) 폰트 파일")
+    menu_name_en_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="메뉴명(영문) 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     menu_name_en_color = models.CharField(max_length=7, blank=True, default='', verbose_name="메뉴명(영문) 색상", help_text="#cccccc")
     menu_name_en_size = models.IntegerField(blank=True, null=True, verbose_name="메뉴명(영문) 크기", help_text="픽셀 단위 (예: 14)")
     menu_name_en_bold = models.BooleanField(default=False, verbose_name="메뉴명(영문) 볼드")
     menu_name_en_italic = models.BooleanField(default=False, verbose_name="메뉴명(영문) 이탤릭")
     
     # 가격 설정
-    menu_price_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="가격 폰트 파일")
+    menu_price_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="가격 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     menu_price_color = models.CharField(max_length=7, blank=True, default='', verbose_name="가격 색상", help_text="#ffffff")
     menu_price_size = models.IntegerField(blank=True, null=True, verbose_name="가격 크기", help_text="픽셀 단위 (예: 20)")
     menu_price_bold = models.BooleanField(default=False, verbose_name="가격 볼드")
     menu_price_italic = models.BooleanField(default=False, verbose_name="가격 이탤릭")
     
     # 메뉴 설명 설정
-    menu_description_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="메뉴 설명 폰트 파일")
+    menu_description_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="메뉴 설명 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     menu_description_color = models.CharField(max_length=7, blank=True, default='', verbose_name="메뉴 설명 색상", help_text="#aaaaaa")
     menu_description_size = models.IntegerField(blank=True, null=True, verbose_name="메뉴 설명 크기", help_text="픽셀 단위 (예: 14)")
     menu_description_bold = models.BooleanField(default=False, verbose_name="메뉴 설명 볼드")
     menu_description_italic = models.BooleanField(default=False, verbose_name="메뉴 설명 이탤릭")
 
     # 기타 사항 설정
-    menu_notes_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="기타 사항 폰트 파일")
+    menu_notes_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="기타 사항 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     menu_notes_color = models.CharField(max_length=7, blank=True, default='', verbose_name="기타 사항 색상", help_text="#888888")
     menu_notes_size = models.IntegerField(blank=True, null=True, verbose_name="기타 사항 크기", help_text="픽셀 단위 (예: 12)")
     menu_notes_bold = models.BooleanField(default=False, verbose_name="기타 사항 볼드")
     menu_notes_italic = models.BooleanField(default=False, verbose_name="기타 사항 이탤릭")
     
     # 카테고리명(한글) 설정
-    category_name_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="카테고리명(한글) 폰트 파일")
+    category_name_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="카테고리명(한글) 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     category_name_color = models.CharField(max_length=7, blank=True, default='', verbose_name="카테고리명(한글) 색상", help_text="#ffffff")
     category_name_size = models.IntegerField(blank=True, null=True, verbose_name="카테고리명(한글) 크기", help_text="픽셀 단위 (예: 18)")
     category_name_bold = models.BooleanField(default=False, verbose_name="카테고리명(한글) 볼드")
     category_name_italic = models.BooleanField(default=False, verbose_name="카테고리명(한글) 이탤릭")
     
     # 카테고리명(영문) 설정
-    category_name_en_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="카테고리명(영문) 폰트 파일")
+    category_name_en_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="카테고리명(영문) 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     category_name_en_color = models.CharField(max_length=7, blank=True, default='', verbose_name="카테고리명(영문) 색상", help_text="#cccccc")
     category_name_en_size = models.IntegerField(blank=True, null=True, verbose_name="카테고리명(영문) 크기", help_text="픽셀 단위 (예: 14)")
     category_name_en_bold = models.BooleanField(default=False, verbose_name="카테고리명(영문) 볼드")
     category_name_en_italic = models.BooleanField(default=False, verbose_name="카테고리명(영문) 이탤릭")
     
     # 추천 페어링명 설정
-    pairing_name_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링명 폰트 파일")
+    pairing_name_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링명 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     pairing_name_color = models.CharField(max_length=7, blank=True, default='', verbose_name="페어링명 색상", help_text="#ffffff")
     pairing_name_size = models.IntegerField(blank=True, null=True, verbose_name="페어링명 크기", help_text="픽셀 단위 (예: 14)")
     pairing_name_bold = models.BooleanField(default=False, verbose_name="페어링명 볼드")
     pairing_name_italic = models.BooleanField(default=False, verbose_name="페어링명 이탤릭")
 
     # 추천 페어링 설명 설정
-    pairing_description_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링 설명 폰트 파일")
+    pairing_description_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링 설명 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     pairing_description_color = models.CharField(max_length=7, blank=True, default='', verbose_name="페어링 설명 색상", help_text="#888888")
     pairing_description_size = models.IntegerField(blank=True, null=True, verbose_name="페어링 설명 크기", help_text="픽셀 단위 (예: 11)")
     pairing_description_bold = models.BooleanField(default=False, verbose_name="페어링 설명 볼드")
     pairing_description_italic = models.BooleanField(default=False, verbose_name="페어링 설명 이탤릭")
 
     # 추천 페어링 가격 설정
-    pairing_price_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링 가격 폰트 파일")
+    pairing_price_font = models.FileField(upload_to='fonts/', blank=True, null=True, verbose_name="페어링 가격 폰트 파일", validators=[FileExtensionValidator(FONT_FILE_EXTENSIONS)])
     pairing_price_color = models.CharField(max_length=7, blank=True, default='', verbose_name="페어링 가격 색상", help_text="#ffffff")
     pairing_price_size = models.IntegerField(blank=True, null=True, verbose_name="페어링 가격 크기", help_text="픽셀 단위 (예: 12)")
     pairing_price_bold = models.BooleanField(default=False, verbose_name="페어링 가격 볼드")
@@ -243,8 +302,10 @@ class SiteSettings(models.Model):
             self.logo_image = optimize_image(self.logo_image, max_width=192, quality=90)
         if self.intro_image:
             self.intro_image = optimize_image(self.intro_image, max_width=1200, quality=85)
+            record_image_dimensions(self, "intro_image")
         if self.side_image:
             self.side_image = optimize_image(self.side_image, max_width=800, quality=85)
+            record_image_dimensions(self, "side_image")
         super().save(*args, **kwargs)
 
 class Category(models.Model):
@@ -275,8 +336,19 @@ class Category(models.Model):
         upload_to='category_images/',
         blank=True,
         null=True,
-        verbose_name="카테고리 이미지"
+        verbose_name="카테고리 이미지",
     )
+
+    # 브라우저가 이미지 도착 전에 자리를 잡으려면 크기를 알아야 한다. 없으면
+    # 0 으로 잡아 뒀다가 도착하는 순간 아래 내용을 밀어낸다(CLS 0.777).
+    #
+    # Django 의 width_field/height_field 는 쓰지 않는다. 그 방식은 값이 비어
+    # 있는 동안 **행을 읽을 때마다 파일을 연다**(post_init). 메뉴 50개 페이지면
+    # 요청당 50번이고, 사라진 파일이 하나 있으면 목록 전체가 죽는다. 배포 직후
+    # 백필 전까지가 정확히 그 구간이다. 그래서 save() 에서 한 번 계산해 넣고
+    # 읽을 때는 컬럼만 본다.
+    category_image_width = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    category_image_height = models.PositiveIntegerField(null=True, blank=True, editable=False)
     # 사이드 이미지 숨김 여부
     hide_side_image = models.BooleanField(
         default=False,
@@ -298,6 +370,7 @@ class Category(models.Model):
     def save(self, *args, **kwargs):
         if self.category_image:
             self.category_image = optimize_image(self.category_image, max_width=600, quality=80)
+            record_image_dimensions(self, "category_image")
         super().save(*args, **kwargs)
 
 class MenuItem(models.Model):
@@ -351,8 +424,19 @@ class MenuItem(models.Model):
         upload_to='menu_images/',
         blank=True,
         null=True,
-        verbose_name="메뉴 이미지"
+        verbose_name="메뉴 이미지",
     )
+
+    # 브라우저가 이미지 도착 전에 자리를 잡으려면 크기를 알아야 한다. 없으면
+    # 0 으로 잡아 뒀다가 도착하는 순간 아래 내용을 밀어낸다(CLS 0.777).
+    #
+    # Django 의 width_field/height_field 는 쓰지 않는다. 그 방식은 값이 비어
+    # 있는 동안 **행을 읽을 때마다 파일을 연다**(post_init). 메뉴 50개 페이지면
+    # 요청당 50번이고, 사라진 파일이 하나 있으면 목록 전체가 죽는다. 배포 직후
+    # 백필 전까지가 정확히 그 구간이다. 그래서 save() 에서 한 번 계산해 넣고
+    # 읽을 때는 컬럼만 본다.
+    menu_image_width = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    menu_image_height = models.PositiveIntegerField(null=True, blank=True, editable=False)
 
     # 7. 우선순위
     priority = models.FloatField(
@@ -434,6 +518,7 @@ class MenuItem(models.Model):
     def save(self, *args, **kwargs):
         if self.menu_image:
             self.menu_image = optimize_image(self.menu_image, max_width=800, quality=80)
+            record_image_dimensions(self, "menu_image")
         if self.detail_image:
             self.detail_image = optimize_image(self.detail_image, max_width=1200, quality=85)
         super().save(*args, **kwargs)
@@ -459,6 +544,252 @@ class MenuItemPairing(models.Model):
         if self.image:
             self.image = optimize_image(self.image, max_width=300, quality=80)
         super().save(*args, **kwargs)
+
+
+class Subscription(models.Model):
+    """
+    매장 하나의 구독 상태.
+
+    결제 대행사는 아직 안 붙었다. 그래서 이 모델은 '누가 언제까지 쓸 수
+    있는가'만 알고, 돈을 걷는 방법은 모른다. 대행사가 붙을 때 채울 자리는
+    provider_* 세 필드뿐이고 나머지 상태 기계는 그대로 쓴다.
+    """
+
+    PLAN_CHOICES = [
+        ('entry', 'Entry'),
+        ('pro', 'Pro'),
+        ('premium', 'Premium'),
+    ]
+
+    # 월 구독료(원, 부가세 포함). 요금 페이지에서 본 금액과 결제 화면 금액이
+    # 다르면 그건 사고라, 값은 여기 하나만 두고 양쪽이 이것을 쓴다.
+    # frontend/src/lib/marketing-content.ts 의 PLANS 와 tests_pricing 이 대조한다.
+    PLAN_PRICES = {
+        'entry': 9_900,
+        'pro': 19_900,
+        'premium': 39_900,
+    }
+
+    # unpaid    : 아직 공개 전이거나 기간이 끝난 매장. 손님 화면은 닫혀 있고
+    #             메뉴 등록·디자인·미리보기는 기한 없이 열려 있다. 고장이 아니라
+    #             무료 티어다
+    # active    : 입금 확인까지 끝나 손님에게 공개된 상태
+    # past_due  : 결제 실패. 유예 기간 동안은 계속 열어 둔다
+    # canceled  : 해지됨
+    # partner   : 무제한 파트너. 결제도 만료도 없다
+    STATUS_CHOICES = [
+        ('unpaid', '미결제'),
+        ('active', '이용 중'),
+        ('past_due', '결제 실패'),
+        ('canceled', '해지'),
+        ('partner', '무제한 파트너'),
+    ]
+
+    # 날짜를 아예 보지 않고 통과시키는 상태. 셀프가입 이전부터 쓰던 매장들이
+    # 여기 속한다. active 로 올려두면 결제일이 지나는 순간 꺼지므로 따로 둔다.
+    UNLIMITED_STATUS = 'partner'
+
+    # 공개 전 매장에 주는 무료 사진 등록 횟수.
+    FREE_PHOTO_IMPORTS = 1
+
+    restaurant = models.OneToOneField(
+        Restaurant, on_delete=models.CASCADE, related_name='subscription', verbose_name="매장"
+    )
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default='entry', verbose_name="요금제")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unpaid', verbose_name="상태")
+
+    # 결제가 붙으면 대행사가 알려주는 다음 결제일. 그 전까지는 비어 있다.
+    current_period_end = models.DateTimeField(null=True, blank=True, verbose_name="이번 결제 주기 종료")
+    canceled_at = models.DateTimeField(null=True, blank=True, verbose_name="해지 시각")
+
+    # ── 결제 대행사가 붙을 때 채우는 자리 ──────────────────────────
+    # 어느 대행사인지는 여기 문자열로만 남긴다. 코드가 특정 회사를 알지
+    # 않도록 실제 호출은 menu/billing/ 의 provider 가 맡는다.
+    provider = models.CharField(max_length=30, blank=True, default='', verbose_name="결제 대행사")
+    provider_customer_id = models.CharField(max_length=200, blank=True, default='', verbose_name="대행사 고객 ID")
+    provider_subscription_id = models.CharField(max_length=200, blank=True, default='', verbose_name="대행사 구독 ID")
+    # 결제창을 띄우고 사용자가 돌아올 때까지만 들고 있는 값. 카카오페이는 승인이
+    # '돌아오는 길'에 일어나는데, 우리가 시작한 결제인지 확인할 근거가 이것뿐이다.
+    # 승인이 끝나면 비운다 — 같은 값으로 두 번 승인되지 않게.
+    pending_tid = models.CharField(max_length=64, blank=True, default='', verbose_name="진행 중 결제 번호")
+
+    # 사진으로 메뉴를 올린 횟수. 이 기능의 실체는 비전 API 가 아니라 사람의
+    # 손이라 무제한으로 열 수 없다. 매장 평생 누적이고 입금 확인이 되돌리지
+    # 않는다 — '무료 1회' 는 맛보기지 매달 주는 몫이 아니다. 다시 열어 줄
+    # 일이 생기면 admin 에서 0 으로 내린다.
+    photo_import_count = models.PositiveIntegerField(default=0, verbose_name="사진 등록 사용 횟수")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "구독"
+        verbose_name_plural = "구독 목록"
+
+    def __str__(self):
+        return f"{self.restaurant.name} · {self.get_plan_display()} ({self.get_status_display()})"
+
+    @property
+    def access_until(self):
+        """언제까지 열어 둘지. 대행사가 알려주기 전에는 비어 있다."""
+        return self.current_period_end
+
+    @property
+    def days_left(self):
+        from django.utils import timezone
+
+        until = self.access_until
+        if until is None:
+            return None
+        return max(0, (until - timezone.now()).days)
+
+    def menu_is_live(self):
+        """
+        손님이 지금 이 매장의 메뉴판을 실제로 볼 수 있는가.
+
+        is_usable 과 다르다. 게이트가 꺼져 있으면(ENFORCE_SUBSCRIPTION=False)
+        미결제 매장도 실제로는 열려 있다. 그때 사장님 화면에 '닫혀 있습니다'
+        라고 띄우면, 자기 QR 을 찍어보는 순간 들통나고 그다음부터는 배너를
+        아무도 믿지 않는다. 화면에 뭘 보여줄지는 이쪽으로 판단한다.
+        """
+        from django.conf import settings
+
+        if not getattr(settings, 'ENFORCE_SUBSCRIPTION', False):
+            return True
+        return self.is_usable()
+
+    def photo_import_allowed(self):
+        """
+        사진으로 메뉴를 올려도 되는가.
+
+        결제한 매장은 횟수를 아예 보지 않는다. 한 번 결제했다가 기간이
+        지난 매장은 카운터가 이미 차 있어 무료 1회가 다시 생기지 않는다.
+
+        menu_is_live 가 아니라 is_usable 로 본다. 사진을 정리하는 데 드는 건
+        우리 시간이고, 그건 게이트를 켰든 껐든 같다. menu_is_live 로 보면
+        게이트가 꺼져 있는 동안 전원이 무제한이 된다.
+        """
+        if self.is_usable():
+            return True
+        return self.photo_import_count < self.FREE_PHOTO_IMPORTS
+
+    def is_usable(self):
+        """
+        손님에게 메뉴판을 보여줘도 되는 상태인가.
+
+        상태가 먼저 결정하고 날짜는 그 다음이다. 날짜부터 보면 아무 날짜도
+        없는 구독(=갓 가입해 결제 전인 매장)이 통과해 버린다. 체험이 있던
+        시절엔 늘 trial_ends_at 이 차 있어서 드러나지 않던 구멍이다.
+
+        past_due 를 열어 두는 건 의도적이다. 카드 한 번 실패했다고 영업
+        중인 가게의 메뉴판을 꺼버리면 그게 더 큰 사고다.
+
+        canceled 도 날짜를 본다. 예전에는 해지하는 순간 손님 화면이 닫혔다 —
+        이미 받은 돈만큼의 기간이 남아 있어도 그랬다. 영업 중에 사장님이
+        '다음 달부터 안 쓴다' 는 뜻으로 눌렀다가 그날 장사가 멈춘다.
+        받은 기간까지는 열어 두고, 그 뒤에 닫힌다.
+
+        날짜가 아예 없는 canceled 는 닫는다. 한 번도 낸 적 없이 해지한
+        경우라, 열어 둘 근거가 없다.
+        """
+        from django.utils import timezone
+
+        if self.status == self.UNLIMITED_STATUS:
+            return True
+        if self.status == 'unpaid':
+            return False
+        if self.status == 'past_due':
+            return True
+
+        until = self.access_until
+        return until is not None and until > timezone.now()
+
+
+class PaymentRequest(models.Model):
+    """
+    사장님이 "입금했습니다" 하고 남기는 줄.
+
+    통장에는 입금자명만 찍힌다. 상호와 다른 경우가 대부분이라, 그 이름을
+    매장에 이어 붙일 근거가 없으면 누가 보낸 돈인지 알 수 없다. 이 모델이
+    그 근거다.
+
+    상태를 바꾸는 일은 confirm() 하나로 모은다. admin 액션이 네 개(1·3·6·12
+    개월)지만 하는 일은 기간만 다르고 같다.
+    """
+
+    STATUS_CHOICES = [
+        ('pending', '확인 대기'),
+        ('confirmed', '확인됨'),
+        ('rejected', '반려'),
+    ]
+
+    restaurant = models.ForeignKey(
+        Restaurant, on_delete=models.CASCADE,
+        related_name='payment_requests', verbose_name="매장",
+    )
+    plan = models.CharField(max_length=20, choices=Subscription.PLAN_CHOICES, verbose_name="요금제")
+    depositor_name = models.CharField(max_length=50, verbose_name="입금자명")
+    amount = models.PositiveIntegerField(verbose_name="입금액")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="상태",
+    )
+    note = models.TextField(blank=True, default='', verbose_name="메모")
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="신청 일시")
+    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name="확인 일시")
+    confirmed_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        verbose_name="확인한 사람",
+    )
+
+    class Meta:
+        verbose_name = "입금 신청"
+        verbose_name_plural = "입금 신청 목록"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.restaurant.name} · {self.depositor_name} · {self.amount:,}원"
+
+    def confirm(self, months, user):
+        """
+        입금을 확인하고 매장을 연다.
+
+        기존 만료일이 남아 있으면 거기에 더한다. 오늘부터 세면 만료 전에
+        미리 낸 사람의 남은 날을 먹는다. 반대로 이미 지난 만료일에 더하면
+        여전히 과거라서, 둘 중 나중 것을 기준으로 잡는다.
+
+        이미 확인된 신청은 아무것도 하지 않는다 — 목록에서 두 번 누르는
+        일이 실제로 일어나고, 그때 기간이 두 배가 되면 안 된다.
+
+        파트너는 상태를 내리지 않는다. active 로 바꾸면 한 달 뒤 영구
+        무제한이어야 할 가게가 꺼진다.
+
+        한 달은 달력이 아니라 30일이다. dateutil 을 얹지 않으려고 그랬다 —
+        청구가 수동이라 며칠 오차는 문제가 되지 않고, RAM 1GB 미만인 운영
+        인스턴스에 패키지를 하나 더 얹는 값이 더 비싸다.
+        """
+        from django.utils import timezone
+
+        subscription = self.restaurant.subscription
+        if self.status == 'confirmed':
+            return subscription
+
+        now = timezone.now()
+
+        if subscription.status != Subscription.UNLIMITED_STATUS:
+            base = subscription.current_period_end
+            if base is None or base < now:
+                base = now
+            subscription.status = 'active'
+            subscription.plan = self.plan
+            subscription.current_period_end = base + timedelta(days=30 * months)
+            subscription.save(update_fields=['status', 'plan', 'current_period_end', 'updated_at'])
+
+        self.status = 'confirmed'
+        self.confirmed_at = now
+        self.confirmed_by = user
+        self.save(update_fields=['status', 'confirmed_at', 'confirmed_by'])
+        return subscription
 
 
 class ContactSubmission(models.Model):

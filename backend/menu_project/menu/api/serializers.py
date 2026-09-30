@@ -69,20 +69,55 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class CategoryDetailSerializer(CategorySerializer):
     """카테고리 상세 — 하위 카테고리 목록 포함"""
-    sub_categories = CategorySerializer(many=True, read_only=True)
+    sub_categories = serializers.SerializerMethodField()
     menu_items = serializers.SerializerMethodField()
 
     class Meta(CategorySerializer.Meta):
         fields = CategorySerializer.Meta.fields + ['sub_categories', 'menu_items']
 
+    def get_sub_categories(self, obj):
+        """
+        **같은 매장의** 하위만 준다.
+
+        역참조를 그냥 믿으면, 남의 매장 카테고리가 parent 로 이 행을 가리키는
+        순간 그 이름이 손님 화면에 하위 카테고리로 뜬다. 게다가 하위가
+        생겼다는 이유로 아래 get_menu_items 가 빈 목록을 주므로, 원래 있던
+        **메뉴가 통째로 사라진다**.
+
+        admin 폼 쪽은 이미 막았지만(RestaurantFilterMixin), 폼을 안 거치는
+        길이 남아 있다 — ORM, import_csv, 픽스처, 앞으로 생길 API. 그쪽으로
+        들어온 값이라도 손님 화면에는 아무 일이 없어야 한다.
+        """
+        return CategorySerializer(self._own_children(obj), many=True, context=self.context).data
+
+    @staticmethod
+    def _own_children(obj):
+        """
+        같은 매장의 하위만. **파이썬에서 거른다.**
+
+        `.filter()` 를 쓰면 prefetch 캐시를 버리고 쿼리를 다시 낸다. 이 프로젝트가
+        예전에 같은 함정으로 N+1 을 만들었고, tests_api_queries 가 쿼리 수를
+        못박아 두고 있어서 실제로 그 테스트가 잡아냈다.
+        """
+        return [c for c in obj.sub_categories.all() if c.restaurant_id == obj.restaurant_id]
+
     def get_menu_items(self, obj):
-        """최하위 카테고리일 때만 메뉴 아이템 반환"""
-        if not obj.sub_categories.exists():
+        """
+        최하위 카테고리일 때만 메뉴 아이템 반환.
+
+        페어링을 같이 끌어온다. 안 걸면 메뉴마다 한 번씩 나가서, 메뉴 121개
+        짜리 카테고리에서 쿼리가 114번이었다 — 손님이 카테고리를 누를 때마다
+        도는 경로라 메뉴가 많은 가게일수록 그대로 느려진다.
+        """
+        # '하위가 있는가' 도 같은 매장 기준으로 센다. 남의 매장 카테고리가
+        # 이 행을 parent 로 가리키면 exists() 가 참이 되어, 하위 목록은
+        # 비어 있는데 **메뉴만 사라지는** 상태가 된다. 피해의 본체가 여기다.
+        if not self._own_children(obj):
             items = MenuItem.objects.filter(
                 category=obj,
                 is_available=True,
                 restaurant=obj.restaurant
-            ).order_by('priority', 'name')
+            ).prefetch_related('pairings').order_by('priority', 'name')
             return MenuItemSerializer(items, many=True, context=self.context).data
         return []
 
@@ -96,7 +131,22 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'name_en', 'priority', 'parent', 'category_image', 'hide_side_image', 'sub_categories']
 
     def get_sub_categories(self, obj):
-        children = obj.sub_categories.all().order_by('priority', 'name')
+        """
+        자식 카테고리. 미리 받아 둔 묶음이 있으면 그걸 쓴다.
+
+        예전에는 여기서 obj.sub_categories.all().order_by(...) 를 불렀다.
+        .order_by() 는 prefetch 캐시를 버리기 때문에 카테고리마다 쿼리가
+        한 번씩 나갔다 — 24개짜리 매장에서 29번. 코드만 봐서는 prefetch 가
+        걸려 있으니 괜찮아 보이는 게 이 함정의 고약한 점이다.
+
+        children_by_parent 가 없을 때의 폴백은 남겨 둔다. 느리지만 틀리지는
+        않는다 — 이 직렬화기를 다른 곳에서 쓰게 되는 날 조용히 비는 것보다 낫다.
+        """
+        children_by_parent = self.context.get('children_by_parent')
+        if children_by_parent is None:
+            children = obj.sub_categories.all().order_by('priority', 'name')
+        else:
+            children = children_by_parent.get(obj.id, [])
         return CategoryTreeSerializer(children, many=True, context=self.context).data
 
 
@@ -127,7 +177,7 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
             'show_manual_card', 'side_image',
             'category_card_layout_json', 'menu_card_layout_json',
             'background_color', 'category_card_color', 'menu_card_color',
-            'wifi_ssid', 'wifi_password', 'wifi_security', 'enable_wifi', 'enable_payhere', 'enable_cart', 'payhere_store_id', 'restrict_by_ip', 'restrict_by_wifi_ssid', 'disable_screenshots',
+            'wifi_ssid', 'wifi_password', 'wifi_security', 'enable_wifi', 'enable_payhere', 'enable_cart', 'payhere_store_id', 'restrict_by_ip', 'store_public_ip', 'restrict_by_wifi_ssid', 'disable_screenshots',
             # 메뉴명(한글)
             'menu_name_font_url', 'menu_name_color', 'menu_name_size',
             'menu_name_bold', 'menu_name_italic',
@@ -225,9 +275,21 @@ class RestaurantSerializer(serializers.ModelSerializer):
 class RestaurantDetailSerializer(RestaurantSerializer):
     """레스토랑 상세 — SiteSettings 포함"""
     site_settings = serializers.SerializerMethodField()
+    menu_is_live = serializers.SerializerMethodField()
 
     class Meta(RestaurantSerializer.Meta):
-        fields = RestaurantSerializer.Meta.fields + ['site_settings']
+        fields = RestaurantSerializer.Meta.fields + ['site_settings', 'menu_is_live']
+
+    def get_menu_is_live(self, obj):
+        """
+        손님에게 실제로 열려 있는가.
+
+        미리보기 워터마크가 이걸 본다. 토큰이 있느냐만 보면, 결제하고 열린
+        뒤에도 쿠키에 남은 토큰 때문에 최대 하루 동안 자기 영업 중인
+        메뉴판에서 '손님에게는 보이지 않습니다' 를 읽게 된다.
+        """
+        subscription = getattr(obj, 'subscription', None)
+        return bool(subscription and subscription.menu_is_live())
 
     def get_site_settings(self, obj):
         settings = SiteSettings.objects.filter(restaurant=obj).first()

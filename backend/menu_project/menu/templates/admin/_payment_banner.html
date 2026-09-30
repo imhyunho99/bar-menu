@@ -1,0 +1,34 @@
+{% comment %}
+사장님에게 손님 화면의 상태를 알린다.
+
+사장님이 메뉴를 다 채우고 QR 까지 인쇄한 뒤에야 손님이 아무것도 못 본다는
+사실을 알게 되는 사고를 막는다. menu_is_live 와 subscription 을 넘겨주는
+화면에서만 뜬다.
+
+체험이 폐지되면서 알릴 상태가 둘로 줄었다. 아직 공개 전(무료 미리보기)과,
+공개했다가 기간이 끝난 것이다. 둘을 한 문구로 뭉치면 아직 시작도 안 한
+사장님이 '닫혔다' 는 말을 듣고 고장인 줄 안다 — 그 사장님은 아무것도 잘못한
+게 없고 할 일은 '열기' 지 '되살리기' 가 아니다.
+
+menu_is_live 가 먼저다. 게이트가 꺼져 있으면 미결제 매장도 실제로는 열려
+있으므로, 그때 무슨 말이든 하면 사장님이 자기 QR 을 찍어보는 순간 들통난다.
+{% endcomment %}
+{% if not menu_is_live %}
+    {% if subscription.status == 'unpaid' and not subscription.current_period_end %}
+    <div class="payment-banner">
+        <div class="payment-banner-text">
+            <strong>아직 손님에게 공개되지 않았습니다</strong>
+            <span>메뉴 등록과 디자인은 기한 없이 무료입니다. 미리보기로 실제 화면을 확인하시고, 공개할 준비가 되시면 입금 안내를 눌러 주세요.</span>
+        </div>
+        <a class="payment-banner-btn" href="{{ billing_url }}">입금 안내 보기</a>
+    </div>
+    {% else %}
+    <div class="payment-banner">
+        <div class="payment-banner-text">
+            <strong>이용 기간이 끝나 손님 화면이 닫혔습니다</strong>
+            <span>지금은 손님이 메뉴판 주소로 들어와도 메뉴가 보이지 않습니다. 관리 화면과 등록하신 메뉴는 그대로 남아 있습니다.</span>
+        </div>
+        <a class="payment-banner-btn" href="{{ billing_url }}">연장 입금 안내</a>
+    </div>
+    {% endif %}
+{% endif %}

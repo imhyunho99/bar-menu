@@ -3,9 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import type { MenuItem as MenuItemType } from '@/lib/types';
 import { useRestaurant } from '@/app/[restaurantSlug]/context';
+import { isCustomLayout, type CardLayout } from '@/lib/layout';
+import MenuCardLayout from './MenuCardLayout';
 
-/** nl2br: 줄바꿈을 <br>로 변환 */
-function Nl2br({ text }: { text: string | null | undefined }) {
+/** nl2br: 줄바꿈을 <br>로 변환. MenuCardLayout 도 같은 것을 쓴다. */
+export function Nl2br({ text }: { text: string | null | undefined }) {
   if (!text) return null;
   return <>{text.split('\n').map((line, i) => <span key={i}>{line}{i < text.split('\n').length - 1 && <br />}</span>)}</>;
 }
@@ -88,7 +90,13 @@ function DetailModal({ item, opacity, onClose }: {
 }
 
 // ===== MenuCard =====
-export default function MenuCard({ item }: { item: MenuItemType }) {
+export default function MenuCard({
+  item,
+  layout,
+}: {
+  item: MenuItemType;
+  layout?: CardLayout | null;
+}) {
   const { restaurant } = useRestaurant();
   const enableCart = restaurant.site_settings?.enable_cart ?? false;
 
@@ -151,6 +159,41 @@ export default function MenuCard({ item }: { item: MenuItemType }) {
   };
 
   const mode = item.display_mode;
+
+  // custom 이면 display_mode 를 보지 않는다. 주인이 둘이면 '이미지를 보이게
+  // 놓았는데 안 나온다' 가 생기고, 그걸 설명할 자리가 화면에 없다.
+  if (isCustomLayout(layout)) {
+    return (
+      <>
+        {/*
+          itemRef 가 여기에도 있어야 한다. 위 useEffect 가 #menu-<id> 해시와
+          ?target= 을 보고 이 ref 로 스크롤·하이라이트를 한다. 기본 분기에만
+          달려 있어서, 배치를 고친 매장은 검색 결과를 눌러도 화면이 그대로
+          있었다 — 손님은 누른 메뉴를 직접 찾아 내려가야 했다.
+        */}
+        <div ref={itemRef} onClick={handleItemClick} data-detail={item.enable_detail_view ? 'true' : undefined}>
+          <MenuCardLayout
+            item={item}
+            layout={layout as CardLayout}
+            enableCart={enableCart}
+            onImageClick={handleExpandClick}
+          />
+        </div>
+        {lightboxOpen && item.menu_image && (
+          <Lightbox
+            src={item.menu_image}
+            alt={item.name}
+            style={item.lightbox_style}
+            opacity={item.lightbox_opacity}
+            onClose={() => setLightboxOpen(false)}
+          />
+        )}
+        {detailOpen && (
+          <DetailModal item={item} opacity={item.lightbox_opacity} onClose={() => setDetailOpen(false)} />
+        )}
+      </>
+    );
+  }
 
   return (
     <>

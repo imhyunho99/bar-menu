@@ -1,26 +1,44 @@
+@import url('brand.css');
+
+/* ─────────────────────────────────────────────────────────────
+   사장님 관리 화면.
+
+   2026-08-23 에 다크 슬레이트(#0f172a) + 파랑(#3b82f6) 에서 랜딩과 같은
+   흰 갤러리 톤으로 옮겼다. 사장님은 랜딩에서 가입해 여기로 들어온다.
+   그 사이에 화면이 딴 세상이 되면 "여기가 맞나" 하고 멈춘다.
+
+   아래 --admin-* 는 지우지 않고 brand.css 토큰으로 다시 묶었다. 이 파일이
+   변수를 63곳에서 쓰고 있어서, 값만 바꾸는 편이 491줄을 다시 쓰는 것보다
+   훨씬 안전하다. 새 코드는 --ink/--ash/--line 을 직접 쓰면 된다.
+   ───────────────────────────────────────────────────────────── */
+
 :root {
-    /* Color Palette - Modern Dark Theme */
-    --admin-bg-color: #0f172a; /* Slate 900 */
-    --admin-card-bg: #1e293b; /* Slate 800 */
-    --admin-text-primary: #f8fafc; /* Slate 50 */
-    --admin-text-secondary: #94a3b8; /* Slate 400 */
-    --admin-border-color: #334155; /* Slate 700 */
-    
-    --admin-primary: #3b82f6; /* Blue 500 */
-    --admin-primary-hover: #2563eb; /* Blue 600 */
-    --admin-danger: #ef4444; /* Red 500 */
-    --admin-danger-hover: #dc2626; /* Red 600 */
-    --admin-success: #10b981; /* Emerald 500 */
-    
-    --admin-radius: 8px;
-    --admin-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --admin-bg-color: var(--white);
+    --admin-card-bg: var(--white);
+    --admin-text-primary: var(--ink);
+    --admin-text-secondary: var(--ash);
+    --admin-border-color: var(--line);
+
+    /* 파랑을 앰버로 바꾼다. 랜딩에 색은 하나뿐이고, 그 절제가 흰 바탕을
+       비어 보이지 않게 만든다. 여기서 파랑을 남기면 강조가 둘이 된다. */
+    --admin-primary: var(--amber);
+    --admin-primary-hover: #8a5409;
+    --admin-danger: var(--danger);
+    --admin-danger-hover: #8f1e17;
+    --admin-success: var(--ok);
+
+    --admin-radius: var(--radius);
+    /* 그림자를 없앤다. 랜딩은 선으로만 면을 나눈다. */
+    --admin-shadow: none;
     --admin-transition: all 0.2s ease-in-out;
 }
 
 body {
     background-color: var(--admin-bg-color);
     color: var(--admin-text-primary);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--font-body);
+    word-break: keep-all;
+    -webkit-font-smoothing: antialiased;
     margin: 0;
     padding: 0;
     line-height: 1.6;
@@ -85,7 +103,7 @@ body {
 }
 
 .admin-table th {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--paper);
     color: var(--admin-text-secondary);
     font-weight: 600;
     text-transform: uppercase;
@@ -108,7 +126,7 @@ body {
 }
 
 .admin-table tr:hover td {
-    background-color: rgba(255, 255, 255, 0.02);
+    background-color: var(--paper);
 }
 
 /* Buttons */
@@ -117,7 +135,7 @@ body {
     align-items: center;
     justify-content: center;
     padding: 10px 20px;
-    border-radius: var(--admin-radius);
+    border-radius: var(--pill);
     font-weight: 500;
     font-size: 0.95rem;
     text-decoration: none;
@@ -135,7 +153,7 @@ body {
 .admin-btn-primary:hover {
     background-color: var(--admin-primary-hover);
     transform: translateY(-1px);
-    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5);
+    box-shadow: 0 4px 6px -1px rgba(166, 101, 11, 0.45);
 }
 
 .admin-btn-danger {
@@ -156,7 +174,7 @@ body {
 }
 
 .admin-btn-secondary:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--paper);
     color: var(--admin-text-primary);
     border-color: var(--admin-text-secondary);
 }
@@ -199,7 +217,7 @@ body {
 .admin-form textarea {
     width: 100%;
     padding: 12px 16px;
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: rgba(10, 10, 11, 0.05);
     border: 1px solid var(--admin-border-color);
     border-radius: var(--admin-radius);
     color: var(--admin-text-primary);
@@ -213,7 +231,7 @@ body {
 .admin-form textarea:focus {
     outline: none;
     border-color: var(--admin-primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgba(166, 101, 11, 0.08);
 }
 
 .admin-form textarea {
@@ -243,7 +261,7 @@ body {
     background-color: var(--admin-card-bg);
     padding: 40px;
     border-radius: var(--admin-radius);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 10px 25px -5px rgba(10, 10, 11, 0.06);
     border: 1px solid var(--admin-border-color);
 }
 
@@ -254,14 +272,146 @@ body {
 }
 
 .admin-error {
-    background-color: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    background-color: var(--danger-bg);
+    border: 1px solid rgba(179, 38, 30, 0.18);
     color: var(--admin-danger);
     padding: 12px;
     border-radius: var(--admin-radius);
     margin-bottom: 20px;
     font-size: 0.9rem;
     text-align: center;
+}
+
+
+/*
+ * 결제 화면 (admin/billing.html).
+ * 전자결제 심사는 상품명·판매가격·결제버튼이 한 화면에 함께 보이는지 본다.
+ * 그래서 요금제를 버튼 한 줄이 아니라 가격이 큰 카드로 세운다.
+ */
+.plan-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.plan-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 20px;
+    border: 1px solid var(--admin-border-color);
+    border-radius: var(--admin-radius);
+    background-color: var(--paper);
+}
+
+.plan-card-current {
+    border-color: var(--admin-primary);
+}
+
+.plan-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.plan-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--admin-primary);
+    border: 1px solid var(--admin-primary);
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+
+.plan-price {
+    color: var(--admin-text-primary);
+}
+
+.plan-price strong {
+    font-size: 1.9rem;
+    letter-spacing: -0.02em;
+}
+
+.plan-per,
+.plan-note {
+    color: var(--admin-text-secondary);
+    font-size: 0.85rem;
+}
+
+.plan-note {
+    margin: 0;
+}
+
+.plan-agree {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--admin-text-secondary);
+    line-height: 1.5;
+    cursor: pointer;
+}
+
+.plan-agree input {
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.plan-agree a {
+    color: var(--admin-primary);
+}
+
+.plan-btn {
+    margin-top: auto;
+    width: 100%;
+}
+
+.recurring-terms {
+    margin-top: 28px;
+    padding-top: 22px;
+    border-top: 1px solid var(--admin-border-color);
+}
+
+.recurring-terms h3 {
+    margin: 0 0 14px;
+    font-size: 0.95rem;
+}
+
+.recurring-terms dl {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 10px 20px;
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.6;
+}
+
+.recurring-terms dt {
+    color: var(--admin-text-secondary);
+    font-weight: 600;
+}
+
+.recurring-terms dd {
+    margin: 0;
+    color: var(--admin-text-primary);
+}
+
+.recurring-terms a {
+    color: var(--admin-primary);
+}
+
+@media (max-width: 560px) {
+    .recurring-terms dl {
+        grid-template-columns: 1fr;
+        gap: 4px 0;
+    }
+
+    .recurring-terms dd {
+        margin-bottom: 10px;
+    }
 }
 
 /* Responsive */
@@ -292,4 +442,17 @@ body {
         padding: 12px;
         white-space: nowrap;
     }
+}
+
+
+/* 메뉴판 사진 업로드 — 고른 장수 표시.
+   필수 안내가 아니라 확인용이라 조용히 둔다. 한도를 넘겼을 때만 눈에 띈다. */
+.import-picked {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: var(--admin-text-secondary, #6c6c74);
+}
+.import-picked-over {
+    color: var(--admin-danger, #b0341f);
+    font-weight: 600;
 }

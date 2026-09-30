@@ -1,4 +1,8 @@
-import { getRestaurant, getCategoryTree } from '@/lib/api';
+import { getRestaurant, getCategoryTree, isMenuClosed, isTooBusy, previewToken } from '@/lib/api.server';
+import { appUrl } from '@/lib/site';
+import MenuNotOpen from '@/components/MenuNotOpen';
+import PreviewBanner from '@/components/PreviewBanner';
+import MenuTooBusy from '@/components/MenuTooBusy';
 import { buildCSSVariables, buildFontFaces } from '@/lib/styles';
 import type { RestaurantDetail, CategoryTree } from '@/lib/types';
 import { RestaurantProvider } from './context';
@@ -19,8 +23,15 @@ export default async function RestaurantLayout({
   const { restaurantSlug } = await params;
 
   if (restaurantSlug === 'admin') {
-    redirect('http://localhost:8000/admin/');
+    // 호스트를 여기서 적지 않는다. 예전에는 localhost:8000 이 박혀 있어서,
+    // 운영에서 /admin 을 연 사람이 **자기 컴퓨터의** 8000 번 포트로 보내졌다.
+    // appUrl 이 호스트를 아는 유일한 자리다.
+    redirect(appUrl('/admin/'));
   }
+
+  // 402 분기보다 먼저 읽어야 한다. 미리보기로 들어왔는지는 그 분기에서도
+  // 필요하고, layout 은 searchParams 를 못 받아 헤더가 유일한 통로다.
+  const isPreview = (await previewToken()).length > 0;
 
   let restaurant: RestaurantDetail;
   let categoryTree: CategoryTree[];
@@ -30,7 +41,18 @@ export default async function RestaurantLayout({
       getRestaurant(restaurantSlug),
       getCategoryTree(restaurantSlug),
     ]);
-  } catch {
+  } catch (error) {
+    // 결제 전 매장(402)은 없는 매장이 아니다. 여기서 '/' 로 보내면 매장 QR 을
+    // 찍은 손님이 bar-menu 영업 페이지에 떨어진다. 레이아웃이 페이지보다 먼저
+    // 돌기 때문에, 이 분기가 없으면 페이지 쪽 처리는 실행되지도 않는다.
+    if (isMenuClosed(error)) {
+      return <MenuNotOpen />;
+    }
+    // 붐벼서 잠깐 막힌 것은 '없는 매장' 이 아니다. '/' 로 보내면 QR 을 찍은
+    // 손님이 메뉴판 대신 영업 페이지를 본다.
+    if (isTooBusy(error)) {
+      return <MenuTooBusy />;
+    }
     redirect('/');
   }
 
@@ -60,14 +82,28 @@ export default async function RestaurantLayout({
     const ipMatches = clientIp === settings.store_public_ip;
 
     if (!isLocal && !ipMatches) {
-      return <WifiRestrictionBlock settings={settings} clientIp={clientIp} />;
+      // 막힌 사람에게 매장 공인 IP를 주지 않는다. 아래 제거 코드가 이 return
+      // **뒤에** 있어서, 하필 통과 못한 사람이 받는 화면에만 그 값이 그대로
+      // 실려 나갔다. 게이트를 우회하려는 사람에게 정답을 알려 주는 셈이다.
+      // SSID와 비밀번호는 남긴다 — 그 와이파이에 접속하라는 안내가 이 화면의
+      // 용건이라, 그건 빼면 화면이 할 말을 잃는다.
+      settings.store_public_ip = null;
+      return <WifiRestrictionBlock settings={settings} clientIp={clientIp} slug={restaurantSlug} />;
     }
   }
+
+  // 매장 공인 IP는 서버 사이드 대조에만 필요. 클라이언트 컨텍스트로 넘기기 전에 제거해
+  // (1) 페이지 소스에 매장 IP가 노출되지 않게 하고 (2) X-Forwarded-For 위조 우회를 어렵게 한다.
+  if (settings) {
+    settings.store_public_ip = null;
+  }
+
   const cssVars = buildCSSVariables(settings);
   const fontFaces = buildFontFaces(settings);
 
   return (
     <>
+      {isPreview && !restaurant.menu_is_live && <PreviewBanner />}
       {(cssVars || fontFaces) && (
         <style dangerouslySetInnerHTML={{ __html: `${fontFaces}\n${cssVars}` }} />
       )}

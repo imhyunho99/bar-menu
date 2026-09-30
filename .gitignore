@@ -95,3 +95,8 @@ node_modules/
 
 # Playwright MCP 산출물 (스크린샷·페이지 스냅샷). 레포에 들어갈 이유가 없다.
 .playwright-mcp/
+
+# 작업 중 찍은 스크린샷·메모. 루트에 그대로 커밋된 적이 있다
+# (login.png 18KB, admin-sitesettings.png 240KB, sitesettings-full.md).
+/*.png
+/sitesettings-full.md

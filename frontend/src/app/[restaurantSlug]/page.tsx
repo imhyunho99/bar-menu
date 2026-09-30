@@ -1,9 +1,9 @@
-import { getRestaurant, getCategories } from '@/lib/api';
+import { getRestaurant, getCategories, isMenuClosed } from '@/lib/api.server';
+import MenuNotOpen from '@/components/MenuNotOpen';
+import CategoryCard from '@/components/CategoryCard';
 import TopBar from '@/components/TopBar';
 import SideMenu from '@/components/SideMenu';
 import IntroManager from '@/components/IntroManager';
-import Link from 'next/link';
-import Image from 'next/image';
 import type { Metadata } from 'next';
 import Cart from '@/components/Cart';
 import WifiHelper from '@/components/WifiHelper';
@@ -50,6 +50,10 @@ export default async function MenuMainPage({
       getCategories(restaurantSlug),
     ]);
   } catch (error) {
+    // 결제 전 매장은 없어진 매장이 아니다. 404 로 떨구면 손님에게 폐업으로 읽힌다.
+    if (isMenuClosed(error)) {
+      return <MenuNotOpen />;
+    }
     console.error('Failed to fetch restaurant or categories:', error);
     notFound();
   }
@@ -62,11 +66,12 @@ export default async function MenuMainPage({
       <TopBar />
       <SideMenu />
 
-      {/* 로딩 인트로 및 설명서 카드 제어 */}
+      {/* 설명서 카드 제어. 인트로 비디오 자동재생은 주소A(/enter)로 이동했으므로 끔. */}
       <IntroManager
         introVideo={settings?.intro_video || null}
         manualVideo={settings?.loading_video_2 || null}
         showManualCard={settings?.show_manual_card || false}
+        autoPlayIntro={false}
       />
 
       <main className="main" style={{ padding: showIntroImage ? '0' : '60px 0 0 0' }}>
@@ -88,16 +93,12 @@ export default async function MenuMainPage({
               {/* 메뉴판 설명서 카드는 IntroManager 내부에서 렌더링되도록 하였음 (순서 일치를 위해 맨 위에 위치) */}
               
               {categories.map((category) => (
-                <Link
-                  href={`/${restaurantSlug}/category/${category.id}`}
-                  className="category-card"
+                <CategoryCard
                   key={category.id}
-                >
-                  {category.name_en && (
-                    <p className="category-name-en">{category.name_en}</p>
-                  )}
-                  <h3 className="category-name-ko">{category.name}</h3>
-                </Link>
+                  category={category}
+                  href={`/${restaurantSlug}/category/${category.id}`}
+                  layout={settings?.category_card_layout_json}
+                />
               ))}
 
               {categories.length === 0 && !settings?.show_manual_card && (

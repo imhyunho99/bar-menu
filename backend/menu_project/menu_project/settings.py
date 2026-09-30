@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+import sys
 from dotenv import load_dotenv
 
 # .env 파일 로드 (루트 폴더 .env 또는 백엔드 폴더 .env 순서로 확인)
@@ -76,19 +77,15 @@ if SENTRY_DSN:
         import sentry_sdk
 
         def _sentry_before_send(event, hint):
-            # 봇이 잘못된 Host 헤더로 접근할 때 나는 DisallowedHost는 무시한다.
-            exc_info = hint.get('exc_info')
-            if exc_info and exc_info[0].__name__ == 'DisallowedHost':
-                return None
-            # error/fatal 이벤트는 Discord 에러 웹훅으로도 알린다(best-effort).
-            # 알림 발송 실패 로그(menu.notifications)는 제외해 무한루프를 막는다.
-            if event.get('level') in ('error', 'fatal') and event.get('logger') != 'menu.notifications':
-                try:
-                    from menu.notifications import send_error_alert
-                    send_error_alert(event, hint)
-                except Exception:
-                    pass
-            return event
+            # 실제 판단은 menu/observability.py 에 있다. 여기 중첩 함수로 두면
+            # import 할 수 없어 테스트할 수 없었고, '무엇을 버리는가' 는
+            # 조용히 틀리는 종류의 판단이다.
+            #
+            # import 를 함수 안에서 한다. settings 로드 시점에 menu 패키지를
+            # 끌어오면 앱 준비 전에 모델이 딸려 들어올 위험이 있다.
+            from menu.observability import before_send
+
+            return before_send(event, hint)
 
         sentry_sdk.init(
             dsn=SENTRY_DSN,
@@ -129,6 +126,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'menu.middleware.RestaurantMiddleware',
+    # request.restaurant 를 읽으므로 반드시 위 미들웨어 뒤에 온다
+    'menu.middleware.SubscriptionGateMiddleware',
 ]
 
 ROOT_URLCONF = 'menu_project.urls'
@@ -238,8 +237,25 @@ STATICFILES_DIRS = [
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # WhiteNoise 설정 (프로덕션 정적 파일 서빙)
+#
+# STATICFILES_STORAGE 로 지정하면 안 된다. 그 설정은 Django 4.2 에서 폐기되고
+# 5.1 에서 제거됐다 — 제거된 설정은 에러를 내지 않고 그냥 무시된다. 그래서
+# 해싱이 꺼진 채로 배포가 초록불이었고, 파일 이름이 그대로인데 응답에는
+# cache-control: max-age=2592000(30일) 이 붙어 나갔다. CSS 를 고쳐도 사장님
+# 브라우저는 최대 30일 동안 옛 화면을 본다. 2026-08-23 에 실제로 그 상태를
+# 만났다.
+#
+# Manifest 저장소는 파일 이름에 내용 해시를 붙인다(admin.a1b2c3d4.css).
+# 내용이 바뀌면 이름이 바뀌므로 캐시가 길어도 배포가 즉시 보인다.
 if not DEBUG:
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
 
 # Media files (User uploaded files)
 MEDIA_URL = '/media/'
@@ -260,9 +276,23 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
     ],
+    # 이 한도가 세는 것은 손님이 아니다. 손님 화면(Next.js)이 **서버에서**
+    # API 를 부르므로, API 에게는 모든 매장의 모든 손님이 Vercel egress IP
+    # 몇 개로 보인다. 메뉴판 한 번 여는 데 요청이 2개 나가니 분당 100 이면
+    # 전체 합쳐 50번이고, 20명 단체 하나면 바로 닿는다 — 그리고 닿는 순간
+    # 정상 손님이 429 를 맞는다.
+    #
+    # 그래서 읽기는 넉넉히 연다. 서버가 감당하는 양(동시 4슬롯 × 25ms)에
+    # 비하면 여전히 한참 아래고, 진짜 방어는 nginx 쪽에서 할 일이다.
+    #
+    # 쓰기는 반대로 조인다. 주문과 문의는 사람이 눌러야 생기는 것이라
+    # 쏟아지면 그게 곧 장난이다.
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/minute',
+        'anon': '600/minute',
+        'orders': '60/minute',
+        'contact': '10/minute',
     },
 }
 
@@ -273,3 +303,74 @@ CORS_ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+
+# 구독이 끝난 매장의 손님 화면을 잠글지. 결제 대행사가 붙어서 사장님이
+# 실제로 돈을 낼 수 있게 된 다음에 켠다. 그 전에 켜면 체험이 끝난 매장은
+# 되살릴 방법 없이 메뉴판만 꺼진다.
+# 손님 화면을 구독 상태로 잠근다. 기본이 True 인 이유는, 꺼져 있으면
+# menu_is_live() 가 무조건 True 를 줘서 전원이 공짜이기 때문이다. 예전에는
+# '사장님이 돈 낼 방법도 없이 메뉴판만 꺼진다' 가 기본값을 False 로 둔
+# 이유였는데, 계좌이체가 생기면서 전제가 바뀌었다 — 무료로 쓸 사람은
+# 미리보기로 산다.
+ENFORCE_SUBSCRIPTION = os.environ.get('ENFORCE_SUBSCRIPTION', 'True') == 'True'
+
+
+# 결제 화면의 이의신청 창구와 이용약관 주소.
+#
+# 전자결제 심사는 결제 화면에 취소·이의신청 방법이 안내돼 있는지 본다.
+# 연락처의 원본은 frontend/src/lib/business.ts 이고(사이트 하단 정보와 같은
+# 값이어야 한다), 여기 값이 그것과 갈리지 않는지는 tests_pricing 이 대조한다.
+SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', '')
+SUPPORT_PHONE = os.environ.get('SUPPORT_PHONE', '')
+
+# 계좌이체로 받는다. 코드에 박으면 계좌를 바꿀 때 배포를 해야 한다.
+# 비어 있으면 결제 화면이 폼 대신 '준비 중' 을 보여준다 — 계좌 없는 폼은
+# 사장님이 어디로 보낼지 모른 채 '입금했습니다' 를 누르게 만든다.
+BANK_NAME = os.environ.get('BANK_NAME', '')
+BANK_ACCOUNT = os.environ.get('BANK_ACCOUNT', '')
+BANK_HOLDER = os.environ.get('BANK_HOLDER', '')
+
+# 마케팅 사이트(Vercel)의 이용약관. 결제 화면에서 새 창으로 연다.
+MARKETING_SITE_URL = os.environ.get(
+    'MARKETING_SITE_URL', 'https://bar-menu.ddnsfree.com'
+).rstrip('/')
+TERMS_URL = f'{MARKETING_SITE_URL}/terms'
+
+# 손님이 실제로 보는 화면(Next.js)의 주소. 미리보기 링크를 만들 때 쓴다.
+# Django 가 그리는 /<slug>/ 를 주면 사장님은 손님이 볼 것과 다른 화면을
+# 확인하게 된다. 지금은 마케팅과 같은 도메인이라 기본값을 그것으로 두지만,
+# 갈라질 수 있으므로 이름을 따로 둔다.
+# 비어 있으면 미리보기 주소를 만들지 않는다. MARKETING_SITE_URL 로 떨어뜨리면
+# 운영에서는 우연히 맞고 develop 에서만 운영 주소를 가리킨다 — 정작 테스트하는
+# 곳에서만 깨지고, 깨진 줄도 모른 채 운영을 연다.
+CUSTOMER_SITE_URL = os.environ.get('CUSTOMER_SITE_URL', '').rstrip('/')
+
+
+# ── 카카오페이 ────────────────────────────────────────────────────────
+# 개발용 Secret key 만 있으면 계약 전에도 전 구간을 시험할 수 있다.
+# 테스트 CID: 정기결제 TCSUBSCRIP / 단건 TC0ONETIME (문서 명시)
+KAKAOPAY_SECRET_KEY = os.environ.get('KAKAOPAY_SECRET_KEY', '')
+KAKAOPAY_CID = os.environ.get('KAKAOPAY_CID', '')
+
+
+# ── 셀프 가입 속도 제한 ────────────────────────────────────────────────
+#
+# /signup/ 은 로그인 없이 누구나 POST 할 수 있고, 한 번에 staff 계정 ·매장 ·
+# 구독을 만들고 Discord 로 알림을 쏜다. 스크립트를 돌리면 계정과 slug 가
+# 무한정 생기고, 알림 채널이 묻혀서 **진짜 에러 알림이 안 보인다**.
+SIGNUP_MAX_PER_HOUR = int(os.environ.get('SIGNUP_MAX_PER_HOUR', '5'))
+
+if 'CACHES' not in globals():
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'bar-menu',
+        }
+    }
+
+# 테스트에서는 더미로 둔다. 같은 프로세스에서 127.0.0.1 로 19번 가입하는
+# 테스트들이 있어서, 안 그러면 속도 제한이 먼저 걸려 엉뚱한 곳이 빨개진다.
+# 제한 자체는 tests_signup_rate_limit 이 캐시를 명시적으로 켜고 확인한다.
+if 'test' in sys.argv:
+    CACHES = {'default': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}}

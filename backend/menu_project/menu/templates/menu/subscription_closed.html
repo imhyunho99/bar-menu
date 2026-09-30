@@ -1,0 +1,43 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ restaurant.name }} — {% if never_opened %}메뉴판 준비 중{% else %}메뉴판을 열 수 없습니다{% endif %}</title>
+    <style>
+        /* 손님이 보는 화면이라 marketing 팔레트를 따른다 */
+        :root { --ink: #0a0a0b; --ash: #6c6c74; --line: #e6e6e9; }
+        body {
+            margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            background: #fff; color: var(--ink); padding: 24px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+            word-break: keep-all; -webkit-font-smoothing: antialiased;
+        }
+        .box { max-width: 26rem; text-align: center; }
+        h1 { font-size: 21px; font-weight: 800; letter-spacing: -.03em; margin: 0 0 14px; }
+        p { font-size: 15px; line-height: 1.75; color: var(--ash); margin: 0; }
+        .store { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line);
+                 font-size: 12.5px; color: var(--ash); }
+    </style>
+</head>
+<body>
+    <div class="box">
+        {% if never_opened %}
+            {# 아직 문을 연 적 없는 매장. 새로고침해도 열리지 않으므로 기다리라고 하지 않는다. #}
+            <h1>아직 메뉴판이 준비 중입니다</h1>
+            <p>
+                이 매장은 메뉴판을 준비하고 있습니다.<br>
+                매장 직원에게 문의해 주세요.
+            </p>
+        {% else %}
+            <h1>지금은 메뉴판을 열 수 없습니다</h1>
+            <p>
+                잠시 후 다시 시도해 주세요.<br>
+                급하시면 매장 직원에게 문의해 주세요.
+            </p>
+        {% endif %}
+        <p class="store">{{ restaurant.name }}</p>
+    </div>
+</body>
+</html>

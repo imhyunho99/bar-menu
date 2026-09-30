@@ -4,6 +4,7 @@
 영향을 주지 않도록, 별도 데몬 스레드에서 처리하고 예외를 삼킨다.
 `DISCORD_WEBHOOK_URL` 환경변수가 없으면(예: 스테이징) 아무것도 하지 않는다.
 """
+import hashlib
 import json
 import logging
 import os
@@ -14,6 +15,10 @@ import urllib.request
 logger = logging.getLogger(__name__)
 
 _TIMEOUT_SECONDS = 5
+
+# 사진 여러 장은 5초 안에 못 올라간다. 이 발송만 요청 스레드를 붙잡으므로
+# 무한정 기다리게 두면 워커 하나가 통째로 묶인다.
+_PHOTO_TIMEOUT_SECONDS = 60
 
 # 같은 에러가 짧은 시간에 반복될 때 Discord 알림이 폭탄이 되지 않도록,
 # (에러종류, 메시지) 단위로 이 창(초) 안에는 한 번만 보낸다. 워커 프로세스별로 관리한다.
@@ -26,7 +31,7 @@ def build_contact_payload(submission):
     return {
         "embeds": [
             {
-                "title": "📩 새 제휴 문의",
+                "title": "새 제휴 문의",
                 "color": 5814783,
                 "fields": [
                     {"name": "이름/업체명", "value": submission.name or "-", "inline": True},
@@ -80,22 +85,83 @@ def send_contact_notification(submission):
     return thread
 
 
+def _sentry_issue_url(event):
+    """
+    Sentry 에서 이 이벤트를 찾아가는 주소.
+
+    `transaction` 이 비는 에러(응답을 쓰다 난 uwsgi write error 같은)는 알림만
+    봐서는 아무것도 알 수 없다. 최소한 '거기로 가는 길'은 있어야 한다.
+    org·project 는 비밀이 아니므로 기본값을 둔다 — 비워 두면 링크 칸이
+    통째로 빠져서, 정작 필요한 사람이 설정 하나 때문에 못 본다.
+    """
+    event_id = event.get("event_id")
+    if not event_id:
+        return ""
+    org = os.environ.get("SENTRY_ORG", "private-9kb")
+    if not org:
+        return ""
+    return f"https://{org}.sentry.io/issues/?query=id%3A{event_id}"
+
+
+def _request_summary(event):
+    """어떤 요청에서 났는가. 스캐너인지 손님인지가 대개 여기서 갈린다."""
+    request = event.get("request") or {}
+    method = request.get("method") or ""
+    url = request.get("url") or ""
+    if not url:
+        return "-"
+    return f"{method} {url}".strip()[:300]
+
+
+def _client_summary(event):
+    """누가 보냈는가. IP 와 User-Agent 가 있으면 봇 여부가 바로 보인다."""
+    request = event.get("request") or {}
+    headers = {k.lower(): v for k, v in (request.get("headers") or {}).items()}
+    ip = ((event.get("user") or {}).get("ip_address")) or headers.get("x-forwarded-for") or ""
+    agent = headers.get("user-agent") or ""
+    parts = [p for p in (ip, agent) if p]
+    return " · ".join(parts)[:300] if parts else "-"
+
+
 def build_error_payload(event, hint):
-    """Sentry 이벤트를 Discord 에러 알림 페이로드로 변환한다."""
+    """
+    Sentry 이벤트를 Discord 에러 알림 페이로드로 변환한다.
+
+    예전에는 '위치' 와 '환경' 둘뿐이었다. 그런데 자주 오는 에러일수록
+    transaction 이 비어 있어서(응답을 쓰다 난 것이라 뷰가 특정되지 않는다)
+    알림이 `위치 -` 만 남기고, 받는 사람은 Sentry 를 따로 열어 찾아야 했다.
+    요청 주소·보낸 쪽·이벤트 링크를 같이 싣는다 — 스캐너인지 손님인지가
+    대개 그 세 줄에서 갈린다.
+    """
     values = (event.get("exception") or {}).get("values") or [{}]
     last = values[-1]
     error_type = last.get("type") or event.get("level", "error")
     error_value = last.get("value") or event.get("message") or "(메시지 없음)"
+
+    fields = [
+        {"name": "요청", "value": _request_summary(event), "inline": False},
+        {"name": "보낸 쪽", "value": _client_summary(event), "inline": False},
+        {
+            "name": "위치",
+            # transaction 이 없으면 culprit 이라도 준다. 둘 다 없는 경우가
+            # 바로 uwsgi write error 다.
+            "value": (event.get("transaction") or event.get("culprit") or "-")[:200],
+            "inline": True,
+        },
+        {"name": "환경", "value": (event.get("environment") or "-")[:100], "inline": True},
+    ]
+
+    url = _sentry_issue_url(event)
+    if url:
+        fields.append({"name": "Sentry", "value": url[:300], "inline": False})
+
     return {
         "embeds": [
             {
-                "title": f"🚨 서버 에러: {error_type}"[:250],
+                "title": f"서버 에러 · {error_type}"[:250],
                 "description": str(error_value)[:1500],
                 "color": 15158332,
-                "fields": [
-                    {"name": "위치", "value": (event.get("transaction") or "-")[:200], "inline": True},
-                    {"name": "환경", "value": (event.get("environment") or "-")[:100], "inline": True},
-                ],
+                "fields": fields,
             }
         ]
     }
@@ -128,3 +194,256 @@ def send_error_alert(event, hint=None):
     thread = threading.Thread(target=_deliver, args=(url, payload), daemon=True)
     thread.start()
     return thread
+
+
+# ── 가입 · 만료 알림 ──────────────────────────────────────────────────
+# 청구를 사람이 한다. 그 사람이 움직일 수 있으려면 두 순간을 알아야 한다:
+# 누가 들어왔는가, 누구의 기간이 끝났는가. 그래서 페이로드는 언제나 연락
+# 수단을 싣는다 — 알림을 받고도 연락할 곳이 없으면 알림이 아니라 소음이다.
+
+def _owner_contact(restaurant):
+    """
+    매장 사장님의 이메일과 전화. 없으면 '-'.
+
+    어드민에서 매장만 먼저 만드는 경로가 있어서 관리자가 아직 없을 수 있다.
+    거기서 예외가 나면 매장 생성 자체가 막히므로 조용히 비운다.
+    """
+    profile = restaurant.managers.select_related('user').first()
+    if profile is None:
+        return '-', '-'
+    return (profile.user.email or profile.user.username or '-'), (profile.phone or '-')
+
+
+def build_signup_payload(restaurant):
+    """
+    새로 가입한 매장을 Discord 웹훅 JSON 페이로드로 변환한다.
+
+    '체험 종료' 칸이 있었는데 뺐다. 체험이 없어지면서 값이 늘 '-' 였고,
+    비어 있는 칸은 알려주는 게 없으면서 자리를 차지한다. 제목의 '무료 체험
+    시작' 도 같은 이유로 바꿨다 — 우리가 알림에서 하는 말이 곧 약속이다.
+    """
+    email, phone = _owner_contact(restaurant)
+    return {
+        "embeds": [
+            {
+                "title": "새 매장 가입",
+                "description": "아직 손님에게 공개되지 않은 상태입니다. 입금 신청이 오면 열어 주세요.",
+                "color": 3066993,
+                "fields": [
+                    {"name": "매장명", "value": restaurant.name or "-", "inline": True},
+                    {"name": "주소", "value": f"/{restaurant.slug}", "inline": True},
+                    {"name": "이메일", "value": email, "inline": False},
+                    {"name": "연락처", "value": phone, "inline": True},
+                ],
+            }
+        ]
+    }
+
+
+def build_subscription_expired_payload(subscription):
+    """이용 기간이 끝난 매장을 Discord 웹훅 JSON 페이로드로 변환한다."""
+    restaurant = subscription.restaurant
+    email, phone = _owner_contact(restaurant)
+    return {
+        "embeds": [
+            {
+                "title": "이용 기간 종료 — 손님 화면이 닫혔습니다",
+                "description": "연장 안내가 필요합니다. 사장님이 먼저 연락하지 않는 쪽이 보통입니다.",
+                "color": 15105570,
+                "fields": [
+                    {"name": "매장명", "value": restaurant.name or "-", "inline": True},
+                    {"name": "주소", "value": f"/{restaurant.slug}", "inline": True},
+                    {"name": "이메일", "value": email, "inline": False},
+                    {"name": "연락처", "value": phone, "inline": True},
+                    {"name": "요금제", "value": subscription.get_plan_display(), "inline": True},
+                ],
+            }
+        ]
+    }
+
+
+def _send(payload):
+    """제휴 문의와 같은 채널로 보낸다. 둘 다 '사람이 이어받아야 하는 일'이다."""
+    url = os.environ.get("DISCORD_WEBHOOK_URL")
+    if not url:
+        return None
+    thread = threading.Thread(target=_deliver, args=(url, payload), daemon=True)
+    thread.start()
+    return thread
+
+
+def build_payment_request_payload(payment_request):
+    """입금 신청을 Discord 웹훅 JSON 페이로드로 변환한다."""
+    restaurant = payment_request.restaurant
+    email, phone = _owner_contact(restaurant)
+    return {
+        "embeds": [
+            {
+                "title": "입금 신청 — 통장을 확인해 주세요",
+                "description": "확인되면 Django admin 의 '입금 신청' 에서 기간을 골라 확인하세요.",
+                "color": 3447003,
+                "fields": [
+                    {"name": "매장명", "value": restaurant.name or "-", "inline": True},
+                    {"name": "주소", "value": f"/{restaurant.slug}", "inline": True},
+                    {"name": "입금자명", "value": payment_request.depositor_name, "inline": True},
+                    {"name": "금액", "value": f"{payment_request.amount:,}원", "inline": True},
+                    {"name": "요금제", "value": payment_request.get_plan_display(), "inline": True},
+                    {"name": "이메일", "value": email, "inline": False},
+                    {"name": "연락처", "value": phone, "inline": True},
+                ],
+            }
+        ]
+    }
+
+
+def send_payment_request_notification(payment_request):
+    """입금 신청 알림을 비동기로 발송한다. 웹훅이 없으면 아무것도 하지 않는다."""
+    return _send(build_payment_request_payload(payment_request))
+
+
+def send_signup_notification(restaurant):
+    """가입 알림을 비동기로 발송한다. 웹훅이 없으면 아무것도 하지 않는다."""
+    return _send(build_signup_payload(restaurant))
+
+
+def build_expiring_soon_payload(subscription, days_left):
+    """곧 끝나는 매장. 끝나고 알리면 이미 손님 화면이 닫힌 뒤다."""
+    restaurant = subscription.restaurant
+    email, phone = _owner_contact(restaurant)
+    return {
+        "embeds": [
+            {
+                "title": f"이용 기간 {days_left}일 남음",
+                "description": "연장 입금을 안내할 시점입니다.",
+                "color": 16776960,
+                "fields": [
+                    {"name": "매장명", "value": restaurant.name or "-", "inline": True},
+                    {"name": "주소", "value": f"/{restaurant.slug}", "inline": True},
+                    {"name": "이메일", "value": email, "inline": False},
+                    {"name": "연락처", "value": phone, "inline": True},
+                ],
+            }
+        ]
+    }
+
+
+def send_subscription_expired_notification(subscription):
+    """기간 종료 알림을 비동기로 발송한다. 웹훅이 없으면 아무것도 하지 않는다."""
+    return _send(build_subscription_expired_payload(subscription))
+
+
+def send_expiring_soon_notification(subscription, days_left):
+    """만료 예고 알림을 비동기로 발송한다. 웹훅이 없으면 아무것도 하지 않는다."""
+    return _send(build_expiring_soon_payload(subscription, days_left))
+
+
+# ── 메뉴판 사진 중계 ───────────────────────────────────────────────────
+# 비전 API 로 자동 인식하는 대신, 사장님이 올린 사진을 우리에게 그대로 보내고
+# 사람이 정리해 넣는다. 그래서 이 발송만 다른 알림과 다르게 동기로 돈다 —
+# 도착 여부를 호출자가 알아야 하기 때문이다. 다른 알림은 못 가도 로그만 남으면
+# 되지만, 이건 못 갔는데 사장님에게 '받았습니다' 가 뜨면 아무도 눈치채지 못한 채
+# 사장님만 기다린다.
+
+# Discord 기본 업로드 한도는 파일당 10 MiB 다. 메시지 총량은 문서에 없어서
+# 넉넉히 아래로 잡고, 넘으면 거절하지 않고 메시지를 나눠 보낸다 — 몇 MB 인지는
+# 사장님이 알 필요 없는 우리 사정이다.
+_DISCORD_BATCH_BYTES = 8 * 1024 * 1024
+
+
+def build_menu_photo_payload(restaurant, count, part=None, parts=None):
+    """사진과 함께 보낼 설명. 연락처가 없으면 되물을 방법이 없어 반드시 싣는다."""
+    email, phone = _owner_contact(restaurant)
+
+    # 이 사진을 정리하는 데 드는 건 우리 시간이다. 결제 여부가 제목에 보여야
+    # 무엇부터 할지 고를 수 있다. 게이트 설정과 무관하게 '돈을 냈는가' 만 본다.
+    subscription = getattr(restaurant, 'subscription', None)
+    badge = '' if (subscription and subscription.is_usable()) else '[미결제] '
+
+    title = f"{badge}메뉴판 사진이 도착했습니다"
+    if parts and parts > 1:
+        title += f" ({part}/{parts})"
+    return {
+        "embeds": [
+            {
+                "title": title,
+                "description": "사장님이 올린 메뉴판입니다. 정리해서 넣어 준 뒤 사장님께 알려 주세요.",
+                "color": 3447003,
+                "fields": [
+                    {"name": "매장명", "value": restaurant.name or "-", "inline": True},
+                    {"name": "주소", "value": f"/{restaurant.slug}", "inline": True},
+                    {"name": "이메일", "value": email, "inline": False},
+                    {"name": "연락처", "value": phone, "inline": True},
+                    {"name": "장수", "value": f"{count}장", "inline": True},
+                ],
+            }
+        ]
+    }
+
+
+def _multipart(payload, images, start_index):
+    """Discord 가 받는 multipart/form-data 를 만든다. 경계 문자열은 본문에 없어야 한다."""
+    boundary = "----barmenu" + hashlib.sha256(
+        b"".join(img[:64] for img in images) + str(start_index).encode()
+    ).hexdigest()[:24]
+    sep = f"--{boundary}\r\n".encode()
+    body = bytearray()
+    body += sep
+    body += b'Content-Disposition: form-data; name="payload_json"\r\n'
+    body += b"Content-Type: application/json\r\n\r\n"
+    body += json.dumps(payload).encode("utf-8") + b"\r\n"
+    for i, image in enumerate(images):
+        body += sep
+        body += (
+            f'Content-Disposition: form-data; name="files[{i}]"; '
+            f'filename="menu-{start_index + i + 1}.jpg"\r\n'
+        ).encode()
+        body += b"Content-Type: image/jpeg\r\n\r\n"
+        body += image + b"\r\n"
+    body += f"--{boundary}--\r\n".encode()
+    return bytes(body), f"multipart/form-data; boundary={boundary}"
+
+
+def _batch(images):
+    """Discord 한 메시지에 담을 만큼씩 끊는다. 한 장이 한도를 넘어도 혼자는 보낸다."""
+    batches, current, size = [], [], 0
+    for image in images:
+        if current and size + len(image) > _DISCORD_BATCH_BYTES:
+            batches.append(current)
+            current, size = [], 0
+        current.append(image)
+        size += len(image)
+    if current:
+        batches.append(current)
+    return batches
+
+
+def send_menu_photos(restaurant, images) -> bool:
+    """
+    메뉴판 사진을 Discord 로 보낸다. **동기**로 돌고 도착 여부를 돌려준다.
+
+    한 묶음이라도 실패하면 False. 일부만 도착한 채 True 를 주면 우리는
+    나머지 장을 영영 못 보고, 사장님은 메뉴가 반만 들어간 이유를 모른다.
+    """
+    url = os.environ.get("DISCORD_WEBHOOK_URL")
+    if not url:
+        logger.error("메뉴판 사진을 보낼 DISCORD_WEBHOOK_URL 이 없습니다 (매장 %s)", restaurant.slug)
+        return False
+
+    batches = _batch(images)
+    sent = 0
+    for part, group in enumerate(batches, start=1):
+        payload = build_menu_photo_payload(restaurant, len(images), part, len(batches))
+        body, content_type = _multipart(payload, group, sent)
+        request = urllib.request.Request(
+            url,
+            data=body,
+            headers={"Content-Type": content_type, "User-Agent": "bar-menu-contact-webhook/1.0"},
+        )
+        try:
+            urllib.request.urlopen(request, timeout=_PHOTO_TIMEOUT_SECONDS)
+        except Exception:
+            logger.exception("메뉴판 사진 전송 실패 (매장 %s, %d/%d)",
+                             restaurant.slug, part, len(batches))
+            return False
+        sent += len(group)
+    return True

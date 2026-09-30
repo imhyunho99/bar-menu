@@ -195,7 +195,13 @@ export default function Cart() {
       {/* Floating Cart Badge Button (Only shows when closed and cart has items) */}
       {!isOpen && cart.length > 0 && (
         <button className="cart-badge-btn" onClick={() => setIsOpen(true)}>
-          <span className="cart-icon">🛒</span>
+          <span className="cart-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="20" r="1.4" />
+              <circle cx="18" cy="20" r="1.4" />
+              <path d="M2 3h2.2l2.3 11.2a1.6 1.6 0 0 0 1.6 1.3h8.7a1.6 1.6 0 0 0 1.6-1.3L21 7H5.4" />
+            </svg>
+          </span>
           <span className="cart-count-badge">{cart.reduce((a, b) => a + b.quantity, 0)}</span>
           <span className="cart-label">장바구니 보기</span>
         </button>

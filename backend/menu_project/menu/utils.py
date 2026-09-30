@@ -43,3 +43,31 @@ def optimize_image(image_field, max_width=1200, quality=80):
         # 최적화 실패 시 원본 반환
         print(f"Image optimization to WebP failed: {e}")
         return image_field
+
+
+def record_image_dimensions(instance, field_name):
+    """
+    `<field>_width` · `<field>_height` 에 실제 크기를 넣는다.
+
+    optimize_image 가 줄인 *뒤*의 크기여야 한다. 원본 크기를 저장하면 브라우저가
+    예약한 높이와 실제가 어긋나서, CLS 를 없애려던 것이 오히려 어긋난 자리를
+    만든다.
+
+    파일을 못 읽으면 조용히 비운다. 사장님이 이미지를 지웠거나 파일이 사라진
+    행은 실제로 있고, 그것 때문에 저장이 통째로 실패하면 메뉴를 못 고친다.
+    """
+    image = getattr(instance, field_name, None)
+    width = height = None
+    if image:
+        try:
+            with Image.open(image) as im:
+                width, height = im.size
+        except Exception:
+            width = height = None
+        finally:
+            try:
+                image.seek(0)
+            except Exception:
+                pass
+    setattr(instance, f'{field_name}_width', width)
+    setattr(instance, f'{field_name}_height', height)

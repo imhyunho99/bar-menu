@@ -4,121 +4,175 @@
 {% block extrastyle %}
   {{ block.super }}
   <style>
+    /* ─────────────────────────────────────────────────────────
+       메뉴 워크스페이스.
+
+       2026-08-23 에 base_site 를 랜딩 톤으로 옮기면서 이 화면만 남았다.
+       사장님이 관리 화면에서 가장 오래 머무는 곳인데, 여기만 옛 슬레이트
+       (#1e293b) + 파랑(#3b82f6) 이라 틀은 흰 갤러리인데 알맹이가 딴
+       제품이었다. brand.css 토큰으로 다시 칠한다.
+
+       랜딩의 규칙 셋을 그대로 가져온다:
+         · 그림자 대신 선으로 면을 나눈다
+         · 강조색은 앰버 하나뿐이다 — 파랑을 남기면 강조가 둘이 된다
+         · 라틴·숫자만 모노로 자간을 벌린다. 한글에는 쓰지 않는다
+
+       맨 아래 미디어쿼리는 지우지 말 것. 사이드바가 320px 고정이라 폰에서는
+       메뉴 목록이 화면 밖으로 밀려나 아무것도 못 고쳤다. 사장님은 가게에서
+       폰으로 고친다.
+       ───────────────────────────────────────────────────────── */
+
     #menu-workspace-container {
         display: flex;
-        gap: 24px;
+        gap: 20px;
         margin-top: 20px;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-family: var(--font-body);
     }
     .workspace-sidebar {
         width: 320px;
         min-width: 320px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
         padding: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     .workspace-main {
         flex: 1;
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        min-width: 0;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
         padding: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     .workspace-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 16px 20px;
+        gap: 16px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 18px 20px;
         margin-bottom: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     .workspace-title-section h2 {
         margin: 0;
-        font-size: 1.25rem;
+        font-size: 20px;
         font-weight: 700;
-        color: #1e293b;
+        letter-spacing: var(--dls);
+        color: var(--ink);
     }
     .workspace-title-section p {
-        margin: 4px 0 0 0;
-        font-size: 0.85rem;
-        color: #64748b;
+        margin: 5px 0 0;
+        font-size: 12.5px;
+        line-height: 1.6;
+        color: var(--ash);
     }
+    #restaurant-selector {
+        padding: 8px 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--pill);
+        background: #fff;
+        color: var(--ink);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    /* ─── 카테고리 트리 ─────────────────────────────────────── */
+
     .category-tree-title {
-        font-size: 0.95rem;
+        font-size: 13px;
         font-weight: 700;
-        color: #475569;
-        margin: 0 0 12px 0;
+        color: var(--ink);
+        margin: 0 0 12px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 2px solid #e2e8f0;
-        padding-bottom: 8px;
+        gap: 10px;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 10px;
     }
+    .tree-title-text {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+
+    /* 눈썹 라벨은 라틴만. 한글에 모노를 씌우면 글리프가 없어 폴백되면서
+       자간만 남아 '카 테 고 리  트 리' 처럼 흩어진다 — brand.css 의 규칙. */
+    .tree-title-en {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--ash);
+    }
+
     .category-tree-list {
         list-style: none;
         padding: 0;
         margin: 0;
     }
     .category-node {
-        margin-bottom: 6px;
+        margin-bottom: 4px;
     }
     .category-item {
         display: flex;
         align-items: center;
-        padding: 8px 12px;
-        border-radius: 6px;
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        color: #334155;
-        font-size: 0.9rem;
+        padding: 9px 12px;
+        border-radius: 8px;
+        background: #fff;
+        border: 1px solid var(--line);
+        color: var(--ink);
+        font-size: 14px;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: background .15s, border-color .15s, color .15s;
         position: relative;
     }
     .category-item:hover {
-        background: #f1f5f9;
-        border-color: #cbd5e1;
+        background: var(--paper);
+        border-color: var(--ink);
     }
     .category-item.active {
-        background: #eff6ff;
-        border-color: #3b82f6;
-        color: #1d4ed8;
+        background: var(--ink);
+        border-color: var(--ink);
+        color: #fff;
     }
+    .category-item.active .category-toggle-btn { color: rgba(255,255,255,.7); }
     .category-item .node-actions {
         margin-left: auto;
         opacity: 0;
-        transition: opacity 0.2s;
+        transition: opacity .15s;
         display: flex;
         gap: 6px;
     }
-    .category-item:hover .node-actions {
+    /* 터치에는 hover 가 없다. 폰에서는 늘 보이게 둔다 — 안 그러면 사장님은
+       카테고리 이름 고치는 길을 영영 못 찾는다. */
+    .category-item:hover .node-actions,
+    .category-item:focus-within .node-actions {
         opacity: 1;
     }
     .action-icon {
-        color: #64748b;
-        font-size: 0.8rem;
+        color: var(--ash);
+        font-size: 11.5px;
         text-decoration: none;
-        padding: 2px 6px;
-        border-radius: 4px;
-        background: #f1f5f9;
-        border: 1px solid #cbd5e1;
+        padding: 3px 7px;
+        border-radius: var(--pill);
+        background: #fff;
+        border: 1px solid var(--line);
     }
     .action-icon:hover {
-        color: #1e293b;
-        background: #e2e8f0;
+        color: var(--ink);
+        border-color: var(--ink);
     }
     .category-sub-list {
         list-style: none;
-        padding-left: 20px;
-        margin: 4px 0 0 0;
-        border-left: 1px dashed #cbd5e1;
+        padding-left: 18px;
+        margin: 4px 0 0;
+        border-left: 1px solid var(--line);
         display: none;
     }
     .category-sub-list.expanded {
@@ -128,89 +182,106 @@
         background: none;
         border: none;
         cursor: pointer;
-        font-size: 0.7rem;
-        color: #94a3b8;
+        font-size: 9px;
+        color: var(--ash);
         padding: 2px 4px;
         margin-right: 6px;
-        transition: transform 0.2s;
+        transition: transform .2s;
         line-height: 1;
     }
     .category-toggle-btn.open {
         transform: rotate(90deg);
     }
+
+    /* ─── 검색 ──────────────────────────────────────────────── */
+
     .search-bar-container {
         margin-bottom: 16px;
     }
     .search-bar-container input {
         width: 100%;
-        padding: 8px 12px 8px 32px;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        font-size: 0.85rem;
+        padding: 10px 12px 10px 34px;
+        border: 1px solid var(--line);
+        border-radius: var(--pill);
+        font: inherit;
+        font-size: 14px;
+        color: var(--ink);
         outline: none;
-        background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 10px center;
+        background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236c6c74' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 12px center;
         box-sizing: border-box;
-        transition: border-color 0.2s;
+        transition: border-color .15s;
     }
     .search-bar-container input:focus {
-        border-color: #3b82f6;
+        border-color: var(--ink);
     }
     .search-no-result {
         text-align: center;
-        padding: 20px 0;
-        color: #94a3b8;
-        font-size: 0.85rem;
+        padding: 24px 0;
+        color: var(--ash);
+        font-size: 14px;
         display: none;
     }
+
+    /* ─── 메뉴 목록 ─────────────────────────────────────────── */
+
     .menu-list-title-section {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 2px solid #e2e8f0;
+        gap: 12px;
+        border-bottom: 1px solid var(--line);
         padding-bottom: 12px;
         margin-bottom: 16px;
     }
     .menu-list-title-section h3 {
         margin: 0;
-        font-size: 1.1rem;
+        font-size: 17px;
         font-weight: 700;
-        color: #1e293b;
+        letter-spacing: var(--dls);
+        color: var(--ink);
     }
-    
-    /* 일괄 작업 바 */
+    .menu-list-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
     .bulk-action-bar {
         display: flex;
         align-items: center;
-        gap: 12px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        padding: 8px 16px;
-        border-radius: 6px;
+        flex-wrap: wrap;
+        gap: 10px;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        padding: 10px 14px;
+        border-radius: var(--radius);
         margin-bottom: 12px;
-        font-size: 0.85rem;
+        font-size: 12.5px;
+        color: var(--ash);
     }
-    
+
     .menu-item-row {
         display: flex;
         align-items: center;
         padding: 12px;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
         margin-bottom: 8px;
-        background: #ffffff;
-        transition: all 0.2s;
+        background: #fff;
+        transition: border-color .15s, background .15s;
     }
     .menu-item-row:hover {
-        border-color: #cbd5e1;
+        border-color: var(--ink);
     }
     .menu-item-row.drag-over {
-        background: #f0fdf4 !important;
-        border-color: #22c55e !important;
+        background: var(--paper) !important;
+        border-color: var(--amber) !important;
     }
     .menu-item-drag-handle {
         cursor: grab;
-        color: #94a3b8;
-        font-size: 1.2rem;
+        color: var(--ash);
+        font-size: 17px;
         margin-right: 12px;
         user-select: none;
     }
@@ -223,38 +294,44 @@
         cursor: pointer;
         width: 16px;
         height: 16px;
+        accent-color: var(--ink);
     }
     .menu-item-thumb {
         width: 48px;
         height: 48px;
-        border-radius: 6px;
-        background: #f1f5f9;
+        border-radius: 8px;
+        background: var(--paper);
         object-fit: cover;
         margin-right: 12px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--line);
     }
     .menu-item-info {
         flex: 1;
+        min-width: 0;
     }
     .menu-item-info .item-name {
         font-weight: 700;
-        color: #1e293b;
-        font-size: 0.95rem;
+        color: var(--ink);
+        font-size: 14px;
         text-decoration: none;
     }
     .menu-item-info .item-name:hover {
-        color: #3b82f6;
+        color: var(--amber);
         text-decoration: underline;
+        text-underline-offset: 3px;
     }
+    /* 영문명 칸이지만 한글을 넣은 매장이 있다. 데이터가 정하는 칸에는 라틴
+       전용 서체를 걸지 않는다 — 자간만 남아 흩어진다. */
     .menu-item-info .item-name-en {
-        font-size: 0.75rem;
-        color: #64748b;
-        margin-top: 2px;
+        font-size: 11.5px;
+        color: var(--ash);
+        margin-top: 3px;
     }
     .menu-item-price {
-        font-weight: 700;
-        color: #475569;
-        font-size: 0.9rem;
+        font-family: var(--font-mono);
+        font-weight: 500;
+        color: var(--ink);
+        font-size: 12.5px;
         margin-right: 24px;
         width: 100px;
         text-align: right;
@@ -277,20 +354,22 @@
         position: absolute;
         cursor: pointer;
         top: 0; left: 0; right: 0; bottom: 0;
-        background-color: #cbd5e1;
-        transition: .3s;
-        border-radius: 22px;
+        background-color: var(--line);
+        transition: background-color .2s;
+        border-radius: var(--pill);
     }
     .slider:before {
         position: absolute;
         content: "";
         height: 16px; width: 16px; left: 3px; bottom: 3px;
-        background-color: white;
-        transition: .3s;
+        background-color: #fff;
+        transition: transform .2s;
         border-radius: 50%;
     }
+    /* 판매중 = 켜짐. 손님 화면에 보이는지를 나타내므로 초록이 아니라 잉크로
+       둔다. 앰버는 '지금 눌러야 할 것' 에만 남긴다. */
     input:checked + .slider {
-        background-color: #22c55e;
+        background-color: var(--ink);
     }
     input:checked + .slider:before {
         transform: translateX(22px);
@@ -299,48 +378,59 @@
         display: flex;
         gap: 8px;
     }
+
+    /* ─── 버튼 ──────────────────────────────────────────────── */
+
     .btn-workspace {
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 0.8rem;
+        padding: 7px 14px;
+        border-radius: var(--pill);
+        font-family: var(--font-body);
+        font-size: 12.5px;
         font-weight: 600;
         cursor: pointer;
         text-decoration: none;
-        transition: all 0.2s;
+        white-space: nowrap;
+        transition: background .15s, border-color .15s, color .15s;
         border: 1px solid transparent;
     }
     .btn-workspace-primary {
-        background: #3b82f6;
-        color: #ffffff !important;
+        background: var(--ink);
+        border-color: var(--ink);
+        color: #fff !important;
     }
     .btn-workspace-primary:hover {
-        background: #2563eb;
+        background: var(--amber);
+        border-color: var(--amber);
     }
     .btn-workspace-secondary {
-        background: #f1f5f9;
-        color: #475569 !important;
-        border-color: #cbd5e1;
+        background: #fff;
+        color: var(--ink) !important;
+        border-color: var(--line);
     }
     .btn-workspace-secondary:hover {
-        background: #e2e8f0;
-        color: #1e293b !important;
+        background: var(--paper);
+        border-color: var(--ink);
     }
     .btn-workspace-danger {
-        background: #fee2e2;
-        color: #ef4444 !important;
-        border-color: #fca5a5;
+        background: var(--danger-bg);
+        color: var(--danger) !important;
+        border-color: var(--danger-line);
     }
     .btn-workspace-danger:hover {
-        background: #fecaca;
+        background: var(--danger-bg);
+        border-color: var(--danger);
     }
+
+    /* ─── 서랍 ──────────────────────────────────────────────── */
+
     .drawer-overlay {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.4);
+        background: rgba(10,10,11,.45);
         z-index: 10000;
         opacity: 0;
         pointer-events: none;
-        transition: opacity 0.3s ease;
+        transition: opacity .25s ease;
     }
     .drawer-overlay.open {
         opacity: 1;
@@ -348,11 +438,11 @@
     }
     .drawer-panel {
         position: fixed;
-        top: 0; right: -600px; width: 600px; height: 100%;
-        background: #ffffff;
-        box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+        top: 0; right: -600px; width: 600px; max-width: 100%; height: 100%;
+        background: #fff;
+        border-left: 1px solid var(--line);
         z-index: 10001;
-        transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        transition: right .3s cubic-bezier(0.16, 1, 0.3, 1);
         display: flex;
         flex-direction: column;
     }
@@ -361,29 +451,30 @@
     }
     .drawer-header {
         padding: 16px 20px;
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid var(--line);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background: #f8fafc;
+        background: var(--paper);
     }
     .drawer-title {
         font-weight: 700;
-        font-size: 1.05rem;
-        color: #1e293b;
+        font-size: 16px;
+        letter-spacing: var(--dls);
+        color: var(--ink);
         margin: 0;
     }
     .drawer-close {
         cursor: pointer;
-        font-size: 1.5rem;
-        color: #64748b;
+        font-size: 24px;
+        color: var(--ash);
         background: none;
         border: none;
         padding: 0;
         line-height: 1;
     }
     .drawer-close:hover {
-        color: #1e293b;
+        color: var(--ink);
     }
     .drawer-body {
         flex: 1;
@@ -394,6 +485,109 @@
         width: 100%;
         height: 100%;
         border: none;
+    }
+
+    /* ─── 낱개 ──────────────────────────────────────────────── */
+
+    .btn-workspace-tiny {
+        padding: 4px 10px;
+        font-size: 11.5px;
+    }
+    .bulk-label {
+        font-weight: 600;
+        color: var(--ink);
+    }
+    #bulk-category-selector {
+        padding: 5px 10px;
+        border: 1px solid var(--line);
+        border-radius: var(--pill);
+        background: #fff;
+        color: var(--ink);
+        font: inherit;
+        font-size: 11.5px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .menu-item-thumb-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ash);
+    }
+
+    /* 저장·삭제 결과를 알리는 띠. 잉크 바탕에 흰 글씨 — 랜딩에서 검정 면이
+       쓰이는 유일한 자리와 같다. 실패만 danger 로 뒤집는다. */
+    #workspace-toast {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 11px 22px;
+        border-radius: var(--pill);
+        font-family: var(--font-body);
+        font-size: 13px;
+        font-weight: 600;
+        background: var(--ink);
+        color: #fff;
+        z-index: 99999;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .25s ease;
+    }
+    #workspace-toast.is-error {
+        background: var(--danger);
+    }
+
+    /* ─── 폰 ────────────────────────────────────────────────
+       사장님은 가게에서 폰으로 고친다. 사이드바가 320px 로 박혀 있어
+       390px 화면에서는 메뉴 목록이 통째로 밀려나 있었다.
+       ─────────────────────────────────────────────────────── */
+
+    @media (max-width: 900px) {
+        #menu-workspace-container {
+            flex-direction: column;
+            gap: 14px;
+        }
+        .workspace-sidebar {
+            width: auto;
+            min-width: 0;
+        }
+        .workspace-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+        }
+        #restaurant-selector { width: 100%; }
+    }
+
+    @media (max-width: 600px) {
+        .workspace-main { padding: 16px; }
+        .menu-list-title-section {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+        .menu-list-actions .btn-workspace { flex: 1; text-align: center; }
+
+        /* 한 줄에 이름·가격·스위치·버튼을 다 넣으면 390px 에서 버튼이
+           화면 밖으로 나간다. 두 줄로 접는다. */
+        .menu-item-row { flex-wrap: wrap; row-gap: 10px; }
+        .menu-item-info { flex: 1 0 55%; }
+        .menu-item-price {
+            margin-right: 0;
+            width: auto;
+            flex: 0 0 auto;
+            text-align: left;
+        }
+        .menu-item-status { margin: 0 0 0 auto; }
+        .menu-item-actions { flex: 1 0 100%; }
+        .menu-item-actions .btn-workspace { flex: 1; text-align: center; }
+
+        .category-item .node-actions { opacity: 1; }
     }
   </style>
 {% endblock %}
@@ -407,7 +601,7 @@
         </div>
         <div>
             {% if restaurants %}
-            <select id="restaurant-selector" onchange="switchRestaurant(this.value)" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 600; font-size: 0.9rem;">
+            <select id="restaurant-selector" onchange="switchRestaurant(this.value)">
                 {% for r in restaurants %}
                 <option value="{{ r.id }}" {% if r.id == selected_restaurant.id %}selected{% endif %}>{{ r.name }}</option>
                 {% endfor %}
@@ -420,8 +614,8 @@
         <!-- 2.1 왼쪽: 카테고리 트리 사이드바 -->
         <div class="workspace-sidebar">
             <div class="category-tree-title">
-                <span>📁 카테고리 트리</span>
-                <button type="button" class="btn-workspace btn-workspace-secondary" onclick="openDrawer('/admin/menu/category/add/?_popup=1', '카테고리 추가')" style="padding: 3px 8px; font-size: 0.75rem;">+ 추가</button>
+                <span class="tree-title-text"><span class="tree-title-en">Category</span>카테고리 트리</span>
+                <button type="button" class="btn-workspace btn-workspace-secondary btn-workspace-tiny" onclick="openDrawer('/admin/menu/category/add/?_popup=1', '카테고리 추가')">+ 추가</button>
             </div>
             
             <ul class="category-tree-list">
@@ -492,7 +686,18 @@
         <div class="workspace-main">
             <div class="menu-list-title-section">
                 <h3 id="current-category-title">전체 메뉴 목록</h3>
-                <button type="button" class="btn-workspace btn-workspace-primary" onclick="openAddMenuDrawer()">+ 메뉴 추가</button>
+                <div class="menu-list-actions">
+                    {% comment %}쓰던 종이 메뉴판이 있는 사장님은 여기서 시작한다.
+                    한 줄씩 치는 것보다 사진 몇 장이 훨씬 빠르다.
+
+                    매장이 없으면 그리지 않는다 — 매장이 안 묶인 스태프 계정에는
+                    눌러야 403 이 나오는 죽은 버튼이 된다.{% endcomment %}
+                    {% if selected_restaurant %}
+                    <a href="{% url 'admin:menuitem-import-photos' %}{% if restaurants %}?restaurant={{ selected_restaurant.id }}{% endif %}"
+                       class="btn-workspace btn-workspace-secondary">사진으로 등록</a>
+                    {% endif %}
+                    <button type="button" class="btn-workspace btn-workspace-primary" onclick="openAddMenuDrawer()">+ 메뉴 추가</button>
+                </div>
             </div>
             
             <!-- 검색 바 -->
@@ -504,10 +709,10 @@
             <!-- 다중 선택 일괄 작업 바 -->
             <div class="bulk-action-bar">
                 <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" style="cursor: pointer; width: 16px; height: 16px;">
-                <span style="font-weight: 600; color: #475569;">전체 선택</span>
+                <span class="bulk-label">전체 선택</span>
                 <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
                     <!-- 카테고리 이동 드롭다운 -->
-                    <select id="bulk-category-selector" style="padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.75rem; font-weight: 600; cursor: pointer; background: #ffffff;">
+                    <select id="bulk-category-selector">
                         <option value="">-- 카테고리 이동 --</option>
                         <option value="none">분류되지 않은 메뉴</option>
                         {% for cat in workspace_data.top_categories %}
@@ -520,9 +725,9 @@
                             {% endfor %}
                         {% endfor %}
                     </select>
-                    <button type="button" class="btn-workspace btn-workspace-secondary" onclick="bulkMoveCategory()" style="padding: 4px 10px; font-size: 0.75rem;">선택 이동</button>
-                    <button type="button" class="btn-workspace btn-workspace-secondary" onclick="bulkDuplicate()" style="padding: 4px 10px; font-size: 0.75rem;">선택 복제</button>
-                    <button type="button" class="btn-workspace btn-workspace-danger" onclick="bulkDelete()" style="padding: 4px 10px; font-size: 0.75rem;">선택 삭제</button>
+                    <button type="button" class="btn-workspace btn-workspace-secondary btn-workspace-tiny" onclick="bulkMoveCategory()">선택 이동</button>
+                    <button type="button" class="btn-workspace btn-workspace-secondary btn-workspace-tiny" onclick="bulkDuplicate()">선택 복제</button>
+                    <button type="button" class="btn-workspace btn-workspace-danger btn-workspace-tiny" onclick="bulkDelete()">선택 삭제</button>
                 </div>
             </div>
             
@@ -539,7 +744,7 @@
                         {% if item.image_url %}
                         <img src="{{ item.image_url }}" class="menu-item-thumb" alt="" />
                         {% else %}
-                        <div class="menu-item-thumb" style="display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #94a3b8; font-weight: 700;">No Img</div>
+                        <div class="menu-item-thumb menu-item-thumb-empty">No Img</div>
                         {% endif %}
                         
                         <div class="menu-item-info">
@@ -571,7 +776,7 @@
                             {% if item.image_url %}
                             <img src="{{ item.image_url }}" class="menu-item-thumb" alt="" />
                             {% else %}
-                            <div class="menu-item-thumb" style="display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #94a3b8; font-weight: 700;">No Img</div>
+                            <div class="menu-item-thumb menu-item-thumb-empty">No Img</div>
                             {% endif %}
                             
                             <div class="menu-item-info">
@@ -603,7 +808,7 @@
                                 {% if item.image_url %}
                                 <img src="{{ item.image_url }}" class="menu-item-thumb" alt="" />
                                 {% else %}
-                                <div class="menu-item-thumb" style="display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #94a3b8; font-weight: 700;">No Img</div>
+                                <div class="menu-item-thumb menu-item-thumb-empty">No Img</div>
                                 {% endif %}
                                 
                                 <div class="menu-item-info">
@@ -638,7 +843,7 @@
                     {% if item.image_url %}
                     <img src="{{ item.image_url }}" class="menu-item-thumb" alt="" />
                     {% else %}
-                    <div class="menu-item-thumb" style="display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #94a3b8; font-weight: 700;">No Img</div>
+                    <div class="menu-item-thumb menu-item-thumb-empty">No Img</div>
                     {% endif %}
                     
                     <div class="menu-item-info">
@@ -675,14 +880,7 @@
     </div>
 </div>
 
-<div id="workspace-toast" style="
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-    padding: 10px 24px; border-radius: 8px; font-size: 13px; font-weight: 600;
-    color: #fff; z-index: 99999; opacity: 0; pointer-events: none;
-    transition: opacity 0.3s ease;
-    background: #417690;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-">토스트</div>
+<div id="workspace-toast">토스트</div>
 
 <script>
     let activeCategory = 'all';
@@ -1065,7 +1263,7 @@
     function showToast(msg, isError = false) {
         const toast = document.getElementById('workspace-toast');
         toast.textContent = msg;
-        toast.style.background = isError ? '#ef4444' : '#417690';
+        toast.classList.toggle('is-error', !!isError);
         toast.style.opacity = '1';
         setTimeout(() => { toast.style.opacity = '0'; }, 2000);
     }

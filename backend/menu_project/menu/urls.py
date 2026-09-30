@@ -2,6 +2,8 @@ from django.urls import path
 from . import views
 from . import search_views
 from . import admin_views
+from . import billing_views
+from . import onboarding_views
 from . import qr_views
 
 app_name = 'menu'
@@ -33,6 +35,20 @@ urlpatterns = [
     path('admin/menu/duplicate/<int:menu_id>/', admin_views.duplicate_menu, name='duplicate_menu'),
     path('admin/menu/delete/<int:menu_id>/', admin_views.delete_menu, name='delete_menu'),
     path('admin/menu/reorder/', admin_views.reorder_menus, name='reorder_menus'),
+
+    # 종이 메뉴판 사진 → 메뉴 자동 등록
+    path('admin/menu/import/', admin_views.import_menu, name='import_menu'),
+    path('admin/menu/import/commit/', admin_views.import_menu_commit, name='import_menu_commit'),
+
+    # 구독 · 결제 (대행사는 menu/billing/ 의 provider 가 맡는다)
+    path('admin/billing/', billing_views.billing_home, name='billing_home'),
+    path('admin/billing/request/', billing_views.submit_payment_request, name='billing_request'),
+    path('admin/billing/start/', billing_views.start_checkout, name='billing_start_checkout'),
+    path('admin/billing/cancel/', billing_views.cancel_subscription, name='billing_cancel'),
+    path('admin/billing/approve/', billing_views.approve_return, name='billing_approve'),
+
+    # 온보딩 체크리스트 (가입 직후 사장님이 보는 화면)
+    path('admin/start/', onboarding_views.onboarding_home, name='onboarding_home'),
 
     # Real-time Order Dashboard
     path('admin/orders/', admin_views.admin_orders, name='admin_orders'),

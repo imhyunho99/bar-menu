@@ -1,0 +1,47 @@
+{% comment %}
+QR 을 기다리는 사람은 사장님이다.
+
+미들웨어의 402 화면(손님용 '준비 중')을 여기에 쓰면 안 된다. 사장님은
+자기 가게가 왜 안 열리는지가 아니라 무엇을 하면 열리는지를 알아야 한다.
+{% endcomment %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR 발행 - {{ restaurant.name }}</title>
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+</head>
+<body class="brand">
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1 class="admin-title">QR 발행</h1>
+            <div class="admin-header-actions">
+                <a href="{% url 'menu:admin_dashboard' restaurant.slug %}" class="admin-btn admin-btn-secondary">대시보드로</a>
+            </div>
+        </div>
+
+        <div class="admin-section">
+            <div class="admin-card">
+                <h2>입금이 확인되면 QR을 발행해 드립니다</h2>
+                <p>
+                    QR은 손님이 메뉴판을 여는 주소를 담습니다. 지금은 그 주소가 아직
+                    닫혀 있어서, QR을 인쇄해 테이블에 붙여도 손님에게는 아무것도
+                    보이지 않습니다. 그래서 발행을 막아 두었습니다.
+                </p>
+                <p>
+                    메뉴 등록과 디자인은 기한 없이 무료입니다. 만드신 메뉴판이 어떻게
+                    보이는지는 미리보기로 확인하실 수 있습니다.
+                </p>
+                <div class="admin-header-actions">
+                    <a href="{% url 'menu:billing_home' restaurant.slug %}" class="admin-btn admin-btn-primary">입금 안내 보기</a>
+                    {% if preview_url %}
+                    <a href="{{ preview_url }}" target="_blank" rel="noopener" class="admin-btn admin-btn-secondary">미리보기 열기</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

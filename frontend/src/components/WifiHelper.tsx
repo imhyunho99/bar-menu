@@ -52,7 +52,14 @@ export default function WifiHelper() {
     <>
       {/* Floating WiFi wave button */}
       <button className="wifi-floating-btn" onClick={() => setIsOpen(true)}>
-        <span className="wifi-btn-icon">📶</span>
+        <span className="wifi-btn-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <path d="M2.5 8.5a15 15 0 0 1 19 0" />
+            <path d="M5.5 12a10.5 10.5 0 0 1 13 0" />
+            <path d="M8.5 15.5a6 6 0 0 1 7 0" />
+            <circle cx="12" cy="19" r="1.2" fill="currentColor" stroke="none" />
+          </svg>
+        </span>
         <span className="wifi-btn-text">WIFI 연결</span>
       </button>
 

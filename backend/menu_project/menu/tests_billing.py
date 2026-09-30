@@ -1,0 +1,505 @@
+"""
+구독·결제 경로 검증.
+
+결제 대행사가 없는 상태에서 확인해야 할 것은 두 가지다.
+하나는 '아무도 청구되지 않는다'는 사실이 화면과 상태에 정직하게 남는가,
+다른 하나는 대행사가 붙었을 때 웹훅이 남의 구독을 건드릴 수 없는가.
+두 번째는 가짜 provider 를 registry 에 한 줄 등록해서 확인한다.
+"""
+
+import hashlib
+import hmac
+import json
+from datetime import timedelta
+from unittest import mock
+
+from django.contrib.auth.models import User
+from django.core.exceptions import ImproperlyConfigured
+from django.test import TestCase, override_settings
+from django.utils import timezone
+
+from .billing import base, registry
+from .billing.base import BillingEvent, PaymentNotConfigured
+from .billing.null import NullPaymentProvider
+from .models import Restaurant, Subscription, UserProfile
+
+STUB_SECRET = b'stub-secret'
+
+
+class StubProvider(base.PaymentProvider):
+    """테스트용 대행사. 실제 회사의 API 를 흉내 내지 않고 서명 규약만 흉내 낸다."""
+
+    name = 'stub'
+
+    def start_checkout(self, subscription, plan, return_url):
+        return f'https://stub.test/checkout?plan={plan}'
+
+    def cancel(self, subscription):
+        return None
+
+    def verify_webhook(self, headers, raw_body):
+        expected = hmac.new(STUB_SECRET, raw_body, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(headers.get('X-Stub-Signature', ''), expected)
+
+    def parse_webhook(self, raw_body):
+        payload = json.loads(raw_body)
+        kind = payload.get('type')
+        if kind not in base.EVENT_KINDS:
+            return None
+        period_end = payload.get('period_end')
+        return BillingEvent(
+            kind=kind,
+            provider_subscription_id=payload.get('sub_id', ''),
+            period_end=timezone.datetime.fromisoformat(period_end) if period_end else None,
+            event_id=payload.get('id', ''),
+        )
+
+
+def stub_registered():
+    return mock.patch.dict(registry.PROVIDERS, {StubProvider.name: StubProvider})
+
+
+class SubscriptionStateTest(TestCase):
+    """상태 기계 자체. 화면·URL 과 무관하게 '언제까지 열어 두는가'만 본다."""
+
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name="알파바", slug="alpha")
+        # 매장을 만들면 Restaurant post_save 가 7일 체험 구독을 붙여 준다.
+        self.subscription = self.restaurant.subscription
+
+    def _clear_dates(self):
+        """날짜 없는 구독으로 되돌린다. 갓 가입한 무료 계정의 모양이다."""
+        self.subscription.current_period_end = None
+        return self.subscription
+
+    def test_new_subscription_starts_free_and_closed(self):
+        """가입은 무료 미리보기다. 손님 화면은 입금 확인 전까지 닫혀 있다."""
+        self.assertEqual(self.subscription.status, 'unpaid')
+        self.assertIsNone(self.subscription.current_period_end)
+        self.assertFalse(self.subscription.is_usable())
+
+    def test_lapsed_paid_period_is_closed(self):
+        """기간이 끝나면 상태를 내리지 않아도 날짜만으로 닫힌다."""
+        self.subscription.status = 'active'
+        self.subscription.current_period_end = timezone.now() - timedelta(minutes=1)
+        self.assertFalse(self.subscription.is_usable())
+
+    def test_days_left_truncates_toward_zero(self):
+        # 남은 시간을 내림한다. 30일 결제 주기가 '29일 남음' 으로 보인다.
+        self.subscription.current_period_end = timezone.now() + timedelta(days=3, hours=20)
+        self.assertEqual(self.subscription.days_left, 3)
+
+    def test_days_left_never_negative(self):
+        self.subscription.current_period_end = timezone.now() - timedelta(days=5)
+        self.assertEqual(self.subscription.days_left, 0)
+
+    def test_days_left_is_none_without_any_end_date(self):
+        self.assertIsNone(self._clear_dates().days_left)
+
+    def test_access_until_is_the_paid_period(self):
+        self.subscription.current_period_end = timezone.now() + timedelta(days=30)
+        self.assertEqual(self.subscription.access_until, self.subscription.current_period_end)
+
+    def test_partner_is_open_without_any_date(self):
+        """무제한 파트너. 결제일도 만료도 보지 않는다."""
+        self.subscription.status = 'partner'
+        self.assertIsNone(self._clear_dates().access_until)
+        self.assertTrue(self.subscription.is_usable())
+
+    def test_usable_while_active_within_period(self):
+        self.subscription.status = 'active'
+        self.subscription.current_period_end = timezone.now() + timedelta(days=10)
+        self.assertTrue(self.subscription.is_usable())
+
+    def test_not_usable_when_active_period_lapsed(self):
+        self.subscription.status = 'active'
+        self.subscription.current_period_end = timezone.now() - timedelta(days=1)
+        self.assertFalse(self.subscription.is_usable())
+
+    def test_past_due_stays_open_even_after_period_end(self):
+        # 카드 한 번 실패했다고 영업 중인 가게 메뉴판을 끄지 않는다.
+        self.subscription.status = 'past_due'
+        self.subscription.current_period_end = timezone.now() - timedelta(days=3)
+        self.assertTrue(self.subscription.is_usable())
+
+    def test_canceled_keeps_the_period_that_was_already_paid_for(self):
+        """
+        해지는 '다음 달부터 안 쓴다' 는 뜻이지 '지금 당장 끄라' 가 아니다.
+
+        예전에는 누르는 순간 손님 화면이 닫혔다. 영업 중에 눌렀다가 그날
+        장사가 멈춘다 — 사장님은 자기가 껐다는 것도 모른다.
+        """
+        self.subscription.status = 'canceled'
+        self.subscription.current_period_end = timezone.now() + timedelta(days=20)
+        self.assertTrue(self.subscription.is_usable())
+
+    def test_canceled_closes_once_the_paid_period_runs_out(self):
+        self.subscription.status = 'canceled'
+        self.subscription.current_period_end = timezone.now() - timedelta(minutes=1)
+        self.assertFalse(self.subscription.is_usable())
+
+    def test_canceled_without_ever_paying_stays_closed(self):
+        """한 번도 낸 적 없이 해지한 경우. 열어 둘 근거가 없다."""
+        self.subscription.status = 'canceled'
+        self.subscription.current_period_end = None
+        self.assertFalse(self.subscription.is_usable())
+
+
+class BillingPermissionTest(TestCase):
+    """남의 매장 구독 화면에 손댈 수 없어야 한다."""
+
+    def setUp(self):
+        self.alpha = Restaurant.objects.create(name="알파바", slug="alpha")
+        self.beta = Restaurant.objects.create(name="베타바", slug="beta")
+
+        self.owner = User.objects.create_user(username='alpha_owner', password='pw', is_staff=True)
+        UserProfile.objects.create(user=self.owner, restaurant=self.alpha)
+
+        self.superuser = User.objects.create_superuser(username='root', password='pw')
+
+    def _urls(self, slug):
+        return {
+            'home': f'/{slug}/admin/billing/',
+            'start': f'/{slug}/admin/billing/start/',
+            'cancel': f'/{slug}/admin/billing/cancel/',
+        }
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.client.get(self._urls('alpha')['home'])
+        self.assertEqual(response.status_code, 302)
+        self.assertNotIn('알파바', response.get('Location', ''))
+
+    def test_owner_sees_own_billing_home(self):
+        self.client.force_login(self.owner)
+        response = self.client.get(self._urls('alpha')['home'])
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'admin/billing.html')
+
+    def test_owner_is_forbidden_on_another_tenant(self):
+        self.client.force_login(self.owner)
+        urls = self._urls('beta')
+        self.assertEqual(self.client.get(urls['home']).status_code, 403)
+        self.assertEqual(self.client.post(urls['start'], {'plan': 'pro'}).status_code, 403)
+        self.assertEqual(self.client.post(urls['cancel']).status_code, 403)
+
+    def test_forbidden_request_does_not_touch_the_other_tenant(self):
+        """403 이 남의 구독을 만들지도, 상태를 바꾸지도 않는다."""
+        before = Subscription.objects.get(restaurant=self.beta).status
+        self.client.force_login(self.owner)
+        self.client.post(self._urls('beta')['cancel'])
+        self.assertEqual(Subscription.objects.filter(restaurant=self.beta).count(), 1)
+        self.assertEqual(Subscription.objects.get(restaurant=self.beta).status, before)
+
+    def test_superuser_may_view_any_tenant(self):
+        self.client.force_login(self.superuser)
+        self.assertEqual(self.client.get(self._urls('beta')['home']).status_code, 200)
+
+    def test_post_only_views_reject_get(self):
+        self.client.force_login(self.owner)
+        urls = self._urls('alpha')
+        self.assertEqual(self.client.get(urls['start']).status_code, 405)
+        self.assertEqual(self.client.get(urls['cancel']).status_code, 405)
+
+    def test_billing_home_makes_a_subscription_for_a_restaurant_without_one(self):
+        """레코드가 없어도 500 을 내지 않는다. 미결제로 열어 결제 화면까지는 보낸다."""
+        Subscription.objects.filter(restaurant=self.alpha).delete()
+        self.client.force_login(self.owner)
+        self.client.get(self._urls('alpha')['home'])
+        subscription = Subscription.objects.get(restaurant=self.alpha)
+        self.assertEqual(subscription.status, 'unpaid')
+
+
+class NullProviderTest(TestCase):
+    """연동 전 기본 provider 가 결제한 척하지 않는지."""
+
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name="알파바", slug="alpha")
+        # 체험이 끝난 뒤를 본다. 여기서 보려는 건 '결제를 눌러도 아무 일이
+        # 일어나지 않는다' 이고, 체험 날짜가 남아 있으면 그 확인이 흐려진다.
+        self.restaurant.subscription.status = 'unpaid'
+        self.restaurant.subscription.current_period_end = None
+        self.restaurant.subscription.save()
+        self.owner = User.objects.create_user(username='alpha_owner', password='pw', is_staff=True)
+        UserProfile.objects.create(user=self.owner, restaurant=self.restaurant)
+        self.client.force_login(self.owner)
+
+    def test_default_provider_is_null(self):
+        self.assertEqual(registry.get_provider().name, 'null')
+
+    def test_null_checkout_raises_instead_of_returning_a_url(self):
+        with self.assertRaises(PaymentNotConfigured):
+            NullPaymentProvider().start_checkout(None, 'pro', 'https://example.test/back')
+
+    def test_null_provider_rejects_every_webhook(self):
+        self.assertFalse(NullPaymentProvider().verify_webhook({}, b'{}'))
+
+    def test_start_checkout_says_so_instead_of_faking_success(self):
+        """
+        agree=1 을 함께 보낸다. 안 보내면 약관 분기에서 멈춰서 대행사가
+        없다는 사실까지 가지 못하는데, 예전엔 템플릿에 박힌 문구가 우연히
+        매칭돼 이 테스트가 엉뚱한 이유로 통과하고 있었다.
+        """
+        response = self.client.post(
+            '/alpha/admin/billing/start/', {'plan': 'pro', 'agree': '1'}, follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '결제 연동을 준비 중')
+
+        subscription = Subscription.objects.get(restaurant=self.restaurant)
+        self.assertEqual(subscription.status, 'unpaid')
+        self.assertEqual(subscription.plan, 'entry')          # 요금제가 바뀌지 않았다
+        self.assertEqual(subscription.provider, '')           # 대행사에 아무것도 안 만들었다
+        self.assertEqual(subscription.provider_subscription_id, '')
+        self.assertIsNone(subscription.current_period_end)    # 결제 주기도 생기지 않았다
+
+    def test_unknown_plan_is_rejected(self):
+        response = self.client.post('/alpha/admin/billing/start/', {'plan': 'diamond'}, follow=True)
+        self.assertContains(response, '알 수 없는 요금제입니다')
+
+    def test_billing_home_shows_the_countdown_the_model_reports(self):
+        subscription = self.restaurant.subscription
+        subscription.status = 'active'
+        subscription.current_period_end = timezone.now() + timedelta(days=9, hours=5)
+        subscription.save()
+
+        response = self.client.get('/alpha/admin/billing/')
+        self.assertContains(response, '9일 남음')
+        self.assertContains(response, '이용 중')
+
+    def test_billing_home_offers_a_bank_transfer_instead_of_a_dead_card_form(self):
+        """
+        대행사가 없어도 돈 낼 방법은 있다 — 계좌이체다. 예전에는 이 화면이
+        '준비 중' 이라고만 말해서, 열고 싶은 사장님에게 아무 길도 없었다.
+        """
+        with self.settings(BANK_NAME='국민', BANK_ACCOUNT='123-45-678', BANK_HOLDER='나현호'):
+            response = self.client.get('/alpha/admin/billing/')
+        self.assertContains(response, '입금 안내')
+        self.assertContains(response, '123-45-678')
+        self.assertContains(response, '입금했습니다')
+
+    def test_cancel_works_without_a_provider_and_keeps_the_paid_window(self):
+        subscription = self.restaurant.subscription
+        subscription.status = 'active'
+        subscription.current_period_end = timezone.now() + timedelta(days=20)
+        subscription.save()
+
+        self.client.post('/alpha/admin/billing/cancel/')
+
+        subscription.refresh_from_db()
+        self.assertEqual(subscription.status, 'canceled')
+        self.assertIsNotNone(subscription.canceled_at)
+        # 남은 이용 기간은 지우지 않는다 — 이미 낸 돈이다.
+        self.assertIsNotNone(subscription.current_period_end)
+        self.assertGreater(subscription.access_until, timezone.now())
+
+    def test_cancel_twice_keeps_the_first_cancel_time(self):
+        self.client.post('/alpha/admin/billing/cancel/')
+        first = Subscription.objects.get(restaurant=self.restaurant).canceled_at
+        self.client.post('/alpha/admin/billing/cancel/')
+        self.assertEqual(Subscription.objects.get(restaurant=self.restaurant).canceled_at, first)
+
+
+class RegistryTest(TestCase):
+    def test_registering_a_provider_is_one_line(self):
+        with stub_registered(), override_settings(PAYMENT_PROVIDER='stub'):
+            self.assertIsInstance(registry.get_provider(), StubProvider)
+
+    def test_unknown_setting_fails_loudly(self):
+        # 오타가 조용히 '결제 없음' 으로 되돌아가면 아무도 눈치채지 못한다.
+        with override_settings(PAYMENT_PROVIDER='typo'):
+            with self.assertRaises(ImproperlyConfigured):
+                registry.get_provider()
+
+    def test_unknown_name_lookup_returns_none(self):
+        self.assertIsNone(registry.get_provider_by_name('nobody'))
+
+
+class WebhookTest(TestCase):
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name="알파바", slug="alpha")
+        self.other = Restaurant.objects.create(name="베타바", slug="beta")
+
+        self.subscription = self.restaurant.subscription
+        # 웹훅이 상태를 바꿨는지 보려면 출발점이 체험이 아니어야 한다.
+        self.subscription.status = 'unpaid'
+        self.subscription.current_period_end = None
+        self.subscription.provider = 'stub'
+        self.subscription.provider_subscription_id = 'sub_alpha'
+        self.subscription.save()
+
+    def _post(self, body: bytes, signature=None, provider='stub'):
+        if signature is None:
+            signature = hmac.new(STUB_SECRET, body, hashlib.sha256).hexdigest()
+        return self.client.post(
+            f'/billing/webhook/{provider}/',
+            data=body,
+            content_type='application/json',
+            headers={'x-stub-signature': signature},
+        )
+
+    def _payload(self, kind, period_end=None, sub_id='sub_alpha', event_id='evt_1'):
+        body = {'type': kind, 'sub_id': sub_id, 'id': event_id}
+        if period_end:
+            body['period_end'] = period_end.isoformat()
+        return json.dumps(body).encode()
+
+    def test_unknown_provider_is_404(self):
+        response = self.client.post('/billing/webhook/nobody/', data=b'{}',
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 404)
+
+    def test_get_is_not_allowed(self):
+        with stub_registered():
+            self.assertEqual(self.client.get('/billing/webhook/stub/').status_code, 405)
+
+    def test_bad_signature_is_400_and_changes_nothing(self):
+        payload = self._payload(base.EVENT_SUBSCRIPTION_CANCELED)
+        with stub_registered():
+            response = self._post(payload, signature='deadbeef')
+        self.assertEqual(response.status_code, 400)
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.status, 'unpaid')
+
+    def test_tampered_body_invalidates_the_signature(self):
+        payload = self._payload(base.EVENT_SUBSCRIPTION_CANCELED)
+        signature = hmac.new(STUB_SECRET, payload, hashlib.sha256).hexdigest()
+        tampered = self._payload(base.EVENT_SUBSCRIPTION_CANCELED, sub_id='sub_beta')
+        with stub_registered():
+            response = self._post(tampered, signature=signature)
+        self.assertEqual(response.status_code, 400)
+
+    def test_null_provider_webhook_is_rejected(self):
+        # 대행사가 없는데 도착한 웹훅은 정상 트래픽이 아니다.
+        self.assertEqual(self._post(b'{}', signature='whatever', provider='null').status_code, 400)
+
+    def test_payment_succeeded_activates_and_extends(self):
+        period_end = (timezone.now() + timedelta(days=30)).replace(microsecond=0)
+        with stub_registered():
+            response = self._post(self._payload(base.EVENT_PAYMENT_SUCCEEDED, period_end))
+        self.assertEqual(response.status_code, 200)
+
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.status, 'active')
+        self.assertEqual(self.subscription.current_period_end, period_end)
+        self.assertTrue(self.subscription.is_usable())
+
+    def test_redelivery_does_not_double_apply(self):
+        period_end = (timezone.now() + timedelta(days=30)).replace(microsecond=0)
+        payload = self._payload(base.EVENT_PAYMENT_SUCCEEDED, period_end)
+        with stub_registered():
+            self._post(payload)
+            self._post(payload)  # 대행사 재전송
+
+        self.subscription.refresh_from_db()
+        # 두 번 적용됐다면 결제 주기가 60일 뒤로 밀렸을 것이다.
+        self.assertEqual(self.subscription.current_period_end, period_end)
+
+    def test_stale_event_cannot_rewind_the_period(self):
+        current = (timezone.now() + timedelta(days=30)).replace(microsecond=0)
+        stale = (timezone.now() - timedelta(days=1)).replace(microsecond=0)
+        with stub_registered():
+            self._post(self._payload(base.EVENT_PAYMENT_SUCCEEDED, current))
+            self._post(self._payload(base.EVENT_PAYMENT_SUCCEEDED, stale, event_id='evt_old'))
+
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.current_period_end, current)
+
+    def test_cancel_event_is_idempotent(self):
+        payload = self._payload(base.EVENT_SUBSCRIPTION_CANCELED)
+        with stub_registered():
+            self._post(payload)
+            self.subscription.refresh_from_db()
+            first_canceled_at = self.subscription.canceled_at
+            self._post(payload)  # 같은 사건 재전송
+
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.status, 'canceled')
+        self.assertEqual(self.subscription.canceled_at, first_canceled_at)
+
+    def test_payment_failed_marks_past_due_without_closing_the_menu(self):
+        with stub_registered():
+            self._post(self._payload(base.EVENT_PAYMENT_FAILED))
+
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.status, 'past_due')
+        self.assertTrue(self.subscription.is_usable())
+
+    def test_payment_failed_does_not_revive_a_canceled_subscription(self):
+        self.subscription.status = 'canceled'
+        self.subscription.save()
+        with stub_registered():
+            self._post(self._payload(base.EVENT_PAYMENT_FAILED))
+
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.status, 'canceled')
+
+    def test_event_for_an_unknown_subscription_is_swallowed(self):
+        with stub_registered():
+            response = self._post(self._payload(base.EVENT_SUBSCRIPTION_CANCELED, sub_id='sub_nobody'))
+        # 재시도해도 영원히 주인을 못 찾으므로 200 으로 끊는다.
+        self.assertEqual(response.status_code, 200)
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.status, 'unpaid')
+
+    def test_webhook_cannot_reach_another_providers_subscription(self):
+        # 같은 구독 ID 라도 provider 가 다르면 남의 것이다.
+        Subscription.objects.filter(restaurant=self.other).update(
+            status='unpaid', provider='other', provider_subscription_id='sub_alpha'
+        )
+        with stub_registered():
+            self._post(self._payload(base.EVENT_SUBSCRIPTION_CANCELED))
+
+        self.assertEqual(Subscription.objects.get(restaurant=self.other).status, 'unpaid')
+        self.assertEqual(Subscription.objects.get(restaurant=self.restaurant).status, 'canceled')
+
+    def test_uninteresting_event_is_ignored(self):
+        with stub_registered():
+            response = self._post(json.dumps({'type': 'invoice.drafted'}).encode())
+        self.assertEqual(response.status_code, 200)
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.status, 'unpaid')
+
+
+@override_settings(BANK_NAME='IBK기업은행', BANK_ACCOUNT='45204542602019', BANK_HOLDER='나현호')
+class BillingScreenShowsOnlyWhatWorksTests(TestCase):
+    """
+    지금 돈을 받는 길은 계좌이체 하나뿐이다.
+
+    카드 정기결제 구역이 화면 한가운데에 '매월 자동 결제', '결제 즉시 손님
+    화면이 열리며' 라고 적힌 채 먼저 눈에 띄었다. 둘 다 사실이 아니다 —
+    사람이 통장을 보고 열어 준다. 사장님은 그 버튼부터 누르고 '준비 중'
+    안내를 보고 되돌아온다.
+    """
+
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name="알파바", slug="alpha")
+        self.owner = User.objects.create_user(username='alpha_owner', password='pw', is_staff=True)
+        UserProfile.objects.create(user=self.owner, restaurant=self.restaurant)
+        self.client.force_login(self.owner)
+
+    def _html(self):
+        return self.client.get('/alpha/admin/billing/').content.decode('utf-8')
+
+    def test_the_card_subscription_section_is_hidden_while_it_sleeps(self):
+        html = self._html()
+        self.assertNotIn('요금제 선택', html)
+        self.assertNotIn('매월 자동 결제', html)
+        self.assertNotIn('결제하기', html)
+        self.assertNotIn('정기결제 안내', html)
+
+    def test_the_bank_transfer_path_is_still_there(self):
+        """가리는 것이 목적이지, 돈 받는 길을 막는 것이 아니다."""
+        html = self._html()
+        self.assertIn('입금 안내', html)
+        self.assertIn('45204542602019', html)
+        self.assertIn('나현호', html)
+
+    def test_it_comes_back_when_a_provider_is_configured(self):
+        """
+        지우지 않고 가렸다. 대행사를 붙이면 그대로 돌아와야 한다 —
+        안 그러면 다시 켤 때 이 화면이 왜 비었는지 아무도 모른다.
+        """
+        with stub_registered(), override_settings(PAYMENT_PROVIDER='stub'):
+            html = self._html()
+        self.assertIn('요금제 선택', html)
+        self.assertIn('결제하기', html)

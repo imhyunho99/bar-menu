@@ -1,8 +1,22 @@
 from django.shortcuts import render, get_object_or_404
-from django.db.models import Case, When, IntegerField, Q
+from django.db.models import Case, When, IntegerField, Prefetch, Q
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from .models import MenuItem, Category, SiteSettings, Restaurant, ContactSubmission
+
+
+def _own_sub_categories(restaurant):
+    """
+    사이드 메뉴가 쓰는 하위 목록. **같은 매장만** 담는다.
+
+    템플릿은 category.sub_categories.all() 을 그대로 돈다. 그냥 prefetch 하면
+    남의 매장 카테고리가 이 행을 parent 로 가리킬 때 그 이름이 사이드 메뉴에
+    뜬다 — 본문은 막아 놨는데 목차만 새는, 찾기 어려운 모양이 된다.
+    """
+    return Prefetch(
+        'sub_categories',
+        queryset=Category.objects.filter(restaurant=restaurant).order_by('priority', 'name'),
+    )
 
 def index_view(request):
     """
@@ -32,7 +46,7 @@ def menu_main(request, restaurant_slug=None):
     # N+1 문제 해결: 사이드 메뉴 렌더링 시 sub_categories 접근함
     all_categories = Category.objects.filter(
         restaurant=request.restaurant
-    ).prefetch_related('sub_categories').distinct().order_by('priority', 'name')
+    ).prefetch_related(_own_sub_categories(request.restaurant)).distinct().order_by('priority', 'name')
     
     # 사이트 설정에서 인트로 이미지 가져오기
     site_settings = SiteSettings.objects.filter(restaurant=request.restaurant).first()
@@ -56,13 +70,18 @@ def menu_list(request, category_id, restaurant_slug=None):
     # 하지만 category.sub_categories.all()은 DB 히트 없이 캐시된 결과 사용 가능할 수 있음.
     # 단, .all()은 새로운 쿼리셋을 반환하므로 prefetch 결과를 쓰려면 .all() 대신 속성 접근 필요.
     # 여기서는 명시적 쿼리가 정렬 등을 위해 안전함)
-    sub_categories = category.sub_categories.all().order_by('priority', 'name')
+    # 같은 매장의 하위만 본다. 역참조를 그냥 믿으면 남의 매장 카테고리가
+    # 이 행을 parent 로 가리키는 순간 그 이름이 손님 화면에 뜨고, 하위가
+    # 생겼다는 이유로 이 카테고리의 메뉴가 통째로 안 보이게 된다.
+    sub_categories = category.sub_categories.filter(
+        restaurant=category.restaurant
+    ).order_by('priority', 'name')
     breadcrumb_path = get_breadcrumb_path(category)
     
     # 모든 카테고리 가져오기 (사이드 메뉴용)
     all_categories = Category.objects.filter(
         restaurant=request.restaurant
-    ).prefetch_related('sub_categories').distinct().order_by('priority', 'name')
+    ).prefetch_related(_own_sub_categories(request.restaurant)).distinct().order_by('priority', 'name')
     
     # 사이트 설정 가져오기
     site_settings = SiteSettings.objects.filter(restaurant=request.restaurant).first()

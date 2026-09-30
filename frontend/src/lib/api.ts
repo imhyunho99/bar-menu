@@ -10,6 +10,52 @@ import type {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+/**
+ * 상태 코드를 들고 다니는 에러.
+ *
+ * 결제 전 매장은 402 를 돌려준다. 이걸 그냥 Error 로 뭉개면 호출부가 404 와
+ * 구분하지 못해 손님에게 "페이지를 찾을 수 없습니다" 가 뜬다. 가게가 없어진
+ * 것처럼 보이는 화면이라, 결제만 하면 열릴 매장에는 쓰면 안 된다.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, statusText: string) {
+    super(`API error: ${status} ${statusText}`);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
+/** 아직 열리지 않은 매장인가. 서버의 SubscriptionGateMiddleware 가 402 로 답한다. */
+export function isMenuClosed(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 402;
+}
+
+/**
+ * 지금 너무 붐비는가. DRF 레이트 리밋이 429 로 답한다.
+ *
+ * 이걸 구분하지 않으면 손님이 마케팅 홈으로 튕긴다 — QR 을 찍었는데 메뉴가
+ * 아니라 영업 페이지가 뜨는 셈이다. 매장이 사라진 것도 아니고 닫힌 것도
+ * 아니니, 잠시 뒤 다시 열어보라고 말해야 한다.
+ */
+export function isTooBusy(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 429;
+}
+
+/**
+ * 미리보기 토큰을 주소 뒤에 붙인다. 없으면 그대로 둔다.
+ *
+ * 서버 컴포넌트는 api.server.ts 를 거쳐 토큰을 넘긴다. 클라이언트에서
+ * 부르는 것들(검색·장바구니·QR)은 토큰 없이 그대로 돈다 — 그쪽은 이미
+ * 공개된 매장에서만 쓰이는 기능이다.
+ */
+export function withPreview(path: string, previewToken?: string): string {
+  if (!previewToken) return path;
+  const joiner = path.includes('?') ? '&' : '?';
+  return `${path}${joiner}preview=${encodeURIComponent(previewToken)}`;
+}
+
 async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}/api/v1${path}`, {
     ...options,
@@ -19,7 +65,7 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
     },
   });
   if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`);
+    throw new ApiError(res.status, res.statusText);
   }
   return res.json();
 }
@@ -30,22 +76,22 @@ export async function getRestaurants(): Promise<Restaurant[]> {
   return fetchAPI('/restaurants/');
 }
 
-export async function getRestaurant(slug: string): Promise<RestaurantDetail> {
-  return fetchAPI(`/restaurants/${slug}/`);
+export async function getRestaurant(slug: string, previewToken?: string): Promise<RestaurantDetail> {
+  return fetchAPI(withPreview(`/restaurants/${slug}/`, previewToken));
 }
 
 // --- Category ---
 
-export async function getCategories(slug: string): Promise<Category[]> {
-  return fetchAPI(`/restaurants/${slug}/categories/`);
+export async function getCategories(slug: string, previewToken?: string): Promise<Category[]> {
+  return fetchAPI(withPreview(`/restaurants/${slug}/categories/`, previewToken));
 }
 
-export async function getCategoryDetail(slug: string, categoryId: number): Promise<CategoryDetail> {
-  return fetchAPI(`/restaurants/${slug}/categories/${categoryId}/`);
+export async function getCategoryDetail(slug: string, categoryId: number, previewToken?: string): Promise<CategoryDetail> {
+  return fetchAPI(withPreview(`/restaurants/${slug}/categories/${categoryId}/`, previewToken));
 }
 
-export async function getCategoryTree(slug: string): Promise<CategoryTree[]> {
-  return fetchAPI(`/restaurants/${slug}/category-tree/`);
+export async function getCategoryTree(slug: string, previewToken?: string): Promise<CategoryTree[]> {
+  return fetchAPI(withPreview(`/restaurants/${slug}/category-tree/`, previewToken));
 }
 
 // --- Search ---

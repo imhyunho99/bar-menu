@@ -1,4 +1,8 @@
-> An install-free QR ordering and payment platform, running in production at a real dining pub (Bidbar). A Next.js 16 frontend and a Django REST Framework backend unified under one domain via an Nginx reverse proxy, with Wi-Fi-scoped ordering, Payhere POS integration, and a real-time order dashboard.
+> An install-free QR menu and ordering platform, running in production at a
+> real dining pub (Bidbar). A Next.js 16 frontend and a Django REST Framework
+> backend unified under one domain via an Nginx reverse proxy, with Wi-Fi-scoped
+> ordering, a drag-and-drop card layout builder, and a bank-transfer
+> subscription gate confirmed by hand.
 
 ---
 
@@ -175,6 +179,35 @@ npx vercel deploy --prebuilt --prod
 rsync -avz backend/menu_project/ server:/path/to/menu_project/
 ssh server "touch /path/to/reload.txt"
 ```
+
+### 계좌이체 게이트 (2026-09)
+
+손님 공개와 QR 발행이 입금 확인 뒤로 옮겨졌다.
+
+**운영 `.env` 의 네 개는 배포가 알아서 채운다.** `deploy.yml` 이 GitHub Secret
+(`BANK_NAME`·`BANK_ACCOUNT`·`BANK_HOLDER`·`CUSTOMER_SITE_URL`)을 서버 `.env` 에
+써 넣고, 시크릿에도 서버에도 없으면 **배포를 멈춘다**. 손으로 채우던 시절에는
+빠져도 에러가 안 났다 — 계좌 정보가 없으면 입금 안내 구역이 통째로 안 그려져서,
+사장님이 돈 낼 방법이 없는 채로 배포가 성공했다.
+
+`ENFORCE_SUBSCRIPTION` 은 기본이 `True` 다. 끄면 전원이 공짜가 된다.
+
+아직 손으로 해야 하는 것은 cron 하나다:
+
+```bash
+# expire_trials 는 삭제됐다. 남아 있으면 지운다.
+0 9 * * * cd ~/bar_menu/backend/menu_project && \
+  ~/bar_menu/venv/bin/python manage.py sweep_subscriptions >> ~/logs/sweep.log 2>&1
+```
+
+마이그레이션 3개(`0054`~`0056`)가 돈다. `0054` 는 남아 있는 `trialing` 매장을
+`unpaid` 로 내린다 — 상태로만 고르므로 파트너 매장은 건드리지 않는다.
+
+배포 전 확인:
+
+- `DISCORD_WEBHOOK_URL` 이 살아 있는가 (사진 중계와 입금 알림이 둘 다 쓴다)
+- 파트너 매장(`bid`·`sorok`)이 `partner` 상태 그대로인가 — 여기가 틀리면
+  영업 중인 가게가 꺼진다
 
 ---
 
