@@ -110,17 +110,10 @@ jobs:
 
           # 채운 설정이 실제로 읽히는지 본다. 여기서 틀리면 사장님이
           # 결제 화면을 열어 볼 때까지 아무도 모른다.
-          python - <<'CHECK'
-          import os, django
-          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'menu_project.settings')
-          django.setup()
-          from django.conf import settings
-          missing = [k for k in ('BANK_NAME', 'BANK_ACCOUNT', 'BANK_HOLDER', 'CUSTOMER_SITE_URL')
-                     if not getattr(settings, k, '')]
-          if missing:
-              raise SystemExit('!! 배포 후에도 비어 있습니다: ' + ', '.join(missing))
-          # 계좌번호는 찍지 않는다. 공개 레포의 Actions 로그이고, 서버의 기존
-          # 값을 그대로 둔 경우에는 GitHub 의 시크릿 마스킹도 걸리지 않는다.
-          print('· 결제 설정 확인 완료:', settings.BANK_NAME, '****' + settings.BANK_ACCOUNT[-4:])
-          CHECK
+          #
+          # 히어독을 쓰지 않는다. appleboy/ssh-action 은 명령마다 종료코드를
+          # 검사하는 줄을 **덧붙이는데**, 그 줄이 히어독 안으로 들어가 python
+          # 이 SyntaxError 를 낸다. 2026-09-30 첫 운영 배포가 정확히 여기서
+          # 실패했다 — 앞의 마이그레이션·재시작은 다 끝난 뒤였다.
+          python -c "import os, django; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'menu_project.settings'); django.setup(); from django.conf import settings; missing = [k for k in ('BANK_NAME','BANK_ACCOUNT','BANK_HOLDER','CUSTOMER_SITE_URL') if not getattr(settings, k, '')]; print('· 결제 설정 확인 완료' if not missing else '!! 비어 있음: ' + ', '.join(missing)); raise SystemExit(1 if missing else 0)"
 
