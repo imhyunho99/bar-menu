@@ -1,103 +1,22 @@
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useRestaurant } from '../context';
+import { redirect } from 'next/navigation';
 
 /**
- * 주소A — QR 전용 진입점.
- * QR로 접속한 손님만 이 경로를 타며, 로딩 비디오를 재생한 뒤 메뉴(주소B)로 넘긴다.
- * 링크로 직접 들어온 손님은 이 경로를 거치지 않으므로 비디오를 보지 않는다.
- * layout.tsx의 IP 게이트가 이 경로에도 적용되므로, 와이파이 미연결 시에는
- * 이 컴포넌트가 렌더되기 전에 잠금화면(주소C)이 대신 반환된다.
+ * QR 전용 진입점. 지금은 메뉴판 주소로 넘기기만 한다.
+ *
+ * 한때 여기서 인트로 영상을 틀었다. 그런데 이 화면은 자체 플레이어를 들고
+ * 있었고 1시간 쿨다운(IntroManager 안에 있다)이 따라오지 않아서, 손님이
+ * QR 을 찍을 때마다 영상이 처음부터 다시 나왔다. 메뉴를 보다 다시 찍으면
+ * 또 나왔다.
+ *
+ * 영상은 /{slug} 로 되돌렸다. 재생하는 자리가 둘이면 쿨다운도 둘로 갈리고,
+ * 갈리면 또 한쪽에서 사라진다. 이 경로는 지우지 않고 남겨 둔다 — 이 주소로
+ * 인쇄된 QR 이 돌아다닐 수 있고, 그건 종이라 고칠 수 없다.
  */
-type Phase = 'intro' | 'manual' | 'done';
-
-export default function EnterPage() {
-  const { restaurant } = useRestaurant();
-  const settings = restaurant.site_settings;
-  const slug = restaurant.slug;
-  const router = useRouter();
-
-  const introVideo = settings?.intro_video || null;
-  const manualVideo = settings?.loading_video_2 || null;
-
-  const [phase, setPhase] = useState<Phase>(
-    introVideo ? 'intro' : manualVideo ? 'manual' : 'done'
-  );
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  const advance = () => {
-    setPhase((p) => (p === 'intro' && manualVideo ? 'manual' : 'done'));
-  };
-
-  // 재생이 끝났거나 재생할 게 없으면 메뉴로 넘어간다.
-  useEffect(() => {
-    if (phase === 'done') {
-      router.replace(`/${slug}`);
-    }
-  }, [phase, slug, router]);
-
-  // 자동재생 시작 여부 감시: 6초 안에 재생이 시작되지 않으면(모바일 autoplay 차단 등)
-  // 다음 단계로 넘긴다. 재생 중인 영상은 자르지 않는다(onEnded가 종료를 담당).
-  useEffect(() => {
-    if (phase === 'done') return;
-    const video = videoRef.current;
-    if (!video) return;
-
-    let started = false;
-    const onPlaying = () => {
-      started = true;
-    };
-    video.addEventListener('playing', onPlaying);
-    video.play?.().catch(() => advance());
-
-    const guard = setTimeout(() => {
-      if (!started) advance();
-    }, 6000);
-
-    return () => {
-      clearTimeout(guard);
-      video.removeEventListener('playing', onPlaying);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
-
-  const overlayStyle: React.CSSProperties = {
-    position: 'fixed',
-    inset: 0,
-    background: '#000',
-    zIndex: 9999,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  };
-
-  if (phase === 'done') {
-    // 리디렉션 직전의 짧은 검정 화면
-    return <div style={overlayStyle} />;
-  }
-
-  const src = phase === 'intro' ? introVideo : manualVideo;
-
-  return (
-    <div
-      style={overlayStyle}
-      // 2차(로딩) 비디오는 탭하면 스킵 가능
-      onClick={phase === 'manual' ? advance : undefined}
-    >
-      <video
-        key={phase}
-        ref={videoRef}
-        src={src ?? undefined}
-        autoPlay
-        muted
-        playsInline
-        preload="auto"
-        onEnded={advance}
-        onError={advance}
-        style={{ width: '100vw', height: '100vh', objectFit: 'cover' }}
-      />
-    </div>
-  );
+export default async function EnterPage({
+  params,
+}: {
+  params: Promise<{ restaurantSlug: string }>;
+}) {
+  const { restaurantSlug } = await params;
+  redirect(`/${restaurantSlug}`);
 }

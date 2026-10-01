@@ -106,11 +106,17 @@ class ThePrintedQRPointsAtTheCustomerSiteTests(TestCase):
         self.assertTrue(url.startswith('https://bar-menu.ddnsfree.com/'), url)
         self.assertNotIn('testserver', url)
 
-    def test_it_keeps_the_qr_only_entrance(self):
-        """/enter/ 로 들어와야 QR 전용 화면이 뜬다."""
-        self.assertEqual(self._menu_url(), 'https://bar-menu.ddnsfree.com/moonlight/enter/')
+    def test_it_points_at_the_menu_itself(self):
+        """
+        한때 /enter/ 를 가리켰다. 그 화면에는 인트로 1시간 쿨다운이 따라가지
+        않아서, 손님이 QR 을 찍을 때마다 영상이 처음부터 다시 나왔다.
+        영상을 /<slug> 로 되돌리면서 QR 도 같이 되돌렸다 — 이미 매장에 붙어
+        있는 옛 QR 들이 가리키는 주소이기도 하다.
+        """
+        self.assertEqual(self._menu_url(), 'https://bar-menu.ddnsfree.com/moonlight/')
+        self.assertNotIn('/enter', self._menu_url())
 
     @override_settings(CUSTOMER_SITE_URL='')
     def test_without_the_setting_it_falls_back_instead_of_dying(self):
         """주소를 모르면 예전처럼 요청 호스트로 떨어진다. 화면이 죽는 것보다 낫다."""
-        self.assertIn('/moonlight/enter/', self._menu_url())
+        self.assertIn('/moonlight/', self._menu_url())

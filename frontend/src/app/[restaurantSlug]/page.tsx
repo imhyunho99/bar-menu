@@ -66,12 +66,20 @@ export default async function MenuMainPage({
       <TopBar />
       <SideMenu />
 
-      {/* 설명서 카드 제어. 인트로 비디오 자동재생은 주소A(/enter)로 이동했으므로 끔. */}
+      {/*
+        인트로 영상은 여기서 튼다.
+
+        한때 /enter 로 옮겼다가 되돌렸다. 옮긴 쪽에는 **1시간 쿨다운이 따라가지
+        않아서**(자체 플레이어를 들고 있었다) 손님이 QR 을 찍을 때마다 영상이
+        처음부터 다시 나왔다. 메뉴를 보다 다시 찍으면 또 나온다.
+        쿨다운은 IntroManager 안에 있고, autoPlayIntro 가 꺼져 있으면 그 코드에
+        아예 들어가지 않는다 — 그래서 '코드는 있는데 안 도는' 상태였다.
+      */}
       <IntroManager
         introVideo={settings?.intro_video || null}
         manualVideo={settings?.loading_video_2 || null}
         showManualCard={settings?.show_manual_card || false}
-        autoPlayIntro={false}
+        autoPlayIntro
       />
 
       <main className="main" style={{ padding: showIntroImage ? '0' : '60px 0 0 0' }}>
