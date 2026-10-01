@@ -237,9 +237,13 @@ class QRCodeView(APIView):
                 status=402,
             )
 
-        # QR 은 QR 전용 진입점(주소A, /<slug>/enter/)을 가리킨다.
-        # 이 경로만 로딩 비디오를 재생한 뒤 메뉴로 넘긴다(링크 직접 진입은 비디오 없음).
-        menu_url = f"{_qr_base_url(request)}/{slug}/enter/"
+        # QR 은 손님 메뉴판 주소를 가리킨다.
+        #
+        # 한때 /<slug>/enter/ 였다. 그 화면에는 인트로 1시간 쿨다운이 따라가지
+        # 않아서 QR 을 찍을 때마다 영상이 처음부터 나왔다. 영상을 /<slug> 로
+        # 되돌리면서 QR 도 같이 되돌린다. qr_views.py(사장님이 인쇄하는 화면)와
+        # **같은 주소**여야 한다 — 두 군데로 갈리면 한쪽만 고치게 된다.
+        menu_url = f"{_qr_base_url(request)}/{slug}/"
 
         # 로고 이미지
         logo_img = None
