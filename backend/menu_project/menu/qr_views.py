@@ -67,9 +67,14 @@ def generate_qr_code(request, restaurant_slug=None):
 
     base = _customer_base_url(request)
 
-    # 식당별 URL 생성 — QR 전용 진입점(주소A, /{slug}/enter/)을 가리킨다.
+    # 식당별 URL 생성 — 손님 메뉴판 주소를 가리킨다.
+    #
+    # 한때 /{slug}/enter/ 를 가리켰다. 그런데 그 화면에는 1시간 쿨다운이
+    # 따라가지 않아서 QR 을 찍을 때마다 인트로가 처음부터 나왔다. 영상을
+    # /{slug} 로 되돌리면서 QR 도 같이 되돌린다 — 이미 인쇄돼 매장에 붙어
+    # 있는 옛 QR 들도 이 주소를 가리키므로, 그것들이 다시 맞게 된다.
     if restaurant_slug:
-        menu_url = f"{base}/{restaurant_slug}/enter/"
+        menu_url = f"{base}/{restaurant_slug}/"
     else:
         # fallback (혹시 slug 없이 호출된 경우)
         menu_url = f"{base}/"
