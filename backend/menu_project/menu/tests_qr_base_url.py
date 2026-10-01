@@ -1,4 +1,9 @@
 """
+2026-10-01: QR 이 가리키는 곳이 /<slug>/enter/ 에서 /<slug> 로 돌아왔다.
+/enter 에는 인트로 1시간 쿨다운이 따라가지 않아서 QR 을 찍을 때마다 영상이
+처음부터 재생됐기 때문이다. 이 파일이 보는 것은 **주소의 앞부분**(어느 호스트를
+믿는가)이지 뒷부분이 아니므로, 기대값만 맞춘다.
+
 QR 이 가리키는 주소를 누가 정하는가.
 
 예전에는 ?base_url= 을 그대로 믿었다. 아무나 남의 도메인을 넣어 QR 을
@@ -40,22 +45,22 @@ class QrBaseUrlTests(TestCase):
 
     def test_the_configured_customer_site_is_honored(self):
         got = self._menu_url('?base_url=https://develop.example.com')
-        self.assertEqual(got, 'https://develop.example.com/qr-bar/enter/')
+        self.assertEqual(got, 'https://develop.example.com/qr-bar/')
 
     def test_a_trailing_slash_is_honored(self):
         got = self._menu_url('?base_url=https://develop.example.com/')
-        self.assertEqual(got, 'https://develop.example.com/qr-bar/enter/')
+        self.assertEqual(got, 'https://develop.example.com/qr-bar/')
 
     def test_no_base_url_falls_back_to_the_customer_site(self):
         """
         손님이 실제로 보는 화면은 Next.js 다. 요청 호스트(api.*)로 만들면
         Django 가 그리는 다른 화면을 가리키는 QR 이 인쇄된다.
         """
-        self.assertEqual(self._menu_url(), 'https://develop.example.com/qr-bar/enter/')
+        self.assertEqual(self._menu_url(), 'https://develop.example.com/qr-bar/')
 
     @override_settings(CUSTOMER_SITE_URL='')
     def test_without_a_configured_site_it_uses_the_request_host(self):
         """설정이 없으면 예전처럼 요청 호스트로 떨어진다. 남의 도메인은 여전히 아니다."""
         got = self._menu_url('?base_url=https://evil.example.test')
         self.assertNotIn('evil.example.test', got)
-        self.assertIn('/qr-bar/enter/', got)
+        self.assertIn('/qr-bar/', got)

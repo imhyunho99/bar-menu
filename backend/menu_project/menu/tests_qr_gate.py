@@ -120,3 +120,37 @@ class ThePrintedQRPointsAtTheCustomerSiteTests(TestCase):
     def test_without_the_setting_it_falls_back_instead_of_dying(self):
         """주소를 모르면 예전처럼 요청 호스트로 떨어진다. 화면이 죽는 것보다 낫다."""
         self.assertIn('/moonlight/', self._menu_url())
+
+
+@override_settings(CUSTOMER_SITE_URL='https://bar-menu.ddnsfree.com')
+class BothQRSurfacesAgreeTests(TestCase):
+    """
+    QR 주소를 만드는 자리가 둘이다 — 사장님이 인쇄하는 화면(qr_views)과
+    API(QRCodeView). 2026-10-01 에 인트로 영상을 /<slug> 로 되돌리면서
+    **한쪽만 고쳤다.** 화면은 /<slug> 를 주는데 API 는 /<slug>/enter/ 를
+    줬고, 어느 쪽으로 뽑았느냐에 따라 손님이 영상을 보거나 못 보게 된다.
+
+    같은 규칙이면 같은 답이어야 한다.
+    """
+
+    def setUp(self):
+        self.restaurant = Restaurant.objects.create(name='달빛', slug='moonlight')
+        subscription = self.restaurant.subscription
+        subscription.status = 'partner'
+        subscription.save(update_fields=['status'])
+        self.user = User.objects.create_superuser('boss2', 'b2@x.test', 'pw-8820')
+        self.client.force_login(self.user)
+
+    def test_the_printed_page_and_the_api_give_the_same_address(self):
+        page = self.client.get('/moonlight/qr/').context['menu_url']
+        api = self.client.get('/api/v1/restaurants/moonlight/qr/').json()
+        api_url = api.get('menu_url') or api.get('url')
+        self.assertEqual(page, api_url)
+
+    def test_neither_points_at_the_old_entrance(self):
+        """/enter 에는 1시간 쿨다운이 없다. 거기로 보내면 매번 영상이 나온다."""
+        page = self.client.get('/moonlight/qr/').context['menu_url']
+        api = self.client.get('/api/v1/restaurants/moonlight/qr/').json()
+        for url in (page, api.get('menu_url') or api.get('url')):
+            with self.subTest(url=url):
+                self.assertNotIn('/enter', url)
