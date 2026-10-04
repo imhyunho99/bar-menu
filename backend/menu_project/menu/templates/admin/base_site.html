@@ -9,6 +9,17 @@
 
 {% block nav-global %}{% endblock %}
 
+{% block extrahead %}
+{{ block.super }}
+{% comment %}
+저장 버튼을 두 번 눌러 같은 걸 두 개 만드는 사고를 막는다. 왜 필요했는지는
+가드 스크립트 머리에 적어 뒀다. extrastyle 이 아니라 extrahead 인 이유는
+팝업(?_popup=1)도 같은 base 를 타고, 팝업이 바로 그 사고가 난 화면이기
+때문이다.
+{% endcomment %}
+<script src="{% static 'js/admin_submit_guard.js' %}"></script>
+{% endblock %}
+
 {% block extrastyle %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'css/brand.css' %}">

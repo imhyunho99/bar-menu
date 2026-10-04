@@ -6,6 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>구독 관리 - bar-menu</title>
     <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+    {% comment %}
+    저장 버튼을 두 번 눌러 같은 걸 두 개 만드는 사고를 막는다.
+    Django admin 쪽과 같은 파일을 쓴다 — 여기도 POST 폼이고 같은 사고가 난다.
+    {% endcomment %}
+    <script src="{% static 'js/admin_submit_guard.js' %}"></script>
 </head>
 <body class="brand">
     <div class="admin-container">
