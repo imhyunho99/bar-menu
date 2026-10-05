@@ -50,6 +50,7 @@ RESERVED_SLUGS = frozenset({
     'login',
     'logout',
     'media',
+    'robots.txt',
     'signup',
     'static',
 })
