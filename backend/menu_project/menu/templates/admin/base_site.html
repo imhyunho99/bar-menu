@@ -23,6 +23,15 @@
 {% block extrastyle %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'css/brand.css' %}">
+{% comment %}
+제목용 명조. 랜딩과 같은 짝(제목=명조 / 본문·UI=프리텐다드)을 여기에도 쓴다.
+한 집안으로 전부 돌리면 위계가 크기와 굵기로만 갈려서 화면이 평평해진다.
+관리 화면은 Django 가 서빙해서 next/font 를 못 쓰므로 구글에서 받아 온다.
+필요한 굵기 하나(700)만 받고, 받는 동안은 프리텐다드로 먼저 그린다(swap).
+{% endcomment %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700&display=swap">
 <style>
 /* ─────────────────────────────────────────────────────────────
    Django admin 을 랜딩과 같은 언어로 칠한다.
@@ -270,11 +279,15 @@ div.breadcrumbs {
 }
 
 .owner-shortcuts-eyebrow {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
+    /* 한글이 들어오므로 모노를 쓰지 않는다 — 글리프가 없어 폴백되면서
+       자간만 남아 '매 장' 처럼 흩어진다. 크기·굵기·색으로만 눈썹처럼 읽힌다.
+       inherit 으로 두면 부모(명조 제목)를 따라가 버리므로 못박는다. */
+    font-family: var(--font-body);
+    font-size: 11.5px;
+    font-weight: 600;
+    /* 라틴용 자간(0.2em)을 한글에 그대로 쓰면 '매 장' 처럼 흩어진다.
+       uppercase 도 한글에는 아무 일도 하지 않는다. */
+    letter-spacing: 0.02em;
     color: var(--ash);
 }
 
@@ -400,6 +413,46 @@ input:focus, textarea:focus, select:focus, .vTextField:focus {
     .layout-widget-wrapper .builder-canvas-area { flex-direction: column; }
     .layout-widget-wrapper .preview-container { min-width: 0; width: 100%; }
     .layout-widget-wrapper .inspector-sidebar { width: 100%; }
+}
+/* ─── 글자 위계 바로잡기 ───────────────────────────────
+   2026-10-05 실측에서 나온 것들이다.
+   ------------------------------------------------- */
+
+/* 사이드바의 앱 이름("Menu")이 **흰 바탕에 흰 글씨**였다. Django 의
+   nav_sidebar.css 가 그 링크를 --header-link-color 로 칠하는데, 그 변수는
+   검은 머리띠용이라 #fff 다. 대시보드 쪽은 이미 고쳐 뒀는데 사이드바가
+   남아 있었다. 글자가 사라진 자리는 그냥 빈 칸으로 보여서 '여기 왜 여백이
+   있지'로만 읽힌다 — 글자가 있는 줄을 모른다. */
+#nav-sidebar .module caption a.section,
+#nav-sidebar .module caption a.section:link,
+#nav-sidebar .module caption a.section:visited,
+.app-menu caption a.section,
+.app-menu caption a.section:link,
+.app-menu caption a.section:visited {
+    color: var(--ash);
+}
+
+/* 페이지 제목이 Django 기본값인 20px/300(Light)이라, 바로 아래 소제목
+   (20px/700)보다 약했다. 같은 크기에 굵기만 반대라 위아래가 뒤집혀 보인다.
+   랜딩·손님 화면과 같은 굵은 디스플레이 쪽으로 맞춘다. */
+#content h1,
+.owner-shortcuts-label {
+    font-family: 'Nanum Myeongjo', serif;
+    font-size: 21px;
+    font-weight: 700;
+    /* 프리텐다드 800 용으로 조인 자간(-0.048em)은 명조에 너무 좁다.
+       세로획이 가늘고 삐침이 있어 그만큼 조이면 글자가 서로 붙는다. */
+    letter-spacing: -0.018em;
+    color: var(--ink);
+}
+
+/* 머리띠의 링크들(사이트 보기·비밀번호 변경·로그아웃)이 11px/300 이었다.
+   검은 바탕 위의 Light 11px 은 획이 끊겨 보인다. */
+#user-tools,
+#user-tools a,
+#user-tools button {
+    font-size: 12.5px;
+    font-weight: 400;
 }
 </style>
 {% endblock %}

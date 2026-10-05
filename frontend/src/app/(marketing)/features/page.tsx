@@ -34,7 +34,7 @@ export default function FeaturesPage() {
           <div key={f.k} className="mkt-feature reveal">
             <div>
               <div className="ko-lbl rule-lbl">{f.k}</div>
-              <div className="en-xs">{String(i + 1).padStart(2, '0')}</div>
+              <div className="en">{String(i + 1).padStart(2, '0')}</div>
             </div>
             <div>
               <h2 className="kd">{f.h}</h2>

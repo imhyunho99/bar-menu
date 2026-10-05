@@ -68,8 +68,7 @@ html:has(.mkt) {
    원칙 2. 한글 라벨은 프리텐다드 600, 자간은 거의 0
    원칙 3. 크기는 6단계로 고정 — 10 / 11.5 / 12.5 / 14 / 16 / 17
    ------------------------------------------------- */
-.mkt .en,
-.mkt .en-xs {
+.mkt .en {
   font-family: var(--font-mono), monospace;
   text-transform: uppercase;
   font-weight: 500;
@@ -78,10 +77,6 @@ html:has(.mkt) {
 .mkt .en {
   font-size: 10px;
   letter-spacing: 0.2em;
-}
-.mkt .en-xs {
-  font-size: 9px;
-  letter-spacing: 0.24em;
 }
 .mkt .ko-lbl {
   font-size: 11.5px;
@@ -120,10 +115,37 @@ html:has(.mkt) {
   letter-spacing: var(--dls);
   line-height: var(--dlh);
 }
-/* 강조용 명조 — 히어로 취소선 단어와 업종 마퀴에만 쓴다 */
+/* 강조용 명조 — 히어로 취소선 단어와 업종 마퀴 */
 .mkt .acc {
   font-family: var(--font-myeongjo), serif;
   font-weight: 800;
+}
+
+/* ─── 목소리를 둘로 가른다 ─────────────────────────────
+   제목은 명조, 본문·UI·숫자·라벨은 프리텐다드.
+
+   전에는 전부 프리텐다드였다. 그러면 위계가 크기와 굵기로만 갈려서,
+   화면을 멀리서 보면 밀도만 다른 같은 덩어리로 읽힌다. 서체가 바뀌면
+   "여기서 단락이 바뀐다"가 글자 모양만으로 전달된다.
+
+   히어로의 h1 은 건드리지 않는다 — 거기는 프리텐다드 800 위에 '인쇄소'
+   한 낱말만 명조로 떠 있는 구성이고, 그 대비가 이미 기능한다.
+
+   자간: --dls(-0.048em)는 프리텐다드 800 을 위해 조인 값이다. 명조는
+   세로획이 가늘고 삐침이 있어 그만큼 조이면 글자가 서로 붙는다. 덜 조인다.
+   ------------------------------------------------- */
+/* `.mkt` 를 앞에 붙여야 한다. `.mkt .kd`(0,2,0)가 굵기 800 을 걸고 있어서
+   `.mkt-feature h2`(0,1,1) 로는 글꼴만 바뀌고 굵기는 800 으로 남는다 —
+   제목마다 굵기가 갈린다. */
+.mkt .mkt-subhero h1,
+.mkt .sec-head h2,
+.mkt .mkt-feature h2,
+.mkt .mkt-step h2,
+.mkt .mkt-legal h2 {
+  font-family: var(--font-myeongjo), serif;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 1.28;
 }
 
 /* 라벨 앞 짧은 괘선 — 한글 라벨의 왼쪽 정렬을 잡아준다 */
@@ -323,17 +345,13 @@ html:has(.mkt) {
 .mkt-nav .brand .kd {
   font-size: 17px;
 }
-.mkt-nav .brand .en-xs {
-  color: var(--ash);
-  margin-left: 4px;
-}
 .mkt-nav .links {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 .mkt-nav .links a {
-  font-size: 13.5px;
+  font-size: 14px;
   color: var(--ash);
   text-decoration: none;
   padding: 8px 14px;
@@ -346,10 +364,16 @@ html:has(.mkt) {
   color: var(--ink);
   font-weight: 600;
 }
+/* 이 규칙이 없으면 CTA 가 검은 바탕에 회색 글씨가 된다(3.8:1).
+   위의 `.mkt-nav .links a`(0,2,1)가 `.mkt .btn-solid`(0,2,0)의 흰색을
+   명시도로 이긴다. :hover 에만 흰색을 넣어 둬서 평상시가 회색이었다. */
+.mkt-nav .links .btn-solid {
+  color: #fff;
+}
 .mkt-nav .links .btn {
   margin-left: 8px;
   padding: 10px 20px;
-  font-size: 13.5px;
+  font-size: 14px;
 }
 .mkt-nav .links .btn:hover {
   color: #fff;
@@ -357,7 +381,6 @@ html:has(.mkt) {
 /* 좁은 화면에서 링크를 숨겨버리면 /features 에서 /pricing 으로 갈 방법이
    로고밖에 없다. 숨기는 대신 줄여서 남긴다. */
 @media (max-width: 639px) {
-  .mkt-nav .brand .en-xs,
   .mkt-nav .brand .kd {
     display: none;
   }
@@ -1161,7 +1184,9 @@ html:has(.mkt) {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 12px;
   padding: 16px 20px;
-  font-size: 15px;
+  /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다. 문의 폼은
+     폰에서 채우는 일이 많아 한 칸 칠 때마다 화면이 튄다. */
+  font-size: 16px;
   font-family: inherit;
   color: #fff;
   transition:
@@ -1182,8 +1207,8 @@ html:has(.mkt) {
   background: #fff;
   color: var(--ink);
   font-family: inherit;
-  font-weight: 700;
-  font-size: 15px;
+  font-weight: 600;
+  font-size: 16px;
   border: 0;
   border-radius: 12px;
   padding: 16px;
@@ -1285,7 +1310,7 @@ html:has(.mkt) {
   color: var(--amber);
   margin-bottom: 8px;
 }
-.mkt-feature .en-xs {
+.mkt-feature .en {
   color: var(--ash);
 }
 .mkt-feature h2 {
@@ -1341,7 +1366,9 @@ html:has(.mkt) {
 }
 .mkt-step .idx {
   font-size: 34px;
-  color: var(--line);
+  /* 테두리색(--line)을 글자색으로 쓰고 있어서 1.25:1 — 사실상 안 보였다.
+     장식이지만 단계 번호라 알아는 볼 수 있어야 한다. */
+  color: #c9c9d1;
   line-height: 1;
 }
 .mkt-step h2 {
@@ -1462,14 +1489,14 @@ html:has(.mkt) {
   line-height: 1.75;
 }
 .mkt-table th .en {
-  color: var(--ash);
+  color: var(--ink);
 }
 .mkt-table th .kd {
   font-size: 15px;
   margin-top: 4px;
 }
 .mkt-table th .won {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--ash);
 }
@@ -1479,7 +1506,7 @@ html:has(.mkt) {
 .mkt-table td {
   padding: 14px 12px;
   text-align: center;
-  font-size: 15px;
+  font-size: 14px;
 }
 .mkt-table td:first-child {
   text-align: left;
@@ -1494,10 +1521,10 @@ html:has(.mkt) {
 }
 .mkt-table .yes {
   color: var(--ink);
-  font-weight: 700;
+  font-weight: 600;
 }
 .mkt-table .no {
-  color: var(--line);
+  color: var(--ash);
 }
 
 /* ─── FAQ ─── */
