@@ -22,7 +22,6 @@ export default function Nav({ active }: { active?: 'features' | 'pricing' | 'gui
         <Link href="/" className="brand">
           <Image src="/marketing/logo-t.png" alt="" width={28} height={28} priority />
           <span className="kd">bar-menu</span>
-          <span className="en-xs">QR Menu for Bars</span>
         </Link>
         <div className="links">
           {LINKS.map((l) => (
