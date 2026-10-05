@@ -12,12 +12,17 @@ export const metadata: Metadata = {
   description:
     '손님이 QR을 찍으면 매장의 폰트와 색으로 메뉴판이 열립니다. 메뉴가 바뀌면 사장님이 그 자리에서 고칩니다. 가입은 무료, 태블릿도 약정도 없이 월 9,900원부터.',
   keywords: ['QR 메뉴판', '스마트 메뉴판', '모바일 메뉴판', '테이블 오더', '바 메뉴판', '이자카야 메뉴판'],
+  // 하위 페이지에는 있는데 랜딩에만 없었다. 같은 페이지가 여러 주소로
+  // 잡히면(끝의 / 유무, 쿼리) 평가가 쪼개진다.
+  alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     url: 'https://bar-menu.ddnsfree.com/',
     title: 'bar-menu | 바·이자카야를 위한 QR 메뉴판',
     description: '매장의 폰트와 색으로 열리는 QR 메뉴판. 메뉴 변경은 사장님이 그 자리에서.',
-    images: [{ url: '/marketing/logo-t.png' }],
+    // 예전에는 배경이 투명한 로고 PNG 였다. 카카오톡·슬랙에 링크를 붙이면
+    // 흰 칸이나 검은 칸 하나가 떴다. 1200x630 실사진으로 바꾼다.
+    images: [{ url: '/marketing/og.jpg', width: 1200, height: 630, alt: '영업 중인 바 카운터' }],
   },
 };
 
