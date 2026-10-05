@@ -68,8 +68,8 @@ export const FEATURES: Feature[] = [
   {
     k: '속도',
     h: '사진은 올리기만 하면 됩니다',
-    p: '업로드한 이미지는 서버에서 자동으로 WebP로 변환·압축됩니다. 사장님이 용량을 신경 쓸 일이 없습니다.',
-    pts: ['업로드 시 WebP 자동 변환', '품질 조정 압축', '신호가 약한 지하 매장 대응'],
+    p: '올리신 사진은 서버가 알아서 가볍게 줄입니다. 용량을 신경 쓰실 일이 없습니다.',
+    pts: ['올리는 즉시 자동 경량화', '품질 조정 압축', '신호가 약한 지하 매장 대응'],
   },
   {
     k: '매출',
@@ -117,7 +117,7 @@ export const FEATURES: Feature[] = [
 export const COMPARE_ROWS: [string, boolean, boolean, boolean][] = [
   ['QR 메뉴판 · 실시간 수정', true, true, true],
   ['항목별 폰트 · 색상 커스텀', true, true, true],
-  ['이미지 WebP 자동 변환', true, true, true],
+  ['사진 자동 경량화', true, true, true],
   ['주류 페어링 추천', true, true, true],
   // qr_views.generate_qr_code 는 매장당 QR 하나를 아치형 인쇄 레이아웃으로 그린다.
   // 테이블 번호는 QR 이 아니라 손님이 장바구니에서 입력한다(Cart.tsx).
@@ -127,7 +127,7 @@ export const COMPARE_ROWS: [string, boolean, boolean, boolean][] = [
   ['페이히어 POS 연동', false, true, true],
   ['주문 대시보드 · 알림음', false, true, true],
   ['와이파이 원클릭 연결 QR', false, true, true],
-  ['매장 안에서만 열람 (IP/SSID)', false, true, true],
+  ['매장 안에서만 열람', false, true, true],
   ['복사 · 우클릭 · 인쇄 차단', false, true, true],
   ['카드 레이아웃 1:1 설계', false, false, true],
   ['인트로 영상 제작', false, false, true],
@@ -222,6 +222,6 @@ export const FAQ: [string, string][] = [
   ],
   [
     '포스가 없어도 쓸 수 있나요?',
-    '쓸 수 있습니다. 주문은 관리자 화면에서 바로 확인하시면 되고, 포스 연동은 선택입니다. 연동은 현재 페이히어(Payhere)를 지원합니다.',
+    '쓸 수 있습니다. 주문은 관리자 화면에서 바로 확인하시면 되고, 포스 연동은 선택입니다. 연동은 현재 페이히어를 지원합니다.',
   ],
 ];

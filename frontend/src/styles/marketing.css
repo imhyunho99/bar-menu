@@ -1244,7 +1244,11 @@ html:has(.mkt) {
   padding: 64px 0 48px;
   border-bottom: 1px solid var(--line);
 }
-.mkt-subhero .en {
+/* 눈썹은 Nav 라벨과 같은 한국어로 쓴다. 한국어에는 모노(.en)를 못 씌운다 —
+   글리프가 없어 폴백되면서 자간만 남아 흩어진다. 그래서 .ko-lbl 쪽에도
+   같은 여백을 준다. */
+.mkt-subhero .en,
+.mkt-subhero .ko-lbl {
   color: var(--amber);
   margin-bottom: 24px;
 }
@@ -1557,5 +1561,84 @@ html:has(.mkt) {
   }
   .mkt .mt-stage {
     padding-top: 190px;
+  }
+}
+
+/* ─── 이용약관 ─────────────────────────────────────────
+   예전 약관 화면은 용어와 설명을 한 줄에 나란히 두는 flex 였다. 용어 칸에
+   최소 너비가 없어서 좁은 화면에서 "구독 / 중도 / 해지" 처럼 낱말마다 줄이
+   바뀌었다. 그래서 가로로 나란히 두지 않고 위아래로 쌓는다 — 글이 길어도
+   깨질 자리가 없다.
+
+   본문에 text-align: justify 도 걸려 있었다. 한국어는 낱말 사이로만 늘어나기
+   때문에 양쪽 정렬을 하면 줄마다 띄어쓰기 폭이 들쭉날쭉해진다. 쓰지 않는다.
+   ------------------------------------------------- */
+.mkt-legal {
+  max-width: 44rem;
+  padding-top: 56px;
+  padding-bottom: 24px;
+}
+.mkt-legal section {
+  padding: 32px 0;
+  border-bottom: 1px solid var(--line);
+}
+.mkt-legal section:last-child {
+  border-bottom: 0;
+}
+.mkt-legal h2 {
+  font-size: 19px;
+  margin-bottom: 16px;
+}
+.mkt-legal p {
+  color: var(--ash);
+}
+.mkt-legal p + p {
+  margin-top: 14px;
+}
+
+.mkt-legal .defs {
+  margin: 20px 0 0;
+}
+.mkt-legal .defs > div + div {
+  margin-top: 20px;
+}
+.mkt-legal .defs dt {
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.mkt-legal .defs dd {
+  margin: 0;
+  color: var(--ash);
+}
+
+.mkt-legal .bullets {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+}
+.mkt-legal .bullets li {
+  display: flex;
+  gap: 10px;
+  color: var(--ash);
+}
+.mkt-legal .bullets li + li {
+  margin-top: 12px;
+}
+.mkt-legal .bullets .dash {
+  color: var(--amber);
+  flex: none;
+}
+
+.mkt-legal .note {
+  margin-top: 20px;
+  padding: 18px 20px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+@media (min-width: 1024px) {
+  .mkt-legal {
+    padding-top: 72px;
   }
 }

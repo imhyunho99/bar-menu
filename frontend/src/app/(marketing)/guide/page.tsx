@@ -18,7 +18,7 @@ export default function GuidePage() {
       <Nav active="guide" />
 
       <header className="wrap mkt-subhero">
-        <div className="en">How it works</div>
+        <div className="ko-lbl rule-lbl">도입 절차</div>
         <h1 className="kd">
           가입부터 오픈까지
           <br />

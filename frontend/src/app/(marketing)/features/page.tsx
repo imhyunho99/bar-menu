@@ -17,7 +17,7 @@ export default function FeaturesPage() {
       <Nav active="features" />
 
       <header className="wrap mkt-subhero">
-        <div className="en">Features</div>
+        <div className="ko-lbl rule-lbl">기능</div>
         <h1 className="kd">
           메뉴판 하나에
           <br />

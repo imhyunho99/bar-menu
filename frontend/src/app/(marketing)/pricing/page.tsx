@@ -30,7 +30,7 @@ export default function PricingPage() {
       <Nav active="pricing" />
 
       <header className="wrap mkt-subhero">
-        <div className="en">Pricing</div>
+        <div className="ko-lbl rule-lbl">요금</div>
         <h1 className="kd">
           기기값도, 약정도
           <br />
