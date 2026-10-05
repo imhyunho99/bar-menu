@@ -170,6 +170,35 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
     pairing_description_font_url = serializers.SerializerMethodField()
     pairing_price_font_url = serializers.SerializerMethodField()
 
+    def to_representation(self, instance):
+        """
+        끄여 있는 기능의 값은 아예 내보내지 않는다.
+
+        2026-10-05 실측: 운영 API 가 bid 의 와이파이 비밀번호와 매장 공인 IP 를
+        아무에게나 내주고 있었다. `enable_wifi` 가 **False 인데도** 비밀번호가
+        따라 나갔다 — 화면이 안 쓰는 것과 API 가 안 주는 것은 다른 문제다.
+
+        손님 화면(Next.js)이 IP 게이트를 서버 렌더 단계에서 판정하므로
+        store_public_ip 자체는 필요하다. 다만 게이트를 **켠 매장에만** 준다.
+        끈 매장의 IP 까지 공개할 이유가 없다.
+
+        근본 해결은 게이트 판정을 API 로 옮기는 것이다(지금은 Next.js 에만
+        있어서 API 를 직접 부르면 그냥 열린다). 그건 구조 변경이라 따로 한다.
+        """
+        data = super().to_representation(instance)
+
+        if not instance.enable_wifi:
+            for f in ('wifi_ssid', 'wifi_password', 'wifi_security'):
+                data.pop(f, None)
+
+        if not instance.restrict_by_ip:
+            data.pop('store_public_ip', None)
+
+        if not instance.enable_payhere:
+            data.pop('payhere_store_id', None)
+
+        return data
+
     class Meta:
         model = SiteSettings
         fields = [
