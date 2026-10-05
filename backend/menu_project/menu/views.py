@@ -1,8 +1,20 @@
-from django.shortcuts import render, get_object_or_404
+from django.conf import settings
+from django.http import Http404, JsonResponse
+from django.shortcuts import redirect, render, get_object_or_404
 from django.db.models import Case, When, IntegerField, Prefetch, Q
-from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from .models import MenuItem, Category, SiteSettings, Restaurant, ContactSubmission
+
+
+def _customer_site(path=''):
+    """
+    손님이 실제로 보는 사이트 주소. 설정이 비어 있으면 빈 문자열.
+
+    이 호스트(api.*)에는 손님 화면이 **없다**. 2026-07 에 손님 화면을 Next.js
+    쪽으로 옮겼는데, Django 가 그리던 옛 화면들이 그대로 살아 있었다.
+    """
+    base = (settings.CUSTOMER_SITE_URL or '').rstrip('/')
+    return f'{base}{path}' if base else ''
 
 
 def _own_sub_categories(restaurant):
@@ -20,10 +32,22 @@ def _own_sub_categories(restaurant):
 
 def index_view(request):
     """
-    메인 페이지 (/) - 등록된 모든 레스토랑 목록 표시
+    api.* 의 루트. 손님 사이트로 넘긴다.
+
+    예전에는 **등록된 모든 매장을 나열하는 옛 랜딩**이었다. 즉 아무나
+    https://api.bar-menu.ddnsfree.com/ 를 열면 우리 고객사 목록(이름과 슬러그)을
+    통째로 볼 수 있었다. 2026-10-05 실측에서 bid·sorok·test 가 그대로 나왔다.
+    홍보 문구도 옛날 것이라 진짜 랜딩과 중복 색인까지 됐다.
+
+    301 로 보낸다. 봇에게 "이 주소는 버렸다"를 알리는 게 목적이라 302 로는
+    모자란다 — 302 는 원래 주소를 계속 긁는다.
     """
-    restaurants = Restaurant.objects.all().order_by('name')
-    return render(request, 'menu/index.html', {'restaurants': restaurants})
+    target = _customer_site('/')
+    if target:
+        return redirect(target, permanent=True)
+    # CUSTOMER_SITE_URL 이 비어 있으면 보낼 곳이 없다. 그래도 매장 목록을
+    # 다시 내보이지는 않는다.
+    raise Http404('이 호스트에는 손님 화면이 없습니다.')
 
 def get_breadcrumb_path(category):
     """카테고리의 전체 경로를 생성"""
@@ -35,6 +59,19 @@ def get_breadcrumb_path(category):
     return path
 
 def menu_main(request, restaurant_slug=None):
+    """
+    옛 손님 화면. 지금은 손님 사이트로 넘긴다.
+
+    같은 메뉴판이 두 주소에 떠 있었다. 봇이 이쪽을 긁다가 2026-10-02 에
+    staticfiles 500 이 쏟아진 것도 여기였다. 인쇄된 옛 QR 이 이 주소를
+    가리키고 있을 수 있어서 404 가 아니라 301 로 넘긴다 — 종이는 다시
+    못 찍는다.
+    """
+    target = _customer_site(f'/{request.restaurant.slug}')
+    if target:
+        return redirect(target, permanent=True)
+
+    # 아래는 CUSTOMER_SITE_URL 이 없을 때만 돈다(옛 동작).
     # 최상위 카테고리만 가져오기 (parent가 None인 카테고리)
     # 현재 레스토랑 데이터만 필터링
     top_categories = Category.objects.filter(
@@ -58,6 +95,11 @@ def menu_main(request, restaurant_slug=None):
     })
 
 def menu_list(request, category_id, restaurant_slug=None):
+    """옛 카테고리 화면. menu_main 과 같은 이유로 손님 사이트로 넘긴다."""
+    target = _customer_site(f'/{request.restaurant.slug}/category/{category_id}')
+    if target:
+        return redirect(target, permanent=True)
+
     # 선택된 카테고리 (현재 레스토랑의 것인지 확인)
     # N+1 문제 해결: 템플릿에서 sub_categories 접근 가능성 있음
     category = get_object_or_404(

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import HttpResponse
 from django.views.generic import RedirectView
 from menu.qr_views import generate_qr_code
 from menu import views as menu_views # 이 줄을 다시 추가합니다.
@@ -11,8 +12,21 @@ admin.site.site_header = "bar-menu 통합 관리 시스템"
 admin.site.site_title = "bar-menu 관리 포탈"
 admin.site.index_title = "기본 DB 설정 관리"
 
+def robots_txt(request):
+    """
+    이 호스트는 색인하지 않는다.
+
+    손님이 보는 사이트는 bar-menu.ddnsfree.com 이고 여기(api.*)는 API 와
+    사장님 관리 화면뿐이다. 그런데 2026-10 까지 봇이 `/`, `/<slug>/`,
+    `/wp-config.php` 까지 쉴 새 없이 긁고 있었다. 레거시 주소는 301 로
+    넘겼지만, 애초에 긁지 말라고 말해 두는 편이 낫다.
+    """
+    return HttpResponse("User-agent: *\nDisallow: /\n", content_type="text/plain")
+
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('robots.txt', robots_txt),
     # QR 코드 생성 등은 slug 없이 접근 가능하게 유지하거나 필요에 따라 slug 포함
     # path('qr/', generate_qr_code, name='qr_code'),  <-- 제거됨 (앱 URL에서 처리)
     path('favicon.ico', RedirectView.as_view(url=settings.STATIC_URL + 'favicon.ico')),
