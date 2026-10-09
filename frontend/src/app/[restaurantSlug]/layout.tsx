@@ -1,4 +1,5 @@
 import { getRestaurant, getCategoryTree, isMenuClosed, isTooBusy, previewToken } from '@/lib/api.server';
+import { requireSlugShape } from '@/lib/slug';
 import { appUrl } from '@/lib/site';
 import MenuNotOpen from '@/components/MenuNotOpen';
 import PreviewBanner from '@/components/PreviewBanner';
@@ -21,6 +22,8 @@ export default async function RestaurantLayout({
   params: Promise<{ restaurantSlug: string }>;
 }) {
   const { restaurantSlug } = await params;
+  // 매장 주소가 아니면 API 를 부르기 전에 끊는다 (lib/slug.ts 참고)
+  requireSlugShape(restaurantSlug);
 
   if (restaurantSlug === 'admin') {
     // 호스트를 여기서 적지 않는다. 예전에는 localhost:8000 이 박혀 있어서,

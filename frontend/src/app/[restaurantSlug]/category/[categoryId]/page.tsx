@@ -1,4 +1,5 @@
 import { getRestaurant, getCategoryDetail, getCategoryTree, isMenuClosed } from '@/lib/api.server';
+import { requireSlugShape } from '@/lib/slug';
 import MenuNotOpen from '@/components/MenuNotOpen';
 import TopBar from '@/components/TopBar';
 import SideMenu from '@/components/SideMenu';
@@ -18,6 +19,8 @@ export async function generateMetadata({
   params: Promise<{ restaurantSlug: string; categoryId: string }>;
 }): Promise<Metadata> {
   const { restaurantSlug, categoryId } = await params;
+  // 매장 주소가 아니면 API 를 부르기 전에 끊는다 (lib/slug.ts 참고)
+  requireSlugShape(restaurantSlug);
   try {
     const [restaurant, category] = await Promise.all([
       getRestaurant(restaurantSlug),
@@ -63,6 +66,8 @@ export default async function CategoryDetailPage({
   params: Promise<{ restaurantSlug: string; categoryId: string }>;
 }) {
   const { restaurantSlug, categoryId } = await params;
+  // 매장 주소가 아니면 API 를 부르기 전에 끊는다 (lib/slug.ts 참고)
+  requireSlugShape(restaurantSlug);
   const currentCatId = parseInt(categoryId);
 
   let restaurant;
