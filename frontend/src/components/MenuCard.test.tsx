@@ -30,14 +30,23 @@ const ITEM = {
   pairings: [],
 } as unknown as MenuItem;
 
+// 사진 조각을 끈 배치. ITEM 에는 사진이 없어서, 사진 자리를 남겨 둔 배치면
+// 예전 카드로 간다(아래 '사진 없는 메뉴' 참고).
 const CUSTOM: CardLayout = {
   layout_type: 'custom',
   components: [
+    { id: 'menu_image', name: '이미지', visible: false, x: 0, y: 0, w: 100, h: 50 },
     { id: 'menu_name', name: '메뉴명', visible: true, x: 5, y: 55, w: 90, h: 12 },
   ],
 };
 
-function draw(layout: CardLayout | null, enableCart = true) {
+/** 사진 자리를 위쪽 절반에 남겨 둔 배치 — 기본 자리 그대로. */
+const WITH_PHOTO_SLOT: CardLayout = {
+  layout_type: 'custom',
+  components: [{ id: 'menu_price', name: '가격', visible: true, x: 5, y: 78, w: 90, h: 10 }],
+};
+
+function draw(layout: CardLayout | null, enableCart = true, item: MenuItem = ITEM) {
   const restaurant = {
     slug: 'bid',
     site_settings: { enable_cart: enableCart },
@@ -45,7 +54,7 @@ function draw(layout: CardLayout | null, enableCart = true) {
 
   return render(
     <RestaurantProvider restaurant={restaurant} categoryTree={[]}>
-      <MenuCard item={ITEM} layout={layout} />
+      <MenuCard item={item} layout={layout} />
     </RestaurantProvider>,
   );
 }
@@ -70,6 +79,37 @@ describe('어느 카드로 그리는가', () => {
     expect(container.querySelector('.menu-item-custom')).toBeTruthy();
     expect(container.querySelector('.menu-content')).toBeNull();
     expect(screen.getByText('골뱅이무침')).toBeTruthy();
+  });
+
+  it('사진 자리를 남긴 배치에 사진 없는 메뉴는 예전 카드로 간다', () => {
+    // 위쪽 절반이 빈 카드가 줄줄이 이어지고, 영문 이름이 사진 전제의 작은
+    // 상자에 갇혀 잘렸다(2026-11 bid, 32개 중 사진 2개).
+    const { container } = draw(WITH_PHOTO_SLOT);
+
+    expect(container.querySelector('.menu-item-custom')).toBeNull();
+    expect(container.querySelector('.menu-content')).toBeTruthy();
+    expect(screen.getByText('Whelk Salad')).toBeTruthy();
+  });
+
+  it('같은 배치라도 사진이 있는 메뉴는 사장님이 놓은 대로 그린다', () => {
+    const withPhoto = { ...ITEM, menu_image: 'https://example.test/x.webp' } as MenuItem;
+    const { container } = draw(WITH_PHOTO_SLOT, true, withPhoto);
+
+    expect(container.querySelector('.menu-item-custom')).toBeTruthy();
+  });
+
+  it('image_only 메뉴는 배치를 고친 매장에서도 그림만 그린다', () => {
+    // 구역 머리 배너다. 배치대로 그리면 밑에 자리채움 글자가 나온다.
+    const banner = {
+      ...ITEM,
+      display_mode: 'image_only',
+      menu_image: 'https://example.test/banner.webp',
+    } as MenuItem;
+    const { container } = draw(WITH_PHOTO_SLOT, true, banner);
+
+    expect(container.querySelector('.menu-item-custom')).toBeNull();
+    expect(container.querySelector('.menu-only-image')).toBeTruthy();
+    expect(screen.queryByText('골뱅이무침')).toBeNull();
   });
 
   it('망가진 배치는 예전 카드로 떨어뜨린다', () => {

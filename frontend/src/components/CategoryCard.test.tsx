@@ -35,6 +35,21 @@ function custom(overrides: Partial<Record<string, unknown>>[] = []): CardLayout 
   };
 }
 
+describe('사진 자리를 남긴 배치', () => {
+  it('사진 없는 카테고리는 예전 카드로 그린다', () => {
+    // 위쪽 65% 가 빈 카드가 된다. 메뉴 카드와 같은 규칙이다(drawsCustom).
+    const { container } = render(
+      <CategoryCard
+        category={{ ...CATEGORY, category_image: null } as unknown as Category}
+        href="/bid/category/1"
+        layout={custom()}
+      />,
+    );
+    expect(container.querySelector('.category-card-custom')).toBeNull();
+    expect(container.querySelector('.category-card')).toBeTruthy();
+  });
+});
+
 describe('손대지 않은 매장', () => {
   it('예전 마크업 그대로 그린다', () => {
     const { container } = render(

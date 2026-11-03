@@ -20,7 +20,7 @@ import { Nl2br } from './MenuCard';
  * 놓았는데 안 나온다' 가 생기고, 그걸 설명할 자리가 화면에 없다.
  */
 
-const DEFAULTS: LayoutComponent[] = [
+export const MENU_LAYOUT_DEFAULTS: LayoutComponent[] = [
   { id: 'menu_image', name: '메뉴 이미지', visible: true, x: 0, y: 0, w: 100, h: 50 },
   { id: 'menu_name', name: '메뉴명 (한글)', visible: true, x: 5, y: 55, w: 90, h: 12 },
   { id: 'menu_name_en', name: '메뉴명 (영문)', visible: true, x: 5, y: 68, w: 90, h: 8 },
@@ -143,7 +143,7 @@ export default function MenuCardLayout({
       id={`menu-${item.id}`}
       style={{ aspectRatio: CARD_ASPECT.menu }}
     >
-      {resolveComponents(layout, DEFAULTS).map((component) => (
+      {resolveComponents(layout, MENU_LAYOUT_DEFAULTS).map((component) => (
         <Piece
           key={component.id}
           component={component}
