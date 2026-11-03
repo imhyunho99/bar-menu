@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import type { MenuItem as MenuItemType } from '@/lib/types';
 import { useRestaurant } from '@/app/[restaurantSlug]/context';
-import { isCustomLayout, type CardLayout } from '@/lib/layout';
-import MenuCardLayout from './MenuCardLayout';
+import { drawsCustom, type CardLayout } from '@/lib/layout';
+import MenuCardLayout, { MENU_LAYOUT_DEFAULTS } from './MenuCardLayout';
 
 /** nl2br: 줄바꿈을 <br>로 변환. MenuCardLayout 도 같은 것을 쓴다. */
 export function Nl2br({ text }: { text: string | null | undefined }) {
@@ -162,7 +162,14 @@ export default function MenuCard({
 
   // custom 이면 display_mode 를 보지 않는다. 주인이 둘이면 '이미지를 보이게
   // 놓았는데 안 나온다' 가 생기고, 그걸 설명할 자리가 화면에 없다.
-  if (isCustomLayout(layout)) {
+  // 예외 둘은 예전 카드로 간다.
+  //  - 사진 자리를 비워 둔 배치에 사진 없는 메뉴 (drawsCustom 참고)
+  //  - image_only: 메뉴가 아니라 그림 한 장이다(구역 머리 배너 등). 배치대로
+  //    그리면 배너 밑에 '[ 신상품 ]', '-' 같은 자리채움 글자가 손님에게 보인다.
+  if (
+    mode !== 'image_only' &&
+    drawsCustom(layout, MENU_LAYOUT_DEFAULTS, 'menu_image', !!item.menu_image)
+  ) {
     return (
       <>
         {/*

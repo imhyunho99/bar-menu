@@ -57,6 +57,30 @@ export function isCustomLayout(layout: CardLayout | null | undefined): boolean {
 }
 
 /**
+ * 이 카드를 절대배치로 그릴 것인가 — 배치를 고쳤고, 그 배치가 이 카드에 맞는가.
+ *
+ * 사진 조각이 켜진 배치는 카드의 그 자리를 사진 몫으로 비워 둔다(기본값은
+ * 위쪽 절반). 사진이 없는 메뉴를 거기 그리면 위쪽 절반이 통째로 빈 카드가
+ * 줄줄이 이어지고, 글자는 사진을 전제로 작게 잡은 상자에 갇혀 잘린다.
+ * 2026-11 bid: 한 카테고리 32개 중 사진은 2개였고, 영문 이름 상자가 폰에서
+ * 38px 인데 글자는 34px 에 2~4줄이라 첫 줄만 남았다.
+ *
+ * 그런 카드는 예전 카드로 그린다. 사진을 끈 배치(글자만 놓은 배치)는 사진
+ * 유무와 상관없이 사장님이 놓은 대로 그린다.
+ */
+export function drawsCustom(
+  layout: CardLayout | null | undefined,
+  defaults: LayoutComponent[],
+  imageId: string,
+  hasImage: boolean,
+): layout is CardLayout {
+  if (!isCustomLayout(layout)) return false;
+  if (hasImage) return true;
+  const slot = resolveComponents(layout as CardLayout, defaults).find((c) => c.id === imageId);
+  return !slot?.visible;
+}
+
+/**
  * 그릴 조각들. 저장된 값을 기본값 위에 덮는다.
  *
  * 저장된 JSON 에 없는 id 는 기본값의 자리와 visible 을 그대로 쓴다. 지금

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {
   CARD_ASPECT,
   boxStyle,
-  isCustomLayout,
+  drawsCustom,
   resolveComponents,
   type CardLayout,
   type LayoutComponent,
@@ -72,7 +72,7 @@ export default function CategoryCard({
   href: string;
   layout: CardLayout | null | undefined;
 }) {
-  if (!isCustomLayout(layout)) {
+  if (!drawsCustom(layout, DEFAULTS, 'category_image', !!category.category_image)) {
     return (
       <Link href={href} className="category-card">
         {category.name_en && <p className="category-name-en">{category.name_en}</p>}
@@ -87,7 +87,7 @@ export default function CategoryCard({
       className="category-card category-card-custom"
       style={{ aspectRatio: CARD_ASPECT.category }}
     >
-      {resolveComponents(layout as CardLayout, DEFAULTS).map((component) => (
+      {resolveComponents(layout, DEFAULTS).map((component) => (
         <Piece key={component.id} component={component} category={category} />
       ))}
     </Link>
