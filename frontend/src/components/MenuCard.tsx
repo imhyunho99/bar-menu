@@ -164,10 +164,14 @@ export default function MenuCard({
   // 놓았는데 안 나온다' 가 생기고, 그걸 설명할 자리가 화면에 없다.
   // 예외 둘은 예전 카드로 간다.
   //  - 사진 자리를 비워 둔 배치에 사진 없는 메뉴 (drawsCustom 참고)
-  //  - image_only: 메뉴가 아니라 그림 한 장이다(구역 머리 배너 등). 배치대로
-  //    그리면 배너 밑에 '[ 신상품 ]', '-' 같은 자리채움 글자가 손님에게 보인다.
+  //  - 예전 카드가 그림만 그리는 메뉴: image_only, 그리고 사진이 있는 auto.
+  //    메뉴가 아니라 그림 한 장이다(구역 머리 배너 등). 배치대로 그리면 배너
+  //    밑에 '[ Starter ]', '-' 같은 자리채움 글자가 손님에게 보인다.
+  //    2026-11 bid: 사진 있는 메뉴 33개 중 32개가 auto 였다. image_only 만
+  //    거르면 카테고리마다 맨 위 배너가 이렇게 깨진다.
+  const drawsOnlyImage = mode === 'image_only' || (mode === 'auto' && !!item.menu_image);
   if (
-    mode !== 'image_only' &&
+    !drawsOnlyImage &&
     drawsCustom(layout, MENU_LAYOUT_DEFAULTS, 'menu_image', !!item.menu_image)
   ) {
     return (

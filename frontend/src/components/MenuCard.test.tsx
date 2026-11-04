@@ -91,11 +91,26 @@ describe('어느 카드로 그리는가', () => {
     expect(screen.getByText('Whelk Salad')).toBeTruthy();
   });
 
-  it('같은 배치라도 사진이 있는 메뉴는 사장님이 놓은 대로 그린다', () => {
-    const withPhoto = { ...ITEM, menu_image: 'https://example.test/x.webp' } as MenuItem;
+  it('같은 배치라도 사진이 있는 combined 메뉴는 사장님이 놓은 대로 그린다', () => {
+    const withPhoto = {
+      ...ITEM,
+      display_mode: 'combined',
+      menu_image: 'https://example.test/x.webp',
+    } as MenuItem;
     const { container } = draw(WITH_PHOTO_SLOT, true, withPhoto);
 
     expect(container.querySelector('.menu-item-custom')).toBeTruthy();
+  });
+
+  it('사진이 있는 auto 메뉴는 배치를 고친 매장에서도 그림만 그린다', () => {
+    // 예전 카드에서 auto + 사진은 그림만 그린다. bid 의 구역 배너는 전부
+    // 이 모양이었고, 배치대로 그리자 '[ Starter ]', '-' 가 밑에 드러났다.
+    const banner = { ...ITEM, menu_image: 'https://example.test/banner.webp' } as MenuItem;
+    const { container } = draw(WITH_PHOTO_SLOT, true, banner);
+
+    expect(container.querySelector('.menu-item-custom')).toBeNull();
+    expect(container.querySelector('.menu-only-image')).toBeTruthy();
+    expect(screen.queryByText('골뱅이무침')).toBeNull();
   });
 
   it('image_only 메뉴는 배치를 고친 매장에서도 그림만 그린다', () => {
