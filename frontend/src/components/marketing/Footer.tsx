@@ -21,6 +21,11 @@ export default function Footer() {
           <Link href="/terms" className="t-ink">
             이용약관
           </Link>
+          {/* 처리방침은 굵게 둔다 — 개인정보 보호위원회 작성지침이 다른 약관과
+              구분되게 표시하라고 한다. */}
+          <Link href="/privacy" className="t-ink" style={{ fontWeight: 700 }}>
+            개인정보 처리방침
+          </Link>
         </div>
       </div>
     </footer>

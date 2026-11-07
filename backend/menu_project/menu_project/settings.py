@@ -336,6 +336,7 @@ MARKETING_SITE_URL = os.environ.get(
     'MARKETING_SITE_URL', 'https://bar-menu.ddnsfree.com'
 ).rstrip('/')
 TERMS_URL = f'{MARKETING_SITE_URL}/terms'
+PRIVACY_URL = f'{MARKETING_SITE_URL}/privacy'
 
 # 손님이 실제로 보는 화면(Next.js)의 주소. 미리보기 링크를 만들 때 쓴다.
 # Django 가 그리는 /<slug>/ 를 주면 사장님은 손님이 볼 것과 다른 화면을

@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { submitContact } from '@/lib/api';
 
@@ -82,7 +83,16 @@ function ContactForm() {
         {submitting ? '보내는 중…' : '문의 보내기'}
       </button>
       <p className="cap note" role="status">
-        {status ? status.message : '남겨주신 정보는 문의 응대에만 씁니다.'}
+        {status ? (
+          status.message
+        ) : (
+          <>
+            남겨주신 정보는 문의 응대에만 씁니다.{' '}
+            <Link href="/privacy" style={{ color: 'inherit', textDecoration: 'underline' }}>
+              개인정보 처리방침
+            </Link>
+          </>
+        )}
       </p>
     </form>
   );
@@ -110,7 +120,7 @@ export default function ContactSection() {
               남겨주세요
             </h2>
             <p className="bd">
-              받는 즉시 확인하고 안내드리겠습니다. 상담이 부담스러우시면 문자로만 진행해도 됩니다.
+              보통 10분 안팎으로 연락드립니다. 상담이 부담스러우시면 문자로만 진행해도 됩니다.
             </p>
           </div>
           <ContactForm />

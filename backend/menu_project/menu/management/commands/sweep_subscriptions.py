@@ -16,6 +16,7 @@ PaymentNotConfigured 를 만나면 통째로 return 한다. 결제 대행사가 
 
 from datetime import timedelta
 
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
@@ -76,3 +77,6 @@ class Command(BaseCommand):
                 continue
             notifications.send_expiring_soon_notification(subscription, days_left)
             self.stdout.write(f'  o {label} ({days_left}일 남음)')
+
+        # 매일 도는 김에 처리방침의 보관 기한도 지킨다(purge_old_contacts 참고).
+        call_command('purge_old_contacts', dry_run=dry_run, stdout=self.stdout)

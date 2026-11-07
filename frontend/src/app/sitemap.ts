@@ -5,7 +5,7 @@ import type { MetadataRoute } from 'next';
  * sitemap.xml.
  *
  * 담는 것은 **우리가 알리려는 페이지**뿐이다 — 랜딩과 기능·요금·도입 절차,
- * 그리고 약관.
+ * 그리고 약관·개인정보 처리방침.
  *
  * 매장 메뉴판(`/bid`, `/sorok` …)은 **일부러 넣지 않는다.** 사장님이 QR 을
  * 만든 것은 가게 안 손님에게 보여주기 위해서지 검색에 올리기 위해서가
@@ -22,6 +22,7 @@ const PAGES: { path: string; priority: number; changeFrequency: 'weekly' | 'mont
   { path: '/pricing', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/guide', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/terms', priority: 0.2, changeFrequency: 'monthly' },
+  { path: '/privacy', priority: 0.2, changeFrequency: 'monthly' },
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

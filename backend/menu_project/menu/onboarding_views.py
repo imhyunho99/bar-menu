@@ -160,6 +160,12 @@ def _signup_is_rate_limited(request):
         return False
     return count > limit
 
+def _signup_page(request, context, status=200):
+    """가입 화면. 가입하며 받는 정보의 처리방침·약관 링크를 늘 같이 싣는다."""
+    context = {**context, 'terms_url': settings.TERMS_URL, 'privacy_url': settings.PRIVACY_URL}
+    return render(request, 'onboarding/signup.html', context, status=status)
+
+
 def signup(request):
     """
     셀프 가입 한 화면. 성공하면 네 덩어리를 한 트랜잭션에 만들고 로그인시킨다.
@@ -170,13 +176,13 @@ def signup(request):
     if request.method != 'POST':
         # 요금 페이지에서 넘어온 ?plan= 은 POST 까지 살아남아야 한다.
         # 폼 action 에는 쿼리가 안 붙으므로 히든 필드로 실어 보낸다.
-        return render(request, 'onboarding/signup.html',
+        return _signup_page(request,
                       {'values': {}, 'errors': {}, 'plan': request.GET.get('plan', '')})
 
     if _signup_is_rate_limited(request):
         # 429 로 끊지 않는다. 진짜 사장님이 오타로 몇 번 더 눌렀을 수도 있고,
         # 그때 빈 화면을 보여주면 그 자리에서 이탈한다.
-        return render(request, 'onboarding/signup.html', {
+        return _signup_page(request, {
             'values': {},
             'errors': {'form': '가입 시도가 너무 잦습니다. 잠시 후 다시 시도해 주세요.'},
             'plan': request.POST.get('plan', ''),
@@ -213,7 +219,7 @@ def signup(request):
         errors['slug'] = error
 
     if errors:
-        return render(request, 'onboarding/signup.html', {'values': values, 'errors': errors}, status=400)
+        return _signup_page(request, {'values': values, 'errors': errors}, status=400)
 
     try:
         with transaction.atomic():
@@ -248,7 +254,7 @@ def signup(request):
         # validate 와 INSERT 사이에 같은 주소·이메일이 먼저 들어온 경우.
         # 유일 제약이 최종 심판이므로 여기서 폼으로 되돌린다.
         errors['slug'] = '방금 다른 분이 같은 주소로 가입했습니다. 다른 주소를 입력해 주세요.'
-        return render(request, 'onboarding/signup.html', {'values': values, 'errors': errors}, status=400)
+        return _signup_page(request, {'values': values, 'errors': errors}, status=400)
 
     # 트랜잭션 밖에서 알린다. 안에서 보내면 뒤늦은 롤백이 '가입했다' 는
     # 알림만 남긴다. 발송은 데몬 스레드라 실패해도 가입을 막지 않는다.

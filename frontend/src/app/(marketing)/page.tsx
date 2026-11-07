@@ -47,6 +47,30 @@ const ADMIN_POINTS = [
   ['사진은 올리기만', '자동으로 가벼워집니다. 신호가 약한 지하에서도 화면이 먼저 뜹니다.'],
 ];
 
+/**
+ * 실제 활용사례. 공개 허락을 받은 매장은 Bidbar 하나뿐이다(2026-11-07).
+ * 다른 매장의 이름이나 화면을 여기 넣지 않는다.
+ *
+ * 숫자는 운영 DB 에서 센 값이다(2026-11-07). 메뉴가 늘면 낡는다 — 크게 달라지면
+ * 다시 세서 고친다. 스크린샷은 운영 화면을 폰 크기(390px)로 찍은 것이다.
+ */
+const CASE_SHOTS = [
+  { src: '/marketing/case-bid-home.jpg', alt: 'Bidbar 메뉴판 첫 화면. 매장 로고와 안내문', cap: '첫 화면 · 매장 안내문' },
+  { src: '/marketing/case-bid-whisky.jpg', alt: 'Bidbar 위스키 카테고리 화면', cap: '카테고리 · 위스키' },
+  {
+    src: '/marketing/case-bid-menu.jpg',
+    alt: 'Bidbar 신상품 메뉴. 영문 이름, 한글 이름, 설명, 가격이 서로 다른 폰트로 표시된 화면',
+    cap: '메뉴 · 신상품',
+  },
+];
+
+const CASE_FACTS = [
+  { n: '848', u: '개', label: '등록된 메뉴', sub: '위스키 · 칵테일 · 안주' },
+  { n: '25', u: '개', label: '카테고리', sub: '하위 분류 포함' },
+  { n: '5', u: '종', label: '매장 폰트', sub: '이름 · 영문 · 가격 · 설명 · 노트' },
+  { n: '2026.02', u: '', label: '운영 시작', sub: '로고 영상으로 열리는 첫 화면' },
+];
+
 const TRADES = ['이자카야', '와인바', '요리주점', '다이닝바', '크래프트 펍', '포차'];
 
 /** 손님 화면 목업. 안에 든 것은 실제 서비스 스크린샷이다. */
@@ -263,6 +287,57 @@ export default function LandingPage() {
           <Link href="/features" className="btn-under">
             기능 8가지 자세히 보기 <span aria-hidden="true">→</span>
           </Link>
+        </div>
+      </div>
+
+      <div className="wrap pt-sec" id="case">
+        <div className="sec-head reveal">
+          <div className="ko-lbl rule-lbl">실제 매장</div>
+          <h2 className="kd">
+            Bidbar의 메뉴 848개가
+            <br />
+            손님 폰에서 이렇게 열립니다
+          </h2>
+          <p className="bd">
+            위스키·칵테일 바 Bidbar는 2026년 2월부터 bar-menu로 손님을 맞습니다. 아래는 지금 손님
+            휴대폰에 실제로 열리는 화면입니다.
+          </p>
+        </div>
+
+        <div className="mkt-case reveal">
+          <div className="phones">
+            {CASE_SHOTS.map((shot) => (
+              <figure key={shot.src}>
+                <div className="phone">
+                  <div className="screen">
+                    <Image src={shot.src} alt={shot.alt} width={585} height={960} sizes="200px" />
+                  </div>
+                </div>
+                <figcaption className="cap">{shot.cap}</figcaption>
+              </figure>
+            ))}
+          </div>
+
+          <div className="mkt-facts">
+            {CASE_FACTS.map((f) => (
+              <div key={f.label}>
+                <div className="kd num n">
+                  {f.n}
+                  <span className="u">{f.u}</span>
+                </div>
+                <div className="ko-lbl">{f.label}</div>
+                <div className="cap">{f.sub}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 36 }} className="reveal">
+          {/* nofollow: 매장 메뉴판은 검색에 올리지 않는다(sitemap.ts 참고). 공개는
+              Bidbar 가 허락했지만, 검색 노출까지 우리가 대신 정하지는 않는다. */}
+          <a href="/bid" target="_blank" rel="nofollow noopener" className="btn-under">
+            Bidbar 메뉴판 직접 열어보기 <span aria-hidden="true">→</span>
+          </a>
         </div>
       </div>
 

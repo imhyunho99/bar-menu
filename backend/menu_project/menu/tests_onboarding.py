@@ -8,6 +8,7 @@ UserProfile·Subscription 네 덩어리가 빠짐없이 생기는가. 둘, 손�
 """
 
 from django.contrib.auth.models import User
+from django.conf import settings
 from django.test import TestCase, override_settings
 from django.urls import get_resolver
 from django.urls.resolvers import RoutePattern
@@ -166,6 +167,21 @@ class SignupTests(TestCase):
         response = self.client.get(SIGNUP_URL)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'onboarding/signup.html')
+
+    def test_the_form_links_the_privacy_policy(self):
+        """
+        가입하며 이메일·연락처를 받는다. 받는 자리에서 처리방침을 보여줘야 한다 —
+        푸터에만 있으면 가입 화면(Django)에서는 어디에도 안 보인다.
+
+        검증에 걸려 다시 그린 화면에서도 빠지면 안 된다.
+        """
+        for response in (
+            self.client.get(SIGNUP_URL),
+            self.client.post(SIGNUP_URL, {'email': '', 'password': '', 'name': '', 'slug': ''}),
+        ):
+            content = response.content.decode()
+            self.assertIn(settings.PRIVACY_URL, content)
+            self.assertIn(settings.TERMS_URL, content)
 
 
 class CheckSlugTests(TestCase):
