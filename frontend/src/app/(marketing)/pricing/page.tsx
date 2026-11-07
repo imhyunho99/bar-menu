@@ -1,16 +1,17 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { marketingMetadata } from '@/lib/marketing-meta';
 import Nav from '@/components/marketing/Nav';
 import Footer from '@/components/marketing/Footer';
 import { COMPARE_ROWS, FAQ, PLANS } from '@/lib/marketing-content';
 import { signupUrl, signupUrlFor } from '@/lib/site';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = marketingMetadata({
+  path: '/pricing',
   title: '요금 — bar-menu',
   description:
     '월 9,900원부터, 부가세 포함. 기기값도 약정도 없고, 가입은 무료입니다. Entry·Pro·Premium 세 요금제에 무엇이 들어가고 무엇이 빠지는지 표로 비교했습니다.',
-  alternates: { canonical: '/pricing' },
-};
+});
 
 function Mark({ on }: { on: boolean }) {
   return on ? (
@@ -23,6 +24,16 @@ function Mark({ on }: { on: boolean }) {
     </span>
   );
 }
+
+const FAQ_SCHEMA = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQ.map(([q, a]) => ({
+    '@type': 'Question',
+    name: q,
+    acceptedAnswer: { '@type': 'Answer', text: a },
+  })),
+};
 
 export default function PricingPage() {
   return (
@@ -111,7 +122,14 @@ export default function PricingPage() {
           </p>
         </div>
 
-        <div className="pt-sec reveal">
+        <div className="pt-sec reveal" id="faq">
+          {/* 질문 마크업은 전부 담긴 이 페이지 한 곳에만 둔다. 랜딩에도 일부가
+              보이지만, 같은 질문을 두 페이지에 표시하면 검색엔진이 어느 쪽을
+              볼지 고르게 된다. */}
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_SCHEMA) }}
+          />
           <h2 className="kd" style={{ fontSize: 'clamp(1.5rem,3vw,2.1rem)', marginBottom: 32 }}>
             자주 묻는 질문
           </h2>

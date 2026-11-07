@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { marketingMetadata } from '@/lib/marketing-meta';
 import Nav from '@/components/marketing/Nav';
 import Footer from '@/components/marketing/Footer';
 
@@ -15,11 +16,12 @@ import Footer from '@/components/marketing/Footer';
  * 한국어로 쓸 수 있는 영어와 꾸밈용 영어를 덜어냈다.
  */
 
-export const metadata: Metadata = {
+export const metadata: Metadata = marketingMetadata({
+  path: '/terms',
   title: '이용약관 — bar-menu',
-  description: 'bar-menu QR 메뉴판 서비스의 이용약관과 요금·환불·해지 정책입니다.',
-  alternates: { canonical: '/terms' },
-};
+  description:
+    'bar-menu QR 메뉴판 서비스의 이용약관과 요금·환불·해지 정책입니다.',
+});
 
 /** 용어와 설명이 짝을 이루는 조항. 용어를 좁은 칸에 밀어 넣으면 낱말마다
     줄이 바뀌므로(예전 화면이 그랬다) 위아래로 쌓는다. */

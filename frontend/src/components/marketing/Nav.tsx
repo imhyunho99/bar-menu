@@ -13,7 +13,12 @@ const LINKS = [
  *
  * 문의 폼은 여전히 랜딩의 #contact 한 곳에만 있다. 하위 페이지에서는 앵커까지 붙여 넘긴다.
  */
-export default function Nav({ active }: { active?: 'features' | 'pricing' | 'guide' }) {
+export default function Nav({
+  active,
+}: {
+  /** 지금 페이지. 없으면 랜딩이다. 'none' 은 랜딩이 아닌데 강조할 메뉴도 없는 곳(404). */
+  active?: 'features' | 'pricing' | 'guide' | 'none';
+}) {
   const contactHref = active ? '/#contact' : '#contact';
 
   return (

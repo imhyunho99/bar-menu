@@ -225,3 +225,21 @@ export const FAQ: [string, string][] = [
     '쓸 수 있습니다. 주문은 관리자 화면에서 바로 확인하시면 되고, 포스 연동은 선택입니다. 연동은 현재 페이히어를 지원합니다.',
   ],
 ];
+
+/**
+ * 랜딩에 보일 다섯 개. 가입을 망설이게 하는 것(돈·기기·약정·수고) 순서로 고른다.
+ * 질문 문구를 키로 고르므로, FAQ 쪽 문구를 바꾸면 여기서 빠진다 — 테스트가 잡는다.
+ */
+const HOME_QUESTIONS = [
+  '어떻게 시작하나요?',
+  '결제하기 전에는 무엇을 할 수 있나요?',
+  '태블릿이나 기기를 사야 하나요?',
+  '약정이 있나요?',
+  '메뉴가 자주 바뀌는데 매번 요청해야 하나요?',
+];
+
+export const FAQ_HOME: [string, string][] = HOME_QUESTIONS.map((q) => {
+  const found = FAQ.find(([fq]) => fq === q);
+  if (!found) throw new Error(`FAQ 에 없는 질문입니다: ${q}`);
+  return found;
+});

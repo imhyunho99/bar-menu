@@ -1,16 +1,17 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { marketingMetadata } from '@/lib/marketing-meta';
 import Nav from '@/components/marketing/Nav';
 import Footer from '@/components/marketing/Footer';
 import { PREP, STEPS } from '@/lib/marketing-content';
 import { signupUrl } from '@/lib/site';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = marketingMetadata({
+  path: '/guide',
   title: '도입 절차 — bar-menu',
   description:
     '가입부터 오픈까지 다섯 단계. 쓰시던 종이 메뉴판을 찍어 올리면 읽어서 옮기고, 확인한 뒤 저장합니다. 가입은 무료이고, 결제하면 손님에게 열립니다.',
-  alternates: { canonical: '/guide' },
-};
+});
 
 export default function GuidePage() {
   return (

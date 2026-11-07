@@ -1,15 +1,16 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { marketingMetadata } from '@/lib/marketing-meta';
 import Nav from '@/components/marketing/Nav';
 import Footer from '@/components/marketing/Footer';
 import { FEATURES } from '@/lib/marketing-content';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = marketingMetadata({
+  path: '/features',
   title: '기능 — bar-menu',
   description:
     '항목별 폰트 커스텀, 드래그 정렬, 이미지 자동 경량화, 주류 페어링, 테이블 주문과 포스 연동, 매장 내 열람 제한까지. bar-menu에서 지금 동작하는 기능 8가지.',
-  alternates: { canonical: '/features' },
-};
+});
 
 export default function FeaturesPage() {
   return (
